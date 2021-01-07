@@ -1,7 +1,7 @@
 module PlutoBindServer
 
 import Pluto
-import Pluto: ServerSession
+import Pluto: ServerSession, Firebasey
 using HTTP
 using Base64
 using SHA
@@ -11,40 +11,67 @@ myhash = base64encode ∘ sha256
 
 
 
-
-
-
-
-
+Base.@kwdef struct SwankyNotebookSession
+    hash::String
+    notebook::Pluto.Notebook
+    original_state
+end
 
 
 
 # create router
 
-function make_router(hashes_notebooks)
+function make_router(session::ServerSession, swanky_sessions::AbstractVector{SwankyNotebookSession})
     router = HTTP.Router()
 
-    function serve_staterequest(request::HTTP.Request)
+    function serve_staterequest(request::HTTP.Request)        
         uri = HTTP.URI(request.target)
     
         parts = HTTP.URIs.splitpath(uri.path)
-        # @assert parts[1] == "staterequest"
+        # parts[1] == "staterequest"
         notebook_hash = parts[2] |> HTTP.unescapeuri
-        
-        if haskey(hashes_notebooks, notebook_hash)
 
-            request_body = IOBuffer(HTTP.payload(request))
-            
-            patch = Pluto.unpack(request_body)
-
-            @show patch
-
-
-
-            HTTP.Response(200, Pluto.pack(patch))
-        else
-            HTTP.Response(404, "Not found!")
+        i = findfirst(swanky_sessions) do sesh
+            sesh.hash == notebook_hash
         end
+        
+        response = if i === nothing
+            @info "Request hash not found" request.target
+            HTTP.Response(404, "Not found!")
+        else
+            sesh = swanky_sessions[i]
+            notebook = sesh.notebook
+            bonds_raw = let
+                request_body = IOBuffer(HTTP.payload(request))
+                Pluto.unpack(request_body)
+            end
+            bonds = Dict(Symbol(k) => v for (k, v) in bonds_raw)
+
+            @show bonds
+
+
+            notebook.bonds = bonds
+
+            # TODO: is_first_value should be determined by the client
+            Pluto.set_bond_values_reactive(
+                session=session,
+                notebook=notebook,
+                bound_sym_names=Symbol.(keys(bonds)),
+                is_first_value=false,
+                run_async=false,
+            )
+
+            @info "Finished running!"
+
+            new_state = Pluto.notebook_to_js(notebook)
+
+            patches = Firebasey.diff(sesh.original_state, new_state)
+            patches_as_dicts::Array{Dict} = patches
+
+            HTTP.Response(200, Pluto.pack(patches_as_dicts))
+        end
+        push!(response.headers, "Access-Control-Allow-Origin" => "*")
+        response
     end
     
     HTTP.@register(router, "GET", "/", r -> HTTP.Response(200, "Hi!"))
@@ -56,24 +83,34 @@ end
 
 
 
-function run_paths(notebook_paths::Vector{String}; kwargs...)
+function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=false, create_statefiles=false, kwargs...)
+    @warn "Make sure that you run this bind server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
+
     options = Pluto.Configuration.from_flat_kwargs(; kwargs...)
     session = Pluto.ServerSession(;options=options)
 
-    hashes_notebooks = Dict(map(notebook_paths) do path
+    swanky_sessions = map(notebook_paths) do path
         @info "Opening $(path)"
         hash = myhash(read(path))
-        newpath = tempname()
-        write(newpath, read(path))
+        if copy_to_temp_before_running
+            newpath = tempname()
+            write(newpath, read(path))
+        else
+            newpath = path
+        end
         nb = Pluto.SessionActions.open(session, newpath; run_async=false)
+        if create_statefiles
+            # becomes .jlstate
+            write(newpath * "state", Pluto.pack(Pluto.notebook_to_js(nb)))
+        end
 
         @info "Ready $(path)" hash
 
-        hash => nb
-    end...)
+        SwankyNotebookSession(hash=hash, notebook=nb, original_state=Pluto.notebook_to_js(nb))
+    end
 
     
-    router = make_router(hashes_notebooks)
+    router = make_router(session, swanky_sessions)
 
     host = session.options.server.host
     port = session.options.server.port
@@ -117,10 +154,5 @@ function run_paths(notebook_paths::Vector{String}; kwargs...)
         end
     end
 end
-
-
-
-
-
 
 end
