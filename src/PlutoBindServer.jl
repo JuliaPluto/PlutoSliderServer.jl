@@ -1,7 +1,7 @@
 module PlutoBindServer
 
 import Pluto
-import Pluto: ServerSession, Firebasey
+import Pluto: ServerSession, Firebasey, Token, withtoken
 using HTTP
 using Base64
 using SHA
@@ -15,8 +15,14 @@ Base.@kwdef struct SwankyNotebookSession
     hash::String
     notebook::Pluto.Notebook
     original_state
+    token::Token=Token()
 end
 
+
+function with_cors!(response::HTTP.Response)
+    push!(response.headers, "Access-Control-Allow-Origin" => "*")
+    response
+end
 
 
 # create router
@@ -47,19 +53,22 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
             end
             bonds = Dict(Symbol(k) => v for (k, v) in bonds_raw)
 
-            @show bonds
+            # @show bonds
 
+            withtoken(sesh.token) do
+                notebook.bonds = bonds
 
-            notebook.bonds = bonds
+                # TODO: is_first_value should be determined by the client
+                Pluto.set_bond_values_reactive(
+                    session=session,
+                    notebook=notebook,
+                    bound_sym_names=Symbol.(keys(bonds)),
+                    is_first_value=false,
+                    run_async=false,
+                )
 
-            # TODO: is_first_value should be determined by the client
-            Pluto.set_bond_values_reactive(
-                session=session,
-                notebook=notebook,
-                bound_sym_names=Symbol.(keys(bonds)),
-                is_first_value=false,
-                run_async=false,
-            )
+                # sleep(.5)
+            end
 
             @info "Finished running!"
 
@@ -70,11 +79,10 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
 
             HTTP.Response(200, Pluto.pack(patches_as_dicts))
         end
-        push!(response.headers, "Access-Control-Allow-Origin" => "*")
-        response
+        with_cors!(response)
     end
     
-    HTTP.@register(router, "GET", "/", r -> HTTP.Response(200, "Hi!"))
+    HTTP.@register(router, "GET", "/", r -> with_cors!(HTTP.Response(200, "Hi!")))
     
     HTTP.@register(router, "POST", "/staterequest/*/", serve_staterequest)
 

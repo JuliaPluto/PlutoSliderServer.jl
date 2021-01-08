@@ -39,4 +39,9 @@ PlutoBindServer.run_paths([notebook_path]; create_statefiles=true, port=port)
 # localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A5008%2F
 
 
-# http://localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A5879%2F
+# http://localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A5756%2F
+
+
+
+
+# https://gallant-heisenberg-d86a8c.netlify.app/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jl&disable_ui=yes&bind_server_url=https%3A%2F%2Fbind-server-demo-1.plutojl.org%2F
