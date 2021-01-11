@@ -103,7 +103,7 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
     options = Pluto.Configuration.from_flat_kwargs(; kwargs...)
     session = Pluto.ServerSession(;options=options)
 
-    router_ref = Ref(empty_router())
+    router_ref = Ref{HTTP.Router}(empty_router())
 
     host = session.options.server.host
     port = session.options.server.port
