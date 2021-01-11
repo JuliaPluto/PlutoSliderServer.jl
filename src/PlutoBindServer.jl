@@ -89,6 +89,12 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
     router
 end
 
+function empty_router()
+    router = HTTP.Router()
+    HTTP.@register(router, "GET", "/", r -> with_cors!(HTTP.Response(200, "Hi!")))
+    router
+end
+
 
 
 function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=false, create_statefiles=false, kwargs...)
@@ -96,6 +102,51 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
 
     options = Pluto.Configuration.from_flat_kwargs(; kwargs...)
     session = Pluto.ServerSession(;options=options)
+
+    router_ref = Ref(empty_router())
+
+    host = session.options.server.host
+    port = session.options.server.port
+
+    hostIP = parse(Sockets.IPAddr, host)
+    if port === nothing
+        port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
+    else
+        try
+            serversocket = Sockets.listen(hostIP, UInt16(port))
+        catch e
+            @error "Port with number $port is already in use. Use Pluto.run() to automatically select an available port."
+            return
+        end
+    end
+
+    @info "Starting server..." host Int(port)
+
+    # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
+    http_server_task = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
+        request::HTTP.Request = http.message
+        request.body = read(http)
+        HTTP.closeread(http)
+
+        params = HTTP.queryparams(HTTP.URI(request.target))
+
+        response_body = HTTP.handle(router_ref[], request)
+
+        request.response::HTTP.Response = response_body
+        request.response.request = request
+        try
+            HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
+            HTTP.startwrite(http)
+            write(http, request.response.body)
+            HTTP.closewrite(http)
+        catch e
+            if isa(e, Base.IOError) || isa(e, ArgumentError)
+                # @warn "Attempted to write to a closed stream at $(request.target)"
+            else
+                rethrow(e)
+            end
+        end
+    end
 
     swanky_sessions = map(notebook_paths) do path
         @info "Opening $(path)"
@@ -116,51 +167,10 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
 
         SwankyNotebookSession(hash=hash, notebook=nb, original_state=Pluto.notebook_to_js(nb))
     end
-
     
-    router = make_router(session, swanky_sessions)
+    router_ref[] = make_router(session, swanky_sessions)
 
-    host = session.options.server.host
-    port = session.options.server.port
-
-    hostIP = parse(Sockets.IPAddr, host)
-    if port === nothing
-        port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
-    else
-        try
-            serversocket = Sockets.listen(hostIP, UInt16(port))
-        catch e
-            @error "Port with number $port is already in use. Use Pluto.run() to automatically select an available port."
-            return
-        end
-    end
-
-    @info "Starting server..." host Int(port)
-
-    HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
-        request::HTTP.Request = http.message
-        request.body = read(http)
-        HTTP.closeread(http)
-
-        params = HTTP.queryparams(HTTP.URI(request.target))
-
-        response_body = HTTP.handle(router, request)
-
-        request.response::HTTP.Response = response_body
-        request.response.request = request
-        try
-            HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
-            HTTP.startwrite(http)
-            write(http, request.response.body)
-            HTTP.closewrite(http)
-        catch e
-            if isa(e, Base.IOError) || isa(e, ArgumentError)
-                # @warn "Attempted to write to a closed stream at $(request.target)"
-            else
-                rethrow(e)
-            end
-        end
-    end
+    wait(http_server_task)
 end
 
 end
