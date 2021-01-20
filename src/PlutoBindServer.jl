@@ -173,4 +173,26 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
     wait(http_server_task)
 end
 
+function run_directory(start_dir::String; kwargs...)
+    notebookfiles = let
+        jlfiles = vcat(map(walkdir(start_dir)) do (root, dirs, files)
+            map(
+                filter(files) do file
+                    occursin(".jl", file)
+                end
+                ) do file
+                joinpath(root, file)
+            end
+        end...)
+        filter(jlfiles) do f
+            !occursin(".julia", f) &&
+            readline(f) == "### A Pluto.jl notebook ###"
+        end
+    end
+    
+    @show notebookfiles
+
+    PlutoBindServer.run_paths(notebookfiles; kwargs...)
+end
+
 end
