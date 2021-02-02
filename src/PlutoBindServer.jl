@@ -173,7 +173,7 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
     wait(http_server_task)
 end
 
-function run_directory(start_dir::String; kwargs...)
+function run_directory(start_dir::String="."; kwargs...)
     notebookfiles = let
         jlfiles = vcat(map(walkdir(start_dir)) do (root, dirs, files)
             map(
