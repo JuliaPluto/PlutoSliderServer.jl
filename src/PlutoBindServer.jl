@@ -91,6 +91,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
                 end
             end
 
+            
             # @show [c.cell_id for c in topological_order.runnable]
             topological_order === nothing && return with_cors!(HTTP.Response(500, ""))
 
@@ -140,7 +141,7 @@ end
 
 function empty_router()
     router = HTTP.Router()
-    HTTP.@register(router, "GET", "/", r -> with_cors!(HTTP.Response(200, "Hi!")))
+    HTTP.@register(router, "GET", "/", r -> with_cors!(HTTP.Response(503, "Still loading the notebooks... check back later!")))
     router
 end
 
