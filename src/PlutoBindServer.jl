@@ -1,5 +1,8 @@
 module PlutoBindServer
 
+include("./MoreAnalysis.jl")
+import .MoreAnalysis
+
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken
 using HTTP
@@ -16,6 +19,7 @@ Base.@kwdef struct SwankyNotebookSession
     notebook::Pluto.Notebook
     original_state
     token::Token=Token()
+    bond_connections::Dict{Symbol,Vector{Symbol}}
 end
 
 
@@ -30,7 +34,7 @@ end
 function make_router(session::ServerSession, swanky_sessions::AbstractVector{SwankyNotebookSession})
     router = HTTP.Router()
 
-    function serve_staterequest(request::HTTP.Request)        
+    function get_sesh(request::HTTP.Request)
         uri = HTTP.URI(request.target)
     
         parts = HTTP.URIs.splitpath(uri.path)
@@ -43,9 +47,18 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         
         response = if i === nothing
             @info "Request hash not found" request.target
-            HTTP.Response(404, "Not found!")
+            nothing
         else
             sesh = swanky_sessions[i]
+        end
+    end
+
+    function serve_staterequest(request::HTTP.Request)
+        sesh = get_sesh(request)        
+        
+        response = if sesh === nothing
+            HTTP.Response(404, "Not found!")
+        else
             notebook = sesh.notebook
             bonds_raw = let
                 request_body = IOBuffer(HTTP.payload(request))
@@ -53,31 +66,66 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
             end
             bonds = Dict(Symbol(k) => v for (k, v) in bonds_raw)
 
-            # @show bonds
+            @show bonds
 
-            withtoken(sesh.token) do
-                notebook.bonds = bonds
+            topological_order = withtoken(sesh.token) do
+                try
+                    notebook.bonds = bonds
 
-                # TODO: is_first_value should be determined by the client
-                Pluto.set_bond_values_reactive(
-                    session=session,
-                    notebook=notebook,
-                    bound_sym_names=Symbol.(keys(bonds)),
-                    is_first_value=false,
-                    run_async=false,
-                )
+                    names::Vector{Symbol} = Symbol.(keys(bonds))
 
-                # sleep(.5)
+                    # TODO: is_first_value should be determined by the client
+                    topological_order = Pluto.set_bond_values_reactive(
+                        session=session,
+                        notebook=notebook,
+                        bound_sym_names=names,
+                        is_first_value=false,
+                        run_async=false,
+                    )
+
+                    # sleep(.5)
+                    topological_order
+                catch e
+                    @error "Failed to set bond values" exception=(e, catch_backtrace())
+                    nothing
+                end
             end
+
+            # @show [c.cell_id for c in topological_order.runnable]
+            topological_order === nothing && return with_cors!(HTTP.Response(500, ""))
 
             @info "Finished running!"
 
             new_state = Pluto.notebook_to_js(notebook)
+            ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
 
-            patches = Firebasey.diff(sesh.original_state, new_state)
+            function only_evaluated_cells(state)
+
+                new = copy(state)
+                new["cell_results"] = filter(state["cell_results"]) do (id, cell_state)
+                    id ∈ ids_of_cells_that_ran
+                end
+                new
+            end
+
+            patches = Firebasey.diff(only_evaluated_cells(sesh.original_state), only_evaluated_cells(new_state))
             patches_as_dicts::Array{Dict} = patches
 
-            HTTP.Response(200, Pluto.pack(patches_as_dicts))
+            HTTP.Response(200, Pluto.pack(Dict{String,Any}(
+                "patches" => patches_as_dicts,
+                "ids_of_cells_that_ran" => ids_of_cells_that_ran,
+            )))
+        end
+        with_cors!(response)
+    end
+
+    function serve_bondconnections(request::HTTP.Request)        
+        sesh = get_sesh(request)        
+        
+        response = if sesh === nothing
+            HTTP.Response(404, "Not found!")
+        else
+            HTTP.Response(200, Pluto.pack(sesh.bond_connections))
         end
         with_cors!(response)
     end
@@ -85,6 +133,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
     HTTP.@register(router, "GET", "/", r -> with_cors!(HTTP.Response(200, "Hi!")))
     
     HTTP.@register(router, "POST", "/staterequest/*/", serve_staterequest)
+    HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
 
     router
 end
@@ -165,10 +214,12 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
 
         @info "Ready $(path)" hash
 
-        SwankyNotebookSession(hash=hash, notebook=nb, original_state=Pluto.notebook_to_js(nb))
+        SwankyNotebookSession(hash=hash, notebook=nb, original_state=Pluto.notebook_to_js(nb), bond_connections=MoreAnalysis.bound_variable_connections_graph(nb))
     end
     
     router_ref[] = make_router(session, swanky_sessions)
+
+    @info "-- SERVER READY --"
 
     wait(http_server_task)
 end
