@@ -103,15 +103,20 @@ begin
 	@bind five1 html"<input>"
 end
 
+# ╔═╡ 31695eb5-7d77-4d6b-a32a-ff31cf1fd8e9
+md"""
+## Path 6
+"""
+
 # ╔═╡ 25774e63-94fb-4b03-a43a-72a62f08f0c5
 begin
 	f(1)
 	@bind five2 html"<input>"
 end
 
-# ╔═╡ 31695eb5-7d77-4d6b-a32a-ff31cf1fd8e9
+# ╔═╡ a04672a7-3d3f-4b0b-8c8f-f8b73f208de4
 md"""
-## Path 6
+## Path 7
 """
 
 # ╔═╡ 2d0f4354-20e0-47a0-8a86-99cd50bca80f
@@ -128,7 +133,7 @@ md"""
 
 # ╔═╡ b776eba5-60bc-4d0f-8e93-e2baf2f695bc
 md"""
-## Path 7
+## Path 8
 """
 
 # ╔═╡ a56b8b24-bf38-49bf-b19e-d8feadd55db3
@@ -155,8 +160,9 @@ md"""
 # ╟─00a0169e-fd93-4dfe-b45b-f088312e24ab
 # ╠═e7b5f5ec-d673-4397-ac0c-7a4bfc364fde
 # ╠═0a61c092-e61a-4219-a57f-172a8c8c4117
-# ╠═25774e63-94fb-4b03-a43a-72a62f08f0c5
 # ╟─31695eb5-7d77-4d6b-a32a-ff31cf1fd8e9
+# ╠═25774e63-94fb-4b03-a43a-72a62f08f0c5
+# ╟─a04672a7-3d3f-4b0b-8c8f-f8b73f208de4
 # ╠═2d0f4354-20e0-47a0-8a86-99cd50bca80f
 # ╠═fee1f75a-5f3e-4213-8ba3-872871cf7f68
 # ╠═20ebc38b-24c1-4e39-97b0-dcd53a9a5bf7
