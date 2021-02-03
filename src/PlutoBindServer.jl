@@ -204,13 +204,13 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
                     names::Vector{Symbol} = Symbol.(keys(bonds))
 
                     # TODO: is_first_value should be determined by the client
-                    topological_order::Pluto.TopologicalOrder = Pluto.set_bond_values_reactive(
+                    topological_order = Pluto.set_bond_values_reactive(
                         session=session,
                         notebook=notebook,
                         bound_sym_names=names,
                         is_first_value=false,
                         run_async=false,
-                    )
+                    )::Pluto.TopologicalOrder
 
                     topological_order
                 catch e
