@@ -42,6 +42,11 @@ function with_cachable!(response::HTTP.Response)
     response
 end
 
+function with_not_cachable!(response::HTTP.Response)
+    push!(response.headers, "Cache-Control" => "no-store")
+    response
+end
+
 
 
 """
@@ -202,7 +207,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         elseif request.method == "GET"
             uri = HTTP.URI(request.target)
     
-            parts = @time HTTP.URIs.splitpath(uri.path)
+            parts = HTTP.URIs.splitpath(uri.path)
             # parts[1] == "staterequest"
             # notebook_hash = parts[2] |> HTTP.unescapeuri
 
@@ -220,7 +225,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         sesh = get_sesh(request)        
         
         response = if sesh === nothing
-            HTTP.Response(404, "Not found!")
+            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cachable!
         else
             notebook = sesh.notebook
 
@@ -230,7 +235,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
                 
             catch e
                 @error "Failed to deserialize bond values" exception=(e, catch_backtrace())
-                return HTTP.Response(500, "Failed to deserialize bond values") |> with_cors!
+                return HTTP.Response(500, "Failed to deserialize bond values") |> with_cors! |> with_not_cachable!
             end
 
             @debug "Deserialized bond values" bonds
@@ -263,7 +268,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
 
             
             # @show [c.cell_id for c in topological_order.runnable]
-            topological_order === nothing && return with_cors!(HTTP.Response(500, "Failed to set bond values"))
+            topological_order === nothing && return (HTTP.Response(500, "Failed to set bond values") |> with_cors! |> with_not_cachable!)
 
             ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
 
@@ -295,14 +300,14 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         sesh = get_sesh(request)        
         
         response = if sesh === nothing
-            HTTP.Response(404, "Not found!")
+            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cachable!
         else
-            HTTP.Response(200, Pluto.pack(sesh.bond_connections))
+            HTTP.Response(200, Pluto.pack(sesh.bond_connections)) |> with_cors! |> with_cachable! |> with_msgpack!
         end
-        response |> with_cors! |> with_cachable! |> with_msgpack!
+        response
     end
     
-    HTTP.@register(router, "GET", "/", r -> with_cors!(HTTP.Response(200, "Hi!")))
+    HTTP.@register(router, "GET", "/", r -> (HTTP.Response(200, "Hi!") |> with_cors! |> with_not_cachable!))
     
     # !!!! IDEAAAA also have a get endpoint with the same thing but the bond data is base64 encoded in the URL
     # only use it when the amount of data is not too much :o
@@ -316,7 +321,7 @@ end
 
 function empty_router()
     router = HTTP.Router()
-    HTTP.@register(router, "GET", "/", r -> with_cors!(HTTP.Response(503, "Still loading the notebooks... check back later!")))
+    HTTP.@register(router, "GET", "/", r -> (HTTP.Response(503, "Still loading the notebooks... check back later!") |> with_cors! |> with_not_cachable!))
     router
 end
 
