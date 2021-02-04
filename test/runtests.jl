@@ -43,14 +43,14 @@ try
 catch end
 
 # PlutoBindServer.run_paths([notebook_path]; create_statefiles=true, port=port)
-PlutoBindServer.run_paths(notebook_paths; create_statefiles=true, port=port, simulated_lag=.5)
+PlutoBindServer.run_paths(notebook_paths; create_statefiles=true, port=port, simulated_lag=.2)
 
 
-# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3345%2F
+# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3456%2F
 
-# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fparallelpaths2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fparallelpaths2.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3345%2F
+# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fparallelpaths2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fparallelpaths2.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3456%2F
 
-# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fbasic2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fbasic2.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3345%2F
+# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fbasic2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fbasic2.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3456%2F
 
 
 

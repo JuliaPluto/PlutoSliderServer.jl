@@ -13,7 +13,6 @@ using Sockets
 myhash = base64encode ∘ sha256
 
 
-
 Base.@kwdef struct SwankyNotebookSession
     hash::String
     notebook::Pluto.Notebook
@@ -22,11 +21,27 @@ Base.@kwdef struct SwankyNotebookSession
     bond_connections::Dict{Symbol,Vector{Symbol}}
 end
 
+function with_msgpack!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/msgpack")
+    response
+end
 
 function with_cors!(response::HTTP.Response)
     push!(response.headers, "Access-Control-Allow-Origin" => "*")
     response
 end
+
+function with_cachable!(response::HTTP.Response)
+    second = 1
+    minute = 60second
+    hour = 60minute
+    day = 24hour
+    year = 365day
+
+    push!(response.headers, "Cache-Control" => "public, max-age=$(10year), immutable")
+    response
+end
+
 
 
 """
@@ -124,6 +139,7 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
         else
             newpath = path
         end
+        # run the notebook! synchronously
         nb = Pluto.SessionActions.open(session, newpath; run_async=false)
         if create_statefiles
             # becomes .jlstate
@@ -132,7 +148,12 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
 
         @info "[$(i)/$(length(notebook_paths))] Ready $(path)" hash
 
-        SwankyNotebookSession(hash=hash, notebook=nb, original_state=Pluto.notebook_to_js(nb), bond_connections=MoreAnalysis.bound_variable_connections_graph(nb))
+        SwankyNotebookSession(
+            hash=hash, 
+            notebook=nb, 
+            original_state=Pluto.notebook_to_js(nb), 
+            bond_connections=MoreAnalysis.bound_variable_connections_graph(nb)
+        )
     end
     
     router_ref[] = make_router(session, swanky_sessions)
@@ -175,6 +196,26 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         end
     end
 
+    function get_bonds(request::HTTP.Request)
+        request_body = if request.method == "POST"
+            IOBuffer(HTTP.payload(request))
+        elseif request.method == "GET"
+            uri = HTTP.URI(request.target)
+    
+            parts = @time HTTP.URIs.splitpath(uri.path)
+            # parts[1] == "staterequest"
+            # notebook_hash = parts[2] |> HTTP.unescapeuri
+
+            @assert length(parts) == 3
+
+            base64decode(parts[3] |> HTTP.unescapeuri)
+        end
+        bonds_raw = Pluto.unpack(request_body)
+
+        Dict(Symbol(k) => v for (k, v) in bonds_raw)
+    end
+
+    "Happens whenever you mvoe a slider"
     function serve_staterequest(request::HTTP.Request)
         sesh = get_sesh(request)        
         
@@ -183,21 +224,20 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         else
             notebook = sesh.notebook
 
+            
             bonds = try
-                request_body = IOBuffer(HTTP.payload(request))
-                bonds_raw = Pluto.unpack(request_body)
-
-                Dict(Symbol(k) => v for (k, v) in bonds_raw)
+                get_bonds(request)
+                
             catch e
                 @error "Failed to deserialize bond values" exception=(e, catch_backtrace())
-                return with_cors!(HTTP.Response(500, "Failed to deserialize bond values"))
+                return HTTP.Response(500, "Failed to deserialize bond values") |> with_cors!
             end
 
             @debug "Deserialized bond values" bonds
 
             sleep(session.options.server.simulated_lag)
 
-            topological_order = withtoken(sesh.token) do
+            topological_order, new_state = withtoken(sesh.token) do
                 try
                     notebook.bonds = bonds
 
@@ -212,10 +252,12 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
                         run_async=false,
                     )::Pluto.TopologicalOrder
 
-                    topological_order
+                    new_state = Pluto.notebook_to_js(notebook)
+
+                    topological_order, new_state
                 catch e
                     @error "Failed to set bond values" exception=(e, catch_backtrace())
-                    nothing
+                    nothing, nothing
                 end
             end
 
@@ -223,7 +265,6 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
             # @show [c.cell_id for c in topological_order.runnable]
             topological_order === nothing && return with_cors!(HTTP.Response(500, "Failed to set bond values"))
 
-            new_state = Pluto.notebook_to_js(notebook)
             ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
 
             @debug "Finished running!" length(ids_of_cells_that_ran)
@@ -246,9 +287,8 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
             HTTP.Response(200, Pluto.pack(Dict{String,Any}(
                 "patches" => patches_as_dicts,
                 "ids_of_cells_that_ran" => ids_of_cells_that_ran,
-            )))
+            ))) |> with_cachable! |> with_cors! |> with_msgpack!
         end
-        with_cors!(response)
     end
 
     function serve_bondconnections(request::HTTP.Request)        
@@ -259,12 +299,16 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         else
             HTTP.Response(200, Pluto.pack(sesh.bond_connections))
         end
-        with_cors!(response)
+        response |> with_cors! |> with_cachable! |> with_msgpack!
     end
     
     HTTP.@register(router, "GET", "/", r -> with_cors!(HTTP.Response(200, "Hi!")))
     
+    # !!!! IDEAAAA also have a get endpoint with the same thing but the bond data is base64 encoded in the URL
+    # only use it when the amount of data is not too much :o
+
     HTTP.@register(router, "POST", "/staterequest/*/", serve_staterequest)
+    HTTP.@register(router, "GET", "/staterequest/*/*", serve_staterequest)
     HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
 
     router
