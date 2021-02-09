@@ -43,7 +43,7 @@ function with_cachable!(response::HTTP.Response)
 end
 
 function with_not_cachable!(response::HTTP.Response)
-    push!(response.headers, "Cache-Control" => "no-store")
+    push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
     response
 end
 
