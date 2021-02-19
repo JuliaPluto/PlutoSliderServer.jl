@@ -22,7 +22,7 @@ If you are not @fonsp and you are interested in developing this, get in touch an
 
 Clone this repo to say `~/PlutoBindServer.jl/`.
 
-Clone Pluto.jl to say `~/Pluto.jl/` and checkout the `bind-server-client-1` branch. This is a fork of the `static-to-live-binder` branch, have a look at the difference between those two, not between ` bind-server-client-1`` and  `master`.
+Clone Pluto.jl to say `~/Pluto.jl/` and checkout the `bind-server-client-1` branch. This is a fork of the `binder-static-to-live-1` branch, have a look at the difference between those two, not between ` bind-server-client-1`` and  `master`.
 
 Create a new VS Code session and add both folders. You are interested in these files:
 
@@ -44,16 +44,16 @@ pkg> dev ~/Pluto.jl
 
 #### Step 3 (every time)
 
-You can run the bind server by running the test file:
+You can run the bind server like so:
 
-```julia
-julia> ]
-pkg> test PlutoBindServer
+```
+bash> cd PlutoBindServer.jl
+bash> julia --project runtestserver.jl
 ```
 
-Edit the `runtests.jl` file to suit your needs.
+Edit the `runtestserver.jl` file to suit your needs.
 
-The bind server will start running on port 3456. It can happen that HTTP.jl does a goof and the port becomes unavaible until you reboot. Edit `runtests.jl` to change the port.
+The bind server will start running on port 3456. It can happen that HTTP.jl does a goof and the port becomes unavaible until you reboot. Edit `runtestserver.jl` to change the port.
 
 #### Step 4 (every time)
 

@@ -139,6 +139,53 @@ md"""
 # ╔═╡ a56b8b24-bf38-49bf-b19e-d8feadd55db3
 (six2, six3)
 
+# ╔═╡ 6784f0e5-5108-48ca-99ac-9d154b1d3c55
+md"""
+## Path 9
+"""
+
+# ╔═╡ aacc0632-797f-49d6-b9ce-3e728fade6c3
+begin
+	@bind cool1 let
+		@bind cool2 html"nothing"
+		
+		html"<input type=range>"
+	end
+end
+
+# ╔═╡ 6357cfaf-e6d6-49f2-b3bb-5a27b28cf0fa
+cool1
+
+# ╔═╡ 4fd43c26-dd05-4520-93e9-901760ef49b4
+cool2
+
+# ╔═╡ 357762fc-52fe-4727-b0a8-af55eea466b7
+md"""
+## Path 10
+"""
+
+# ╔═╡ 0024288a-9ee3-42b5-82c6-d996f45be9ed
+let
+	md"""
+	
+	Hello $(@bind world html"<input value=world>")
+	"""
+end
+
+# ╔═╡ ef732ddf-b034-42cf-815f-1c8b53da6401
+world
+
+# ╔═╡ c143b2de-78c5-46ad-852f-3c2a9115cb72
+md"""
+## Path 11
+"""
+
+# ╔═╡ cf628a57-933b-4984-a317-63360c345534
+@bind boring html"<input>"
+
+# ╔═╡ 22659c85-700f-4dad-a22a-7aafa71225c0
+# boring is never referenced
+
 # ╔═╡ Cell order:
 # ╟─8aac8df3-1551-4c9f-a8bd-a62751a29b2a
 # ╠═03307e43-cb61-4321-95ac-7bbb16e0cfc6
@@ -169,3 +216,13 @@ md"""
 # ╠═5545ac33-82e9-4994-be49-5776d512e2c1
 # ╟─b776eba5-60bc-4d0f-8e93-e2baf2f695bc
 # ╠═a56b8b24-bf38-49bf-b19e-d8feadd55db3
+# ╟─6784f0e5-5108-48ca-99ac-9d154b1d3c55
+# ╠═aacc0632-797f-49d6-b9ce-3e728fade6c3
+# ╠═6357cfaf-e6d6-49f2-b3bb-5a27b28cf0fa
+# ╠═4fd43c26-dd05-4520-93e9-901760ef49b4
+# ╟─357762fc-52fe-4727-b0a8-af55eea466b7
+# ╠═0024288a-9ee3-42b5-82c6-d996f45be9ed
+# ╠═ef732ddf-b034-42cf-815f-1c8b53da6401
+# ╟─c143b2de-78c5-46ad-852f-3c2a9115cb72
+# ╠═cf628a57-933b-4984-a317-63360c345534
+# ╠═22659c85-700f-4dad-a22a-7aafa71225c0

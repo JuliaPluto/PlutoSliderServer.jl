@@ -3,14 +3,12 @@ module MoreAnalysis
 export bound_variable_connections_graph
 
 import Pluto
-import Pluto: Cell, Notebook, NotebookTopology
-
-
+import Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer
 
 "Find all subexpressions of the form `@bind symbol something`, and extract the `symbol`s."
 function find_bound_variables(expr)
 	found = Set{Symbol}()
-	find_bound_variables!(found, expr)
+	find_bound_variables!(found, ExpressionExplorer.maybe_macroexpand(expr; recursive=true, expand_bind=false))
 	found
 end
 
@@ -94,7 +92,8 @@ function bound_variable_connections_graph(notebook::Notebook)::Dict{Symbol,Vecto
         var => let
             cells = codependents(notebook, topology, var)
             defined_there = union!(Set{Symbol}(), (topology[c].definitions for c in cells)...)
-            collect(defined_there ∩ bound_variables)
+            # Set([var]) ∪ 
+            collect((defined_there ∩ bound_variables))
         end
         for var in bound_variables
     )

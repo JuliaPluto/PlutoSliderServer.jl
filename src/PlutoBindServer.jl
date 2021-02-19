@@ -146,18 +146,22 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
         end
         # run the notebook! synchronously
         nb = Pluto.SessionActions.open(session, newpath; run_async=false)
+        state = Pluto.notebook_to_js(nb)
+
         if create_statefiles
             # becomes .jlstate
-            write(newpath * "state", Pluto.pack(Pluto.notebook_to_js(nb)))
+            write(newpath * "state", Pluto.pack(state))
         end
 
-        @info "[$(i)/$(length(notebook_paths))] Ready $(path)" hash
+        connections = MoreAnalysis.bound_variable_connections_graph(nb)
+
+        @info "[$(i)/$(length(notebook_paths))] Ready $(path)" hash connections
 
         SwankyNotebookSession(
             hash=hash, 
             notebook=nb, 
-            original_state=Pluto.notebook_to_js(nb), 
-            bond_connections=MoreAnalysis.bound_variable_connections_graph(nb)
+            original_state=state, 
+            bond_connections=connections
         )
     end
     

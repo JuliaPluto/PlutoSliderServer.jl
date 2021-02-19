@@ -1,74 +1,47 @@
 import PlutoBindServer
+import PlutoBindServer.MoreAnalysis
 import PlutoBindServer.Pluto
+
 using Test
 
-ENV["JULIA_DEBUG"] = PlutoBindServer
+file = joinpath(@__DIR__, "parallelpaths4.jl")
 
+newpath = tempname()
+Pluto.readwrite(file, newpath)
 
-# "Like @async except it prints errors to the terminal. 👶"
-# macro asynclog(expr)
-#     quote
-#         @async try
-#             $(esc(expr))
-#         catch ex
-#             bt = stacktrace(catch_backtrace())
-#             showerror(stderr, ex, bt)
-#             rethrow(ex)
-#         end
-#     end
-# end
+notebook = Pluto.load_notebook(newpath)
+# Run pluto's analysis. This is like opening the notebook, without actually running it
+# s = Pluto.ServerSession()
+# Pluto.update_save_run!(s, notebook, notebook.cells; run)
+notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
+# bound_variables = (map(notebook.cells) do cell
+#     MoreAnalysis.find_bound_variables(cell.parsedcode)
+# end)
 
-port = 3456# rand(3000:6000)
+# @show bound_variables
 
+connections = MoreAnalysis.bound_variable_connections_graph(notebook)
+# @show connections
 
-dir = mktempdir(; cleanup=false)
+@test !isempty(connections)
+wanted_connections = Dict(
+    :x         => [:y, :x],
+    :y         => [:y, :x],
+    :show_dogs => [:show_dogs],
+    :b         => [:b],
+    :c         => [:c],
+    :five1     => [:five1],
+    :five2     => [:five2],
+    :six1      => [:six2, :six1],
+    :six2      => [:six3, :six2, :six1],
+    :six3      => [:six3, :six2],
+    :cool1     => [:cool1, :cool2],
+    :cool2     => [:cool1, :cool2],
+    :world     => [:world],
+    :boring    => [:boring],
+)
 
-notebook_names = filter(readdir(@__DIR__)) do f
-    f != "runtests.jl"
-end
+transform(d) = Dict(k => sort(v) for (k, v) in d)
 
-notebook_paths = String[]
-for file in notebook_names
-    newpath = joinpath(dir, file)
-    write(newpath, read(file))
-    push!(notebook_paths, newpath)
-end
-# notebook_path = joinpath(dir, "notebook.jl")
-# download("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.12.18/sample/Interactivity.jl", notebook_path)
-
-try
-    # open the folder on macos:
-    run(`open $(dir)`)
-catch end
-
-# PlutoBindServer.run_paths([notebook_path]; create_statefiles=true, port=port)
-PlutoBindServer.run_paths(notebook_paths; create_statefiles=true, port=port, simulated_lag=.2)
-
-
-# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3456%2F
-
-# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fparallelpaths3.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fparallelpaths3.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3456%2F
-
-# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fbasic2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fbasic2.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3456%2F
-
-
-
-# OLD URLS
-
-
-
-# localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jl
-
-
-# localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A5008%2F
-
-
-# http://localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A5756%2F
-
-
-
-
-# https://gallant-heisenberg-d86a8c.netlify.app/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jl&disable_ui=yes&bind_server_url=https%3A%2F%2Fbind-server-demo-1.plutojl.org%2F
-
-
+@test transform(connections) == transform(wanted_connections)
