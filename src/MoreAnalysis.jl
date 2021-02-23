@@ -69,6 +69,27 @@ function upstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::Not
     end
 end
 
+function direct_parents(notebook::Notebook, topology::NotebookTopology, node::Cell)
+    filter(notebook.cells) do cell
+        any(x ∈ topology[node].references for x ∈ topology[cell].definitions)
+    end
+end
+
+function upstream_roots(notebook::Notebook, topology::NotebookTopology, from::Cell)
+    found = Set{Cell}()
+    parents = direct_parents(notebook, topology, from)
+
+    for p ∈ parents
+        if length(direct_parents(notebook, topology, p)) == 0
+            found = found ∪ Set([p])
+        else
+            found = found ∪ upstream_roots(notebook, topology, p)
+        end
+    end
+
+    found
+end
+
 "All cells that can affect the outcome of changing the given variable."
 function codependents(notebook::Notebook, topology::NotebookTopology, var::Symbol)
     assigned_in = filter(notebook.cells) do cell

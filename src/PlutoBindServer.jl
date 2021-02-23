@@ -9,6 +9,8 @@ using HTTP
 using Base64
 using SHA
 using Sockets
+using JSON
+import UUIDs: UUID
 
 myhash = base64encode ∘ sha256
 
@@ -23,6 +25,11 @@ end
 
 function with_msgpack!(response::HTTP.Response)
     push!(response.headers, "Content-Type" => "application/msgpack")
+    response
+end
+
+function with_json!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/json")
     response
 end
 
@@ -310,6 +317,62 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         end
         response
     end
+
+    function serve_interface(request::HTTP.Request)
+        sesh = get_sesh(request)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+
+        notebook = sesh.notebook
+        topology = notebook.topology
+
+        body = JSON.parse(String(request.body))
+        to_set = Symbol.(keys(body))
+        new_values = values(body)
+        out = Symbol(get(query, "out", ""))
+
+        output_cell = Pluto.where_assigned(notebook, topology, Set{Symbol}([out]))[1]
+        upstream = MoreAnalysis.upstream_roots(notebook, topology, output_cell)
+
+        to_reeval = Pluto.where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
+
+        function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Pluto.Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,Pluto.FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Pluto.Cell})
+            to_delete_vars = Set([to_delete_vars..., to_set...]) # also delete the bound symbols
+            Pluto.WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
+            for (sym, new_value) in zip(to_set, new_values)
+                Pluto.WorkspaceManager.eval_in_workspace((session, notebook), :($(sym) = $(new_value)))
+            end
+        end
+
+        Pluto.update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false)
+
+        outputs = Dict(out_symbol => Pluto.WorkspaceManager.eval_fetch_in_workspace((session, notebook), out_symbol) for out_symbol in [out])
+
+        HTTP.Response(200, JSON.json(outputs)) |> with_json!
+    end
+
+    function serve_topparams(request::HTTP.Request)
+        sesh = get_sesh(request)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+
+        notebook = sesh.notebook
+        topology = notebook.topology
+
+        out = get(query, "out", "")
+
+        assigned = Pluto.where_assigned(notebook, topology, Set([Symbol(out)]))[1]
+        @info assigned
+
+        top_nodes = MoreAnalysis.upstream_roots(notebook, topology, assigned)
+        @info top_nodes
+
+        params_list = [topology[cell].definitions for cell ∈ top_nodes]
+        params = length(params_list) > 0 ? reduce(∪, params_list) : Set()
+        @info params
+
+        res = HTTP.Response(200, JSON.json(params)) |> with_json!
+    end
     
     HTTP.@register(router, "GET", "/", r -> (HTTP.Response(200, "Hi!") |> with_cors! |> with_not_cachable!))
     
@@ -319,6 +382,8 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
     HTTP.@register(router, "POST", "/staterequest/*/", serve_staterequest)
     HTTP.@register(router, "GET", "/staterequest/*/*", serve_staterequest)
     HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
+    HTTP.@register(router, "POST", "/interface/*/", serve_interface)
+    HTTP.@register(router, "POST", "/topparams/*/", serve_topparams)
 
     router
 end
