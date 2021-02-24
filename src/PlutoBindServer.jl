@@ -323,18 +323,28 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         uri = HTTP.URI(request.target)
         query = HTTP.queryparams(uri)
 
+        parts = HTTP.URIs.splitpath(uri.path)
+        out_symbols = Symbol.(parts[3] |> HTTP.unescapeuri |> split)
+
         notebook = sesh.notebook
         topology = notebook.topology
 
         body = JSON.parse(String(request.body))
-        to_set = Symbol.(keys(body))
+
+        assigned = Pluto.where_assigned(notebook, topology, Set(out_symbols))
+        root_symbols = (x->topology[x].definitions).(MoreAnalysis.upstream_roots(notebook, topology, assigned))
+        to_set = length(root_symbols) > 0 ? reduce(∪, root_symbols) : Set{Symbol}()
+        provided_set = Symbol.(keys(body))
+
         new_values = values(body)
-        out = Symbol(get(query, "out", ""))
+        output_cell = Pluto.where_assigned(notebook, topology, Set{Symbol}(out_symbols))[1]
 
-        output_cell = Pluto.where_assigned(notebook, topology, Set{Symbol}([out]))[1]
-        upstream = MoreAnalysis.upstream_roots(notebook, topology, output_cell)
-
-        to_reeval = Pluto.where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
+        to_reeval = [
+            # Re-evaluate all cells that reference the modified input parameters
+            Pluto.where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...,
+            # Re-evaluate all input cells that were not provided as parameters
+            Pluto.where_assigned(notebook, notebook.topology, Set{Symbol}(filter(x->(x ∉ provided_set), to_set)))...
+        ]
 
         function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Pluto.Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,Pluto.FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Pluto.Cell})
             to_delete_vars = Set([to_delete_vars..., to_set...]) # also delete the bound symbols
@@ -346,7 +356,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
 
         Pluto.update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false)
 
-        outputs = Dict(out_symbol => Pluto.WorkspaceManager.eval_fetch_in_workspace((session, notebook), out_symbol) for out_symbol in [out])
+        outputs = Dict(out_symbol => Pluto.WorkspaceManager.eval_fetch_in_workspace((session, notebook), out_symbol) for out_symbol in out_symbols)
 
         HTTP.Response(200, JSON.json(outputs)) |> with_json!
     end
@@ -362,14 +372,11 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         out = get(query, "out", "")
 
         assigned = Pluto.where_assigned(notebook, topology, Set([Symbol(out)]))[1]
-        @info assigned
 
         top_nodes = MoreAnalysis.upstream_roots(notebook, topology, assigned)
-        @info top_nodes
 
         params_list = [topology[cell].definitions for cell ∈ top_nodes]
         params = length(params_list) > 0 ? reduce(∪, params_list) : Set()
-        @info params
 
         res = HTTP.Response(200, JSON.json(params)) |> with_json!
     end
@@ -382,7 +389,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
     HTTP.@register(router, "POST", "/staterequest/*/", serve_staterequest)
     HTTP.@register(router, "GET", "/staterequest/*/*", serve_staterequest)
     HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
-    HTTP.@register(router, "POST", "/interface/*/", serve_interface)
+    HTTP.@register(router, "POST", "/interface/*/*/", serve_interface)
     HTTP.@register(router, "POST", "/topparams/*/", serve_topparams)
 
     router

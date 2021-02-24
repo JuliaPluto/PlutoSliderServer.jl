@@ -89,6 +89,9 @@ function upstream_roots(notebook::Notebook, topology::NotebookTopology, from::Ce
 
     found
 end
+function upstream_roots(notebook::Notebook, topology::NotebookTopology, from::Union{Vector{Cell}, Set{Cell}})
+    reduce(∪, (x->upstream_roots(notebook, topology, x)).(from))
+end
 
 "All cells that can affect the outcome of changing the given variable."
 function codependents(notebook::Notebook, topology::NotebookTopology, var::Symbol)
