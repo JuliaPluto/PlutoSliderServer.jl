@@ -331,32 +331,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
 
         body = JSON.parse(String(request.body))
 
-        assigned = Pluto.where_assigned(notebook, topology, Set(out_symbols))
-        root_symbols = (x->topology[x].definitions).(MoreAnalysis.upstream_roots(notebook, topology, assigned))
-        to_set = length(root_symbols) > 0 ? reduce(∪, root_symbols) : Set{Symbol}()
-        provided_set = Symbol.(keys(body))
-
-        new_values = values(body)
-        output_cell = Pluto.where_assigned(notebook, topology, Set{Symbol}(out_symbols))[1]
-
-        to_reeval = [
-            # Re-evaluate all cells that reference the modified input parameters
-            Pluto.where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...,
-            # Re-evaluate all input cells that were not provided as parameters
-            Pluto.where_assigned(notebook, notebook.topology, Set{Symbol}(filter(x->(x ∉ provided_set), to_set)))...
-        ]
-
-        function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Pluto.Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,Pluto.FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Pluto.Cell})
-            to_delete_vars = Set([to_delete_vars..., to_set...]) # also delete the bound symbols
-            Pluto.WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
-            for (sym, new_value) in zip(to_set, new_values)
-                Pluto.WorkspaceManager.eval_in_workspace((session, notebook), :($(sym) = $(new_value)))
-            end
-        end
-
-        Pluto.update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false)
-
-        outputs = Dict(out_symbol => Pluto.WorkspaceManager.eval_fetch_in_workspace((session, notebook), out_symbol) for out_symbol in out_symbols)
+        outputs = Pluto.REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ body), out_symbols)
 
         HTTP.Response(200, JSON.json(outputs)) |> with_json!
     end
