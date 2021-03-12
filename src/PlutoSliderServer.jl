@@ -9,6 +9,7 @@ using HTTP
 using Base64
 using SHA
 using Sockets
+using Configurations
 
 myhash = base64encode ∘ sha256
 
@@ -49,6 +50,14 @@ end
 
 
 
+@option struct SliderServerSettings
+    exclude::Vector=String[]
+    is_cool::Bool=true
+end
+@option struct PlutoDeploySettings
+    SliderServer::SliderServerSettings=SliderServerSettings()
+end
+
 """
     run_directory(start_dir::String="."; kwargs...)
 
@@ -57,6 +66,16 @@ Run the Pluto bind server for all Pluto notebooks in the given directory (recurs
 Additional keyword arguments can be given to the Pluto.run constructor. Note that **security is always disabled**.
 """
 function run_directory(start_dir::String="."; kwargs...)
+    plutodeployment_toml = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
+
+    settings = if isfile(plutodeployment_toml)
+        Configurations.from_toml(PlutoDeploySettings, plutodeployment_toml)
+    else
+        PlutoDeploySettings()
+    end
+
+    @show settings
+
     notebookfiles = let
         jlfiles = vcat(map(walkdir(start_dir)) do (root, dirs, files)
             map(
@@ -72,8 +91,14 @@ function run_directory(start_dir::String="."; kwargs...)
             readline(f) == "### A Pluto.jl notebook ###"
         end
     end
-    
-    @info "Found Pluto notebooks:" notebookfiles
+    to_run = filter(notebookfiles) do f
+        relpath(f, start_dir) ∉ settings.SliderServer.exclude
+    end
+
+    if to_run != notebookfiles
+        @info "Excluded notebooks" setdiff(notebookfiles, to_run)
+    end
+    @info "Pluto notebooks to run:" to_run
 
     PlutoSliderServer.run_paths(notebookfiles; kwargs...)
 end
