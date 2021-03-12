@@ -1,8 +1,8 @@
-import PlutoBindServer
-import PlutoBindServer.Pluto
+import PlutoSliderServer
+import PlutoSliderServer.Pluto
 using Test
 
-ENV["JULIA_DEBUG"] = PlutoBindServer
+ENV["JULIA_DEBUG"] = PlutoSliderServer
 
 
 # "Like @async except it prints errors to the terminal. 👶"
@@ -44,8 +44,8 @@ try
     run(`open $(dir)`)
 catch end
 
-# PlutoBindServer.run_paths([notebook_path]; create_statefiles=true, port=port)
-PlutoBindServer.run_paths(notebook_paths; create_statefiles=true, port=port, simulated_lag=.2)
+# PlutoSliderServer.run_paths([notebook_path]; create_statefiles=true, port=port)
+PlutoSliderServer.run_paths(notebook_paths; create_statefiles=true, port=port, simulated_lag=.2)
 
 
 # localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3456%2F

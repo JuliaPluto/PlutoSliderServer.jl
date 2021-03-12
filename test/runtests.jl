@@ -1,6 +1,6 @@
-import PlutoBindServer
-import PlutoBindServer.MoreAnalysis
-import PlutoBindServer.Pluto
+import PlutoSliderServer
+import PlutoSliderServer.MoreAnalysis
+import PlutoSliderServer.Pluto
 
 using Test
 

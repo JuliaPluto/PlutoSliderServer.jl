@@ -1,4 +1,4 @@
-module PlutoBindServer
+module PlutoSliderServer
 
 include("./MoreAnalysis.jl")
 import .MoreAnalysis
@@ -75,7 +75,7 @@ function run_directory(start_dir::String="."; kwargs...)
     
     @info "Found Pluto notebooks:" notebookfiles
 
-    PlutoBindServer.run_paths(notebookfiles; kwargs...)
+    PlutoSliderServer.run_paths(notebookfiles; kwargs...)
 end
 
 
