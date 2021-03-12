@@ -92,7 +92,7 @@ function run_directory(start_dir::String="."; kwargs...)
         end
     end
     to_run = filter(notebookfiles) do f
-        relpath(f, start_dir) ∉ settings.SliderServer.exclude
+        relpath(f, start_dir) ∉ relpath.(settings.SliderServer.exclude, [start_dir])
     end
 
     if to_run != notebookfiles
