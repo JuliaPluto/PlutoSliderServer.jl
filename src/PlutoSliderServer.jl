@@ -100,7 +100,7 @@ function run_directory(start_dir::String="."; kwargs...)
     end
     @info "Pluto notebooks to run:" to_run
 
-    PlutoSliderServer.run_paths(notebookfiles; kwargs...)
+    PlutoSliderServer.run_paths(to_run; kwargs...)
 end
 
 
