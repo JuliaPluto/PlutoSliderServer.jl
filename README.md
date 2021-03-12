@@ -1,4 +1,6 @@
-# PlutoBindServer.jl
+# PlutoSliderServer.jl
+
+> _**not just sliders!**_
 
 Web server to run just the @bind parts of a [Pluto.jl](https://github.com/fonsp/Pluto.jl) notebook. 
 
@@ -22,7 +24,7 @@ If you are not @fonsp and you are interested in developing this, get in touch an
 
 #### Step 1 (only once)
 
-Clone this repo to say `~/PlutoBindServer.jl/`.
+Clone this repo to say `~/PlutoSliderServer.jl/`.
 
 Clone Pluto.jl to say `~/Pluto.jl/` and checkout the `bind-server-client-1` branch. This is a fork of the `binder-static-to-live-1` branch, have a look at the difference between those two, not between ` bind-server-client-1`` and  `master`.
 
@@ -30,9 +32,9 @@ Create a new VS Code session and add both folders. You are interested in these f
 
 -   `Pluto.jl/frontend/components/Editor.js` search for `use_bind_server`
 -   `Pluto.jl/frontend/common/PlutoHash.js`
--   `PlutoBindServer.jl/src/PlutoBindServer.jl`
--   `PlutoBindServer.jl/src/MoreAnalysis.jl`
--   `PlutoBindServer.jl/test/runtests.jl` is the 'launch script', it doesn't actually contain tests
+-   `PlutoSliderServer.jl/src/PlutoSliderServer.jl`
+-   `PlutoSliderServer.jl/src/MoreAnalysis.jl`
+-   `PlutoSliderServer.jl/test/runtests.jl` is the 'launch script', it doesn't actually contain tests
 
 (FYI since these files _use_ Pluto, you can't develop them inside Pluto.)
 
@@ -40,7 +42,7 @@ Create a new VS Code session and add both folders. You are interested in these f
 
 ```julia
 julia> ]
-pkg> dev ~/PlutoBindServer.jl
+pkg> dev ~/PlutoSliderServer.jl
 pkg> dev ~/Pluto.jl
 ```
 
@@ -49,7 +51,7 @@ pkg> dev ~/Pluto.jl
 You can run the bind server like so:
 
 ```
-bash> cd PlutoBindServer.jl
+bash> cd PlutoSliderServer.jl
 bash> julia --project runtestserver.jl
 ```
 
@@ -81,17 +83,14 @@ How do you generate a statedump (i.e. the object `this.state.notebook`, serializ
 You need to URL-encode the URLs to the statefile and the julia file. (Open node and call `encodeURIComponent`.) Use them in the URL query to tell Pluto where to find the files:
 
 For example, I have:
-
-Pluto (as CDN) at: `http://localhost:1234/editor.html`
-notebook file at: `https://mkhj.fra1.cdn.digitaloceanspaces.com/bind-server-tests/onedefinesanother.jl`
-notebook state dump at: `https://mkhj.fra1.cdn.digitaloceanspaces.com/bind-server-tests/onedefinesanother.jlstate`
-bind server at: `http://localhost:3456/`
+- Pluto (as CDN) at: `http://localhost:1234/editor.html`
+- notebook file at: `https://mkhj.fra1.cdn.digitaloceanspaces.com/bind-server-tests/onedefinesanother.jl`
+- notebook state dump at: `https://mkhj.fra1.cdn.digitaloceanspaces.com/bind-server-tests/onedefinesanother.jlstate`
+- bind server at: `http://localhost:3456/`
 
 This becomes:
 
-```
-http://localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3345%2F
-```
+> [http://localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3345%2F](http://localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3345%2F)
 
 with whitespace:
 
@@ -114,12 +113,12 @@ TODO TODO
 ```julia
 julia> ]
 pkg> activate --temp
-pkg> add https://github.com/fonsp/PlutoBindServer.jl
+pkg> add https://github.com/fonsp/PlutoSliderServer.jl
 
 julia> notebookfiles = ["~/a.jl", "~/b.jl"]
-julia> import PlutoBindServer; PlutoBindServer.run_paths(notebookfiles)
+julia> import PlutoSliderServer; PlutoSliderServer.run_paths(notebookfiles)
 ```
 
 ```sh
-julia --project=. -e "import PlutoBindServer; PlutoBindServer.run_paths(ARGS)" ~/a.jl ~/b.jl
+julia --project=. -e "import PlutoSliderServer; PlutoSliderServer.run_paths(ARGS)" ~/a.jl ~/b.jl
 ```
