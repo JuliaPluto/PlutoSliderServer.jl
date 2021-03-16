@@ -13,13 +13,18 @@ using Configurations
 
 myhash = base64encode ∘ sha256
 
+abstract type NotebookSession end
 
-Base.@kwdef struct SwankyNotebookSession
+Base.@kwdef struct RunningNotebookSession <: NotebookSession
     hash::String
     notebook::Pluto.Notebook
     original_state
     token::Token=Token()
     bond_connections::Dict{Symbol,Vector{Symbol}}
+end
+
+Base.@kwdef struct QueuedNotebookSession <: NotebookSession
+    hash::String
 end
 
 function with_msgpack!(response::HTTP.Response)
@@ -109,13 +114,14 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
     @warn "Make sure that you run this bind server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
 
     options = Pluto.Configuration.from_flat_kwargs(; kwargs...)
-    session = Pluto.ServerSession(;options=options)
+    server_session = Pluto.ServerSession(;options=options)
 
-    router_ref = Ref{HTTP.Router}(empty_router())
+    notebook_sessions = NotebookSession[QueuedNotebookSession(hash=myhash(read(path))) for path in notebook_paths]
+    router = make_router(server_session, notebook_sessions)
 
     # This is boilerplate HTTP code, don't read it
-    host = session.options.server.host
-    port = session.options.server.port
+    host = server_session.options.server.host
+    port = server_session.options.server.port
 
     # This is boilerplate HTTP code, don't read it
     hostIP = parse(Sockets.IPAddr, host)
@@ -141,7 +147,7 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
 
         params = HTTP.queryparams(HTTP.URI(request.target))
 
-        response_body = HTTP.handle(router_ref[], request)
+        response_body = HTTP.handle(router, request)
 
         request.response::HTTP.Response = response_body
         request.response.request = request
@@ -160,8 +166,8 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
     end
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
-    swanky_sessions = map(enumerate(notebook_paths)) do (i, path)
-        @info "Opening $(path)"
+    for (i, path) in enumerate(notebook_paths)
+        @info "[$(i)/$(length(notebook_paths))] Opening $(path)"
         hash = myhash(read(path))
         if copy_to_temp_before_running
             newpath = tempname()
@@ -169,8 +175,8 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
         else
             newpath = path
         end
-        # run the notebook! synchronously
-        nb = Pluto.SessionActions.open(session, newpath; run_async=false)
+        # run the notebook synchronously
+        nb = Pluto.SessionActions.open(server_session, newpath; run_async=false)
         state = Pluto.notebook_to_js(nb)
 
         if create_statefiles
@@ -182,16 +188,15 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
 
         @info "[$(i)/$(length(notebook_paths))] Ready $(path)" hash connections
 
-        SwankyNotebookSession(
+        # By setting the sesions to a running session, (modifying the notebook_sessions array),
+        # the HTTP router will now start serving requests for this notebook.
+        notebook_sessions[i] = RunningNotebookSession(
             hash=hash, 
             notebook=nb, 
             original_state=state, 
             bond_connections=connections
         )
     end
-    
-    router_ref[] = make_router(session, swanky_sessions)
-
     @info "-- SERVER READY --"
 
     wait(http_server_task)
@@ -200,7 +205,7 @@ end
 
 # create router
 
-function make_router(session::ServerSession, swanky_sessions::AbstractVector{SwankyNotebookSession})
+function make_router(server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession})
     router = HTTP.Router()
 
     function get_sesh(request::HTTP.Request)
@@ -210,7 +215,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
         # parts[1] == "staterequest"
         notebook_hash = parts[2] |> HTTP.unescapeuri
 
-        i = findfirst(swanky_sessions) do sesh
+        i = findfirst(notebook_sessions) do sesh
             sesh.hash == notebook_hash
         end
         
@@ -226,7 +231,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
             @info "Request hash not found. See errror hint in my source code." notebook_hash
             nothing
         else
-            sesh = swanky_sessions[i]
+            notebook_sessions[i]
         end
     end
 
@@ -253,15 +258,11 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
     function serve_staterequest(request::HTTP.Request)
         sesh = get_sesh(request)        
         
-        response = if sesh === nothing
-            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cachable!
-        else
+        response = if sesh isa RunningNotebookSession
             notebook = sesh.notebook
-
             
             bonds = try
                 get_bonds(request)
-                
             catch e
                 @error "Failed to deserialize bond values" exception=(e, catch_backtrace())
                 return HTTP.Response(500, "Failed to deserialize bond values") |> with_cors! |> with_not_cachable!
@@ -269,7 +270,9 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
 
             @debug "Deserialized bond values" bonds
 
-            sleep(session.options.server.simulated_lag)
+            let lag = server_session.options.server.simulated_lag
+                lag > 0 && sleep(lag)
+            end
 
             topological_order, new_state = withtoken(sesh.token) do
                 try
@@ -279,7 +282,7 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
 
                     # TODO: is_first_value should be determined by the client
                     topological_order = Pluto.set_bond_values_reactive(
-                        session=session,
+                        session=server_session,
                         notebook=notebook,
                         bound_sym_names=names,
                         is_first_value=false,
@@ -322,21 +325,30 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
                 "patches" => patches_as_dicts,
                 "ids_of_cells_that_ran" => ids_of_cells_that_ran,
             ))) |> with_cachable! |> with_cors! |> with_msgpack!
+        elseif sesh isa QueuedNotebookSession
+            HTTP.Response(503, "Still loading the notebooks... check back later!") |> with_cors! |> with_not_cachable!
+        else
+            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cachable!
         end
     end
 
     function serve_bondconnections(request::HTTP.Request)        
         sesh = get_sesh(request)        
         
-        response = if sesh === nothing
-            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cachable!
-        else
+        response = if sesh isa RunningNotebookSession
             HTTP.Response(200, Pluto.pack(sesh.bond_connections)) |> with_cors! |> with_cachable! |> with_msgpack!
+        elseif sesh isa QueuedNotebookSession
+            HTTP.Response(503, "Still loading the notebooks... check back later!") |> with_cors! |> with_not_cachable!
+        else
+            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cachable!
         end
-        response
     end
     
-    HTTP.@register(router, "GET", "/", r -> (HTTP.Response(200, "Hi!") |> with_cors! |> with_not_cachable!))
+    HTTP.@register(router, "GET", "/", r -> (if all(x -> x isa RunningNotebookSession, notebook_sessions)
+        HTTP.Response(200, "Hi!")
+    else
+        HTTP.Response(503, "Still loading the notebooks... check back later!")
+    end |> with_cors! |> with_not_cachable!))
     
     # !!!! IDEAAAA also have a get endpoint with the same thing but the bond data is base64 encoded in the URL
     # only use it when the amount of data is not too much :o
@@ -347,12 +359,5 @@ function make_router(session::ServerSession, swanky_sessions::AbstractVector{Swa
 
     router
 end
-
-function empty_router()
-    router = HTTP.Router()
-    HTTP.@register(router, "GET", "/", r -> (HTTP.Response(503, "Still loading the notebooks... check back later!") |> with_cors! |> with_not_cachable!))
-    router
-end
-
 
 end
