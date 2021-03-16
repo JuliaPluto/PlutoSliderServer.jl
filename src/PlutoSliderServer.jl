@@ -88,7 +88,7 @@ end
 
 
 
-function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=false, create_statefiles=false, kwargs...)
+function run_paths(notebook_paths::Vector{String}; create_statefiles=false, kwargs...)
     @warn "Make sure that you run this bind server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
 
     options = Pluto.Configuration.from_flat_kwargs(; kwargs...)
@@ -148,19 +148,13 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
     for (i, path) in enumerate(notebook_paths)
         @info "[$(i)/$(length(notebook_paths))] Opening $(path)"
         hash = myhash(read(path))
-        if copy_to_temp_before_running
-            newpath = tempname()
-            write(newpath, read(path))
-        else
-            newpath = path
-        end
         # run the notebook synchronously
-        nb = Pluto.SessionActions.open(server_session, newpath; run_async=false)
+        nb = Pluto.SessionActions.open(server_session, path; run_async=false)
         state = Pluto.notebook_to_js(nb)
 
         if create_statefiles
             # becomes .jlstate
-            write(newpath * "state", Pluto.pack(state))
+            write(path * "state", Pluto.pack(state))
         end
 
         connections = MoreAnalysis.bound_variable_connections_graph(nb)
