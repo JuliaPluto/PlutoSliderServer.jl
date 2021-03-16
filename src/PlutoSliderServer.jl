@@ -13,6 +13,9 @@ using Configurations
 
 myhash = base64encode ∘ sha256
 
+###
+# SESSION DEFINITION
+
 abstract type NotebookSession end
 
 Base.@kwdef struct RunningNotebookSession <: NotebookSession
@@ -27,33 +30,8 @@ Base.@kwdef struct QueuedNotebookSession <: NotebookSession
     hash::String
 end
 
-function with_msgpack!(response::HTTP.Response)
-    push!(response.headers, "Content-Type" => "application/msgpack")
-    response
-end
-
-function with_cors!(response::HTTP.Response)
-    push!(response.headers, "Access-Control-Allow-Origin" => "*")
-    response
-end
-
-function with_cachable!(response::HTTP.Response)
-    second = 1
-    minute = 60second
-    hour = 60minute
-    day = 24hour
-    year = 365day
-
-    push!(response.headers, "Cache-Control" => "public, max-age=$(10year), immutable")
-    response
-end
-
-function with_not_cachable!(response::HTTP.Response)
-    push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
-    response
-end
-
-
+###
+# CONFIGURATION
 
 @option struct SliderServerSettings
     exclude::Vector=String[]
@@ -138,6 +116,7 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
 
     @info "Starting server..." host Int(port)
 
+
     # This is boilerplate HTTP code, don't read it
     # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
     http_server_task = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
@@ -186,7 +165,7 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
 
         connections = MoreAnalysis.bound_variable_connections_graph(nb)
 
-        @info "[$(i)/$(length(notebook_paths))] Ready $(path)" hash connections
+        @info "[$(i)/$(length(notebook_paths))] Ready $(path)" hash Text(join(collect(connections), "\n"))
 
         # By setting the sesions to a running session, (modifying the notebook_sessions array),
         # the HTTP router will now start serving requests for this notebook.
@@ -197,13 +176,13 @@ function run_paths(notebook_paths::Vector{String}; copy_to_temp_before_running=f
             bond_connections=connections
         )
     end
-    @info "-- SERVER READY --"
+    @info "-- ALL NOTEBOOKS READY --"
 
     wait(http_server_task)
 end
 
-
-# create router
+###
+# HTTP ROUTER
 
 function make_router(server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession})
     router = HTTP.Router()
@@ -219,7 +198,7 @@ function make_router(server_session::ServerSession, notebook_sessions::AbstractV
             sesh.hash == notebook_hash
         end
         
-        response = if i === nothing
+        if i === nothing
             #= 
             ERROR HINT
 
@@ -251,10 +230,10 @@ function make_router(server_session::ServerSession, notebook_sessions::AbstractV
         end
         bonds_raw = Pluto.unpack(request_body)
 
-        Dict(Symbol(k) => v for (k, v) in bonds_raw)
+        Dict{Symbol,Any}(Symbol(k) => v for (k, v) in bonds_raw)
     end
 
-    "Happens whenever you mvoe a slider"
+    "Happens whenever you move a slider"
     function serve_staterequest(request::HTTP.Request)
         sesh = get_sesh(request)        
         
@@ -297,9 +276,6 @@ function make_router(server_session::ServerSession, notebook_sessions::AbstractV
                     nothing, nothing
                 end
             end
-
-            
-            # @show [c.cell_id for c in topological_order.runnable]
             topological_order === nothing && return (HTTP.Response(500, "Failed to set bond values") |> with_cors! |> with_not_cachable!)
 
             ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
@@ -358,6 +334,36 @@ function make_router(server_session::ServerSession, notebook_sessions::AbstractV
     HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
 
     router
+end
+
+
+###
+# HEADERS
+
+function with_msgpack!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/msgpack")
+    response
+end
+
+function with_cors!(response::HTTP.Response)
+    push!(response.headers, "Access-Control-Allow-Origin" => "*")
+    response
+end
+
+function with_cachable!(response::HTTP.Response)
+    second = 1
+    minute = 60second
+    hour = 60minute
+    day = 24hour
+    year = 365day
+
+    push!(response.headers, "Cache-Control" => "public, max-age=$(10year), immutable")
+    response
+end
+
+function with_not_cachable!(response::HTTP.Response)
+    push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
+    response
 end
 
 end
