@@ -13,10 +13,12 @@ function find_bound_variables(expr)
 end
 
 function find_bound_variables!(found::Set{Symbol}, expr::Expr)
-	if expr.head === :macrocall && expr.args[1] === Symbol("@bind") && length(expr.args) == 4
+	if expr.head === :macrocall && expr.args[1] === Symbol("@bind") && length(expr.args) == 4 && expr.args[3] isa Symbol
 		push!(found, expr.args[3])
 		find_bound_variables!(found, expr.args[4])
-	else
+    elseif expr.args === :quote
+        found
+    else
 		for a in expr.args
 			find_bound_variables!(found, a)
 		end
