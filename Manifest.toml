@@ -45,9 +45,9 @@ version = "0.1.3"
 
 [[FuzzyCompletions]]
 deps = ["REPL"]
-git-tree-sha1 = "5ca3ddf3061771d25d1699ce53a80a39300811e3"
+git-tree-sha1 = "9cde086faa37f32794be3d2df393ff064d43cd66"
 uuid = "fb4132e2-a121-4a70-b8a1-d5b831dcdcc2"
-version = "0.4.0"
+version = "0.4.1"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "IniFile", "MbedTLS", "NetworkOptions", "Sockets", "URIs"]
@@ -132,8 +132,8 @@ uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[Pluto]]
 deps = ["Base64", "Dates", "Distributed", "FuzzyCompletions", "HTTP", "InteractiveUtils", "Logging", "Markdown", "MsgPack", "Pkg", "REPL", "Sockets", "TableIOInterface", "Tables", "UUIDs"]
-git-tree-sha1 = "3af013133688972e62112f1ba6c03dc928bf1eab"
-repo-rev = "1ce6f6c"
+git-tree-sha1 = "af1a5e4829cf2e2a94a3574b074c1818e0ae1366"
+repo-rev = "2549b37"
 repo-url = "https://github.com/fonsp/Pluto.jl.git"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 version = "0.14.0"
