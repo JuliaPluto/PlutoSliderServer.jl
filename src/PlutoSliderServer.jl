@@ -3,6 +3,8 @@ module PlutoSliderServer
 include("./MoreAnalysis.jl")
 import .MoreAnalysis
 
+
+
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken
 using HTTP
@@ -37,8 +39,38 @@ end
     exclude::Vector=String[]
     is_cool::Bool=true
 end
+@option struct ExportSettings
+    baked_state::Bool=true
+    offer_binder::Bool=true
+    disable_ui::Bool=true
+    slider_server_url::Union{Nothing,String}=nothing
+    binder_url::Union{Nothing,String}=nothing
+    cache_dir::Union{Nothing,String}=nothing
+end
 @option struct PlutoDeploySettings
     SliderServer::SliderServerSettings=SliderServerSettings()
+    Export::ExportSettings=ExportSettings()
+end
+
+
+
+function find_notebook_files_recursive(start_dir)
+    jlfiles = vcat(
+        map(walkdir(start_dir)) do (root, dirs, files)
+            map(
+                filter(endswith_pluto_file_extension, files)
+            ) do file
+                joinpath(root, file)
+            end
+        end...
+    )
+    plutofiles = filter(jlfiles) do f
+        readline(f) == "### A Pluto.jl notebook ###" &&
+        (!occursin(".julia", f) || occursin(".julia", start_dir))
+    end
+
+    # reverse alphabetical order so that week5 becomes available before week4 :)
+    reverse(plutofiles)
 end
 
 """
@@ -59,24 +91,8 @@ function run_directory(start_dir::String="."; kwargs...)
 
     @show settings
 
-    notebookfiles = let
-        jlfiles = vcat(map(walkdir(start_dir)) do (root, dirs, files)
-            map(
-                filter(files) do file
-                    occursin(".jl", file)
-                end
-                ) do file
-                joinpath(root, file)
-            end
-        end...)
-        plutofiles = filter(jlfiles) do f
-            readline(f) == "### A Pluto.jl notebook ###" &&
-            (!occursin(".julia", f) || occursin(".julia", start_dir))
-        end
+    notebookfiles = find_notebook_files_recursive(start_dir)
 
-        # reverse alphabetical order so that week5 becomes available before week4 :)
-        reverse(plutofiles)
-    end
     to_run = filter(notebookfiles) do f
         relpath(f, start_dir) ∉ relpath.(settings.SliderServer.exclude, [start_dir])
     end
@@ -362,5 +378,6 @@ function with_not_cachable!(response::HTTP.Response)
     push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
     response
 end
+
 
 end
