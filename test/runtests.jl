@@ -1,2 +1,2 @@
-inlcude("./connections.jl")
-inlcude("./static export.jl")
+include("./connections.jl")
+include("./static export.jl")

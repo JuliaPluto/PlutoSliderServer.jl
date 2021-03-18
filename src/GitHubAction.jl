@@ -1,10 +1,10 @@
 
 ## GITHUB ACTION
+export github_action
 
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
 get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
-
 
 
 "A convenience function to call from a GitHub Action. See [`export_paths`](@ref) for the list of keyword arguments."

@@ -1,5 +1,7 @@
 module PlutoSliderServer
 
+export run_directory, run_paths
+
 include("./MoreAnalysis.jl")
 import .MoreAnalysis
 
@@ -90,7 +92,9 @@ function run_directory(start_dir::String="."; kwargs...)
     PlutoSliderServer.run_paths(to_run; settings=settings, kwargs...)
 end
 
+export export_paths
 
+export_paths(paths; export_dir, cache_dir, kwargs...) = run_paths(paths; settings=Configurations.from_kwargs(PlutoDeploySettings; kwargs...), run_server=false)
 
 function run_paths(notebook_paths::Vector{String}; settings::PlutoDeploySettings, static_export=true, run_server=true, kwargs...)
     run_server && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
