@@ -69,10 +69,13 @@ function run_directory(start_dir::String="."; kwargs...)
                 joinpath(root, file)
             end
         end...)
-        filter(jlfiles) do f
-            !occursin(".julia", f) &&
-            readline(f) == "### A Pluto.jl notebook ###"
+        plutofiles = filter(jlfiles) do f
+            readline(f) == "### A Pluto.jl notebook ###" &&
+            (!occursin(".julia", f) || occursin(".julia", start_dir))
         end
+
+        # reverse alphabetical order so that week5 becomes available before week4 :)
+        reverse(plutofiles)
     end
     to_run = filter(notebookfiles) do f
         relpath(f, start_dir) ∉ relpath.(settings.SliderServer.exclude, [start_dir])
