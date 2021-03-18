@@ -41,8 +41,8 @@ function export_paths(notebook_paths::Vector{String}; export_dir::String=".", ba
     end
     export_dir = Pluto.tamepath(export_dir)
 
-    options = Pluto.Configuration.from_flat_kwargs(; kwargs...)
-    session = Pluto.ServerSession(;options=options)
+    pluto_options = Pluto.Configuration.from_flat_kwargs(; kwargs...)
+    session = Pluto.ServerSession(;options=pluto_options)
 
     cache_dir !== nothing && mkpath(cache_dir)
 
@@ -190,6 +190,10 @@ function generate_html(;
     return result
 end
 
+
+## CACHE
+
+
 cache_filename(cache_dir::String, hash::String) = joinpath(cache_dir, HTTP.URIs.escapeuri(hash) * ".jlstate")
 
 function try_fromcache(cache_dir::String, hash::String)
@@ -202,64 +206,19 @@ function try_fromcache(cache_dir::String, hash::String)
         end
     end
 end
-
 try_fromcache(cache_dir::Nothing, hash) = nothing
 
 
-
-include("./GitHubAction.jl")
-
-## HELPERS
-
-const pluto_file_extensions = [
-    ".pluto.jl",
-    ".jl",
-    ".plutojl",
-    ".pluto",
-]
-
-endswith_pluto_file_extension(s) = any(endswith(s, e) for e in pluto_file_extensions)
-
-function without_pluto_file_extension(s)
-    for e in pluto_file_extensions
-        if endswith(s, e)
-            return s[1:end-length(e)]
-        end
-    end
-    s
-end
-
-
-import Pkg
-function try_get_pluto_version()
+function try_tocache(cache_dir::String, hash::String, state)
     try
-        deps = Pkg.API.dependencies()
-
-        p_index = findfirst(p -> p.name == "Pluto", deps)
-        p = deps[p_index]
-
-        if p.is_tracking_registry
-            p.version
-        elseif p.is_tracking_path
-            error("Do not add the Pluto dependency as a local path, but by specifying its VERSION or an exact COMMIT SHA.")
-        else
-            # ugh
-            is_probably_a_commit_thing = all(in(('0':'9') ∪ ('a':'f')), p.git_revision)
-            if !is_probably_a_commit_thing
-                error("Do not add the Pluto dependency by specifying its BRANCH, but by specifying its VERSION or an exact COMMIT SHA.")
-            end
-
-            p.git_revision
+        open(cache_filename(cache_dir, hash), "w") do io
+            Pluto.pack(io, state)
         end
     catch e
-        @error "Failed to get exact Pluto version from dependency. Your website is not guaranteed to work forever." exception=(e, catch_backtrace())
-        Pluto.PLUTO_VERSION
+        @warn "Failed to write to cache file" hash exception=(e,catch_backtrace())
     end
 end
-
-
-
-
+try_tocache(cache_dir::Nothing, hash, state) = nothing
 
 
 end
