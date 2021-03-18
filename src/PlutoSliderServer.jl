@@ -4,7 +4,7 @@ include("./MoreAnalysis.jl")
 import .MoreAnalysis
 
 include("./FileHelpers.jl")
-include("./Export.js")
+include("./Export.jl")
 include("./GitHubAction.jl")
 
 import Pluto
