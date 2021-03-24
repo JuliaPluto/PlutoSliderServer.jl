@@ -8,17 +8,12 @@ get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogg
 
 
 "A convenience function to call from a GitHub Action. See [`export_paths`](@ref) for the list of keyword arguments."
-function github_action(; export_dir=".", generate_default_index=true, kwargs...)
-    export_dir = Pluto.tamepath(export_dir)
-
-    mkpath(export_dir)
-
+function github_action(; generate_default_index=true, kwargs...)
     start_dir = "."
-    notebookfiles = find_notebook_files_recursive(start_dir)
 
-    export_paths(notebookfiles; export_dir=export_dir, kwargs...)
+    export_directory(start_dir; kwargs...)
 
-    generate_default_index && create_default_index(;export_dir=export_dir)
+    generate_default_index && create_default_index()
 end
 
 "If no index.hmtl, index.md, index.jl file exists, create a default index.md that GitHub Pages will render into an index page, listing all notebooks."

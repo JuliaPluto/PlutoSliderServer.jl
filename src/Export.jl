@@ -27,12 +27,12 @@ myhash = base64encode ∘ sha256
 # - `baked_state::Bool=true`: base64-encode the state object and write it inside the .html file. If `false`, a separate `.plutostate` file is generated.
 # - `offer_binder::Bool=false`: show a "Run on Binder" button on the notebooks. Use `binder_url` to choose a binder repository.
 # - `binder_url::Union{Nothing,String}=nothing`: e.g. `https://mybinder.org/v2/gh/mitmath/18S191/e2dec90` TODO docs
-# - `bind_server_url::Union{Nothing,String}=nothing`: e.g. `https://bindserver.mycoolproject.org/` TODO docs
+# - `slider_server_url::Union{Nothing,String}=nothing`: e.g. `https://bindserver.mycoolproject.org/` TODO docs
 # - `cache_dir::Union{Nothing,String}=nothing`: if provided, use this directory to read and write cached notebook states. Caches will be indexed by notebook hash, but you need to take care to invalidate the cache when Pluto or this export script updates. Useful in combination with https://github.com/actions/cache.
 
 # Additional keyword arguments will be passed on to the configuration of `Pluto`. See [`Pluto.Configuration`](@ref) for more info.
 # """
-# function export_paths(notebook_paths::Vector{String}; export_dir::String=".", baked_state::Bool=true, offer_binder::Bool=false, disable_ui::Bool=true, bind_server_url::Union{Nothing,String}=nothing, binder_url::Union{Nothing,String}=nothing, cache_dir::Union{Nothing,String}=nothing, kwargs...)
+# function export_paths(notebook_paths::Vector{String}; export_dir::String=".", baked_state::Bool=true, offer_binder::Bool=false, disable_ui::Bool=true, slider_server_url::Union{Nothing,String}=nothing, binder_url::Union{Nothing,String}=nothing, cache_dir::Union{Nothing,String}=nothing, kwargs...)
 #     # TODO how can we fix the binder version to a Pluto version? We can't use the Pluto hash because the binder repo is different from Pluto.jl itself. We can use Pluto versions, tag those on the binder repo.
 #     if offer_binder && binder_url === nothing
 #         @warn "We highly recommend setting the `binder_url` keyword argument with a fixed commit hash. The default is not fixed to a specific version, and the binder button will break when Pluto updates.
@@ -103,8 +103,8 @@ myhash = base64encode ∘ sha256
 #                 "undefined"
 #             end
 
-#             bind_server_url_js = if bind_server_url !== nothing
-#                 repr(bind_server_url)
+#             slider_server_url_js = if slider_server_url !== nothing
+#                 repr(slider_server_url)
 #             else
 #                 "undefined"
 #             end
@@ -131,7 +131,7 @@ myhash = base64encode ∘ sha256
 
 #             html_contents = generate_html(; 
 #                 notebookfile_js=notebookfile_js, statefile_js=statefile_js,
-#                 bind_server_url_js=bind_server_url_js, binder_url_js=binder_url_js,
+#                 slider_server_url_js=slider_server_url_js, binder_url_js=binder_url_js,
 #                 disable_ui=disable_ui
 #             )
 
@@ -154,7 +154,7 @@ myhash = base64encode ∘ sha256
 function generate_html(;
         version=nothing, 
         notebookfile_js="undefined", statefile_js="undefined", 
-        bind_server_url_js="undefined", binder_url_js="undefined", 
+        slider_server_url_js="undefined", binder_url_js="undefined", 
         disable_ui=true
     )::String
 
@@ -180,7 +180,7 @@ function generate_html(;
         window.pluto_notebookfile = $(notebookfile_js)
         window.pluto_disable_ui = $(disable_ui ? "true" : "false")
         window.pluto_statefile = $(statefile_js)
-        window.pluto_bind_server_url = $(bind_server_url_js)
+        window.pluto_slider_server_url = $(slider_server_url_js)
         window.pluto_binder_url = $(binder_url_js)
         </script>
         <!-- [automatically generated launch parameters can be inserted here] -->
@@ -193,6 +193,7 @@ end
 
 ## CACHE
 
+export try_fromcache, try_tocache
 
 cache_filename(cache_dir::String, hash::String) = joinpath(cache_dir, HTTP.URIs.escapeuri(hash) * ".jlstate")
 

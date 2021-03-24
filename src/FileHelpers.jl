@@ -17,7 +17,11 @@ function without_pluto_file_extension(s)
     s
 end
 
+"""
+Search recursively for Pluto notebook files.
 
+Return paths relative to the search directory.
+"""
 function find_notebook_files_recursive(start_dir)
     jlfiles = vcat(
         map(walkdir(start_dir)) do (root, dirs, files)
@@ -33,6 +37,8 @@ function find_notebook_files_recursive(start_dir)
         (!occursin(".julia", f) || occursin(".julia", start_dir))
     end
 
+    relatives = relpath.(plutofiles, [start_dir])
+
     # reverse alphabetical order so that week5 becomes available before week4 :)
-    reverse(plutofiles)
+    reverse(relatives)
 end

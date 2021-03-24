@@ -33,7 +33,7 @@ end
     ])
 
     github_action(
-        cache_dir=cache_dir,
+        Export_cache_dir=cache_dir,
     )
 
     @test sort(list_files_recursive()) == sort([ 
@@ -51,6 +51,7 @@ end
     @test read(joinpath(original_dir1, "a.jl")) == read(joinpath(test_dir, "a.jl"))
 
     # Test cache
+    @test isdir(cache_dir) # should be created 
     @show list_files_recursive(cache_dir)
     @test length(list_files_recursive(cache_dir)) >= 2
 
@@ -58,7 +59,7 @@ end
     second_runtime = with_logger(NullLogger()) do
         .1 * @elapsed for i in 1:10
             github_action(
-                cache_dir=cache_dir,
+                Export_cache_dir=cache_dir,
             )
         end
     end
@@ -79,8 +80,8 @@ end
     ])
 
     github_action(
-        offer_binder=true,
-        baked_state=false,
+        Export_offer_binder=true,
+        Export_baked_state=false,
     )
 
     @test sort(list_files_recursive()) == sort([

@@ -30,7 +30,7 @@ Clone Pluto.jl to say `~/Pluto.jl/` and checkout the `bind-server-client-1` bran
 
 Create a new VS Code session and add both folders. You are interested in these files:
 
--   `Pluto.jl/frontend/components/Editor.js` search for `use_bind_server`
+-   `Pluto.jl/frontend/components/Editor.js` search for `use_slider_server`
 -   `Pluto.jl/frontend/common/PlutoHash.js`
 -   `PlutoSliderServer.jl/src/PlutoSliderServer.jl`
 -   `PlutoSliderServer.jl/src/MoreAnalysis.jl`
@@ -90,7 +90,7 @@ For example, I have:
 
 This becomes:
 
-> [http://localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3345%2F](http://localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3345%2F)
+> [http://localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&slider_server_url=http%3A%2F%2Flocalhost%3A3345%2F](http://localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&slider_server_url=http%3A%2F%2Flocalhost%3A3345%2F)
 
 with whitespace:
 
@@ -102,7 +102,7 @@ http://localhost:1234/editor.html?
         https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl
     &disable_ui=
         yes
-    &bind_server_url=
+    &slider_server_url=
         http%3A%2F%2Flocalhost%3A3345%2F
 ```
 

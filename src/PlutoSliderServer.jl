@@ -1,12 +1,11 @@
 module PlutoSliderServer
 
-export run_directory, run_paths
-
 include("./MoreAnalysis.jl")
 import .MoreAnalysis
 
 include("./FileHelpers.jl")
 include("./Export.jl")
+using .Export
 include("./GitHubAction.jl")
 
 import Pluto
@@ -16,6 +15,7 @@ using Base64
 using SHA
 using Sockets
 using Configurations
+using TOML
 
 myhash = base64encode ∘ sha256
 
@@ -36,29 +36,64 @@ Base.@kwdef struct QueuedNotebookSession <: NotebookSession
     hash::String
 end
 
+Base.@kwdef struct FinishedNotebookSession <: NotebookSession
+    hash::String
+    original_state
+end
+
 ###
 # CONFIGURATION
 
+UnionNothingString = Any
+
 @option struct SliderServerSettings
     exclude::Vector=String[]
-    is_cool::Bool=true
+    port=nothing
+    host=nothing
+    simulated_lag=0
 end
+
 @option struct ExportSettings
+    output_dir::UnionNothingString=nothing
     exclude::Vector=String[]
     ignore_cache::Vector=String[]
     baked_state::Bool=true
     offer_binder::Bool=true
     disable_ui::Bool=true
-    slider_server_url::Union{Nothing,String}=nothing
-    binder_url::Union{Nothing,String}=nothing
-    cache_dir::Union{Nothing,String}=nothing
+    cache_dir::UnionNothingString=nothing
+    slider_server_url::UnionNothingString=nothing
+    binder_url::UnionNothingString=nothing
 end
+
 @option struct PlutoDeploySettings
     SliderServer::SliderServerSettings=SliderServerSettings()
     Export::ExportSettings=ExportSettings()
 end
 
 
+function get_configuration(; kwargs...)
+    plutodeployment_toml = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
+
+    if isfile(plutodeployment_toml)
+        toml_d = TOML.parsefile(plutodeployment_toml)
+
+        relevant_for_me = filter(toml_d) do (k,v)
+            k ∈ ["SliderServerSettings", "ExportSettings"]
+        end
+        # relevant_for_pluto = filter(toml_d) do (k,v)
+        #     k ∈ ["Pluto"]
+        # end
+
+        Configurations.from_dict(PlutoDeploySettings, relevant_for_me; kwargs...)
+    else
+        Configurations.from_kwargs(PlutoDeploySettings; kwargs...)
+    end
+end
+
+
+
+
+export export_directory, run_directory
 
 """
     run_directory(start_dir::String="."; kwargs...)
@@ -68,58 +103,75 @@ Run the Pluto bind server for all Pluto notebooks in the given directory (recurs
 Additional keyword arguments can be given to the Pluto.run constructor. Note that **security is always disabled**.
 """
 function run_directory(start_dir::String="."; kwargs...)
-    plutodeployment_toml = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
-
-    settings = if isfile(plutodeployment_toml)
-        Configurations.from_toml(PlutoDeploySettings, plutodeployment_toml)
-    else
-        PlutoDeploySettings()
-    end
-
-    @show settings
-
     notebookfiles = find_notebook_files_recursive(start_dir)
-
-    to_run = filter(notebookfiles) do f
-        relpath(f, start_dir) ∉ relpath.(settings.SliderServer.exclude, [start_dir])
-    end
-
-    if to_run != notebookfiles
-        @info "Excluded notebooks" setdiff(notebookfiles, to_run)
-    end
-    @info "Pluto notebooks to run:" to_run
-
-    PlutoSliderServer.run_paths(to_run; settings=settings, kwargs...)
+    settings = get_configuration(;kwargs...)
+    export_dir = something(settings.Export.output_dir, start_dir)
+    run_paths(
+        notebookfiles, export_dir; 
+        settings=settings)
 end
 
-export export_paths
+function export_directory(start_dir::String="."; kwargs...)
+    notebookfiles = find_notebook_files_recursive(start_dir)
+    settings = get_configuration(;kwargs...)
+    export_dir = something(settings.Export.output_dir, start_dir)
+    run_paths(
+        notebookfiles, export_dir; 
+        settings=settings, 
+        run_server=false)
+end
 
-export_paths(paths; export_dir, cache_dir, kwargs...) = run_paths(paths; settings=Configurations.from_kwargs(PlutoDeploySettings; kwargs...), run_server=false)
 
-function run_paths(notebook_paths::Vector{String}; settings::PlutoDeploySettings, static_export=true, run_server=true, kwargs...)
+function export_paths(notebook_paths::Vector{String}, output_dir::Union{Nothing,String}=nothing; kwargs...)
+    run_paths(notebook_paths, output_dir;
+        settings=get_configuration(;kwargs...),
+        run_server=false)
+end
+
+function run_paths(
+        notebook_paths::Vector{String}, output_dir::Union{Nothing,String}=nothing; 
+        settings::PlutoDeploySettings, 
+        static_export::Bool=true, run_server::Bool=true, 
+        pluto_options::Pluto.Configuration.Options=Pluto.Configuration.Options(), 
+        on_ready::Function=((args...)->())
+    )
+
+    to_run = setdiff(notebook_paths, settings.Export.exclude ∩ settings.SliderServer.exclude)
+    
+    @show Text(settings)
+
     run_server && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
 
     # TODO how can we fix the binder version to a Pluto version? We can't use the Pluto hash because the binder repo is different from Pluto.jl itself. We can use Pluto versions, tag those on the binder repo.
-    if offer_binder && binder_url === nothing
+    if settings.Export.offer_binder && settings.Export.binder_url === nothing
         @warn "We highly recommend setting the `binder_url` keyword argument with a fixed commit hash. The default is not fixed to a specific version, and the binder button will break when Pluto updates.
         
         This might be automated in the future."
     end
 
-    export_dir = "."
-    export_dir = Pluto.tamepath(export_dir)
+    if to_run != notebook_paths
+        @info "Excluded notebooks:" setdiff(notebook_paths, to_run)
+    end
 
-    pluto_options = Pluto.Configuration.from_flat_kwargs(; kwargs...)
+    @info "Pluto notebooks to run:" to_run
+
+    if output_dir === nothing && any(!isabspath, notebook_paths)
+        throw(ArgumentError("You need to set the second argument to an output directory, or only use absolute notebook paths."))
+    end
+
+    export_dir = something(output_dir, "/") # "/" will be overriden by joinpath, since all notebook paths are absolute, by the assertion above
+    mkpath(export_dir)
+
     server_session = Pluto.ServerSession(;options=pluto_options)
 
-    notebook_sessions = NotebookSession[QueuedNotebookSession(hash=myhash(read(path))) for path in notebook_paths]
+    notebook_sessions = NotebookSession[QueuedNotebookSession(hash=myhash(read(path))) for path in to_run]
 
     if run_server
 
         router = make_router(server_session, notebook_sessions)
         # This is boilerplate HTTP code, don't read it
-        host = server_session.options.server.host
-        port = server_session.options.server.port
+        host = settings.host
+        port = settings.port
 
         # This is boilerplate HTTP code, don't read it
         hostIP = parse(Sockets.IPAddr, host)
@@ -167,20 +219,19 @@ function run_paths(notebook_paths::Vector{String}; settings::PlutoDeploySettings
     end
 
 
-    cache_dir !== nothing && mkpath(cache_dir)
+    settings.Export.cache_dir === nothing || mkpath(settings.Export.cache_dir)
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
-    for (i, path) in enumerate(notebook_paths)
+    for (i, path) in enumerate(to_run)
         
-        @info "[$(i)/$(length(notebook_paths))] Opening $(path)"
+        @info "[$(i)/$(length(to_run))] Opening $(path)"
 
         jl_contents = read(path)
         hash = myhash(jl_contents)
 
-        keep_running = true
+        keep_running = run_server && path ∉ settings.SliderServer.exclude
 
-        cached_state = keep_running ? nothing : try_fromcache(cache_dir, hash)
-
+        cached_state = keep_running ? nothing : try_fromcache(settings.Export.cache_dir, hash)
         if cached_state !== nothing
             @info "Loaded from cache, skipping notebook run" hash
             state = cached_state
@@ -190,24 +241,27 @@ function run_paths(notebook_paths::Vector{String}; settings::PlutoDeploySettings
             # get the state object
             state = Pluto.notebook_to_js(notebook)
             # shut down the notebook
-            keep_running || Pluto.SessionActions.shutdown(server_session, notebook)
+            if !keep_running
+                @info "Shutting down notebook process"
+                Pluto.SessionActions.shutdown(server_session, notebook)
+            end
 
-            try_tocache(cache_dir, hash, state)
+            try_tocache(settings.Export.cache_dir, hash, state)
         end
         
 
         if static_export
             export_jl_path = let
-                relative = path
-                joinpath(export_dir, relative)
+                relative_to_notebooks_dir = path
+                joinpath(export_dir, relative_to_notebooks_dir)
             end
             export_html_path = let
-                relative = without_pluto_file_extension(path) * ".html"
-                joinpath(export_dir, relative)
+                relative_to_notebooks_dir = without_pluto_file_extension(path) * ".html"
+                joinpath(export_dir, relative_to_notebooks_dir)
             end
             export_statefile_path = let
-                relative = without_pluto_file_extension(path) * ".plutostate"
-                joinpath(export_dir, relative)
+                relative_to_notebooks_dir = without_pluto_file_extension(path) * ".plutostate"
+                joinpath(export_dir, relative_to_notebooks_dir)
             end
 
 
@@ -216,22 +270,22 @@ function run_paths(notebook_paths::Vector{String}; settings::PlutoDeploySettings
             mkpath(dirname(export_statefile_path))
 
 
-            notebookfile_js = if offer_binder
+            notebookfile_js = if settings.Export.offer_binder
                 repr(basename(export_jl_path))
             else
                 "undefined"
             end
-            bind_server_url_js = if bind_server_url !== nothing
-                repr(bind_server_url)
+            slider_server_url_js = if settings.Export.slider_server_url !== nothing
+                repr(slider_server_url)
             else
                 "undefined"
             end
-            binder_url_js = if binder_url !== nothing
+            binder_url_js = if settings.Export.binder_url !== nothing
                 repr(binder_url)
             else
                 "undefined"
             end
-            statefile_js = if !baked_state
+            statefile_js = if !settings.Export.baked_state
                 open(export_statefile_path, "w") do io
                     Pluto.pack(io, state)
                 end
@@ -244,16 +298,15 @@ function run_paths(notebook_paths::Vector{String}; settings::PlutoDeploySettings
                 "\"data:;base64,$(statefile64)\""
             end
 
-
             html_contents = generate_html(; 
                 notebookfile_js=notebookfile_js, statefile_js=statefile_js,
-                bind_server_url_js=bind_server_url_js, binder_url_js=binder_url_js,
-                disable_ui=disable_ui
+                slider_server_url_js=slider_server_url_js, binder_url_js=binder_url_js,
+                disable_ui=settings.Export.disable_ui
             )
             write(export_html_path, html_contents)
 
-
-            if (var"we need the .jl file" = offer_binder) || 
+            # TODO: maybe we can avoid writing the .jl file if only the slider server is needed? the frontend only uses it to get its hash
+            if (var"we need the .jl file" = (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)) || 
                 (var"the .jl file is already there and might have changed" = isfile(export_jl_path))
                 write(export_jl_path, jl_contents)
             end
@@ -261,20 +314,29 @@ function run_paths(notebook_paths::Vector{String}; settings::PlutoDeploySettings
             @info "Written to $(export_html_path)"
         end
 
-        connections = MoreAnalysis.bound_variable_connections_graph(nb)
+        if keep_running
+            connections = MoreAnalysis.bound_variable_connections_graph(notebook)
+            @info "Bond connections" Text(join(collect(connections), "\n"))
 
-        @info "[$(i)/$(length(notebook_paths))] Ready $(path)" hash Text(join(collect(connections), "\n"))
-
-        # By setting the sesions to a running session, (modifying the notebook_sessions array),
-        # the HTTP router will now start serving requests for this notebook.
-        notebook_sessions[i] = RunningNotebookSession(
-            hash=hash, 
-            notebook=nb, 
-            original_state=state, 
-            bond_connections=connections
-        )
+            # By setting the sesions to a running session, (modifying the notebook_sessions array),
+            # the HTTP router will now start serving requests for this notebook.
+            notebook_sessions[i] = RunningNotebookSession(
+                hash=hash, 
+                notebook=notebook, 
+                original_state=state, 
+                bond_connections=connections
+            )
+        else
+            notebook_sessions[i] = FinishedNotebookSession(
+                hash=hash, 
+                original_state=state, 
+            )
+        end
+        @info "[$(i)/$(length(to_run))] Ready $(path)" hash
     end
     @info "-- ALL NOTEBOOKS READY --"
+
+    on_ready(server_session, notebook_sessions)
 
     wait(http_server_task)
 end
@@ -302,7 +364,7 @@ function make_router(server_session::ServerSession, notebook_sessions::AbstractV
 
             This means that the notebook file used by the web client does not precisely match any of the notebook files running in this server. 
 
-            If this is an automated setup, then this could happen inbetween deployments. 
+            If this is an automated setup, then this could happen inotebooketween deployments. 
             
             If this is a manual setup, then running the .jl notebook file might have caused a small change (e.g. the version number or a whitespace change). Copy notebooks to a temporary directory before running them using the bind server. =#
             @info "Request hash not found. See errror hint in my source code." notebook_hash
@@ -347,7 +409,7 @@ function make_router(server_session::ServerSession, notebook_sessions::AbstractV
 
             @debug "Deserialized bond values" bonds
 
-            let lag = server_session.options.server.simulated_lag
+            let lag = settings.simulated_lag
                 lag > 0 && sleep(lag)
             end
 

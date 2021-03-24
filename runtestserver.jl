@@ -48,11 +48,11 @@ catch end
 PlutoSliderServer.run_paths(notebook_paths; create_statefiles=true, port=port, simulated_lag=.2)
 
 
-# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3456%2F
+# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fonedefinesanother.jl&disable_ui=yes&slider_server_url=http%3A%2F%2Flocalhost%3A3456%2F
 
-# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fparallelpaths3.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fparallelpaths3.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3456%2F
+# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fparallelpaths3.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fparallelpaths3.jl&disable_ui=yes&slider_server_url=http%3A%2F%2Flocalhost%3A3456%2F
 
-# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fbasic2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fbasic2.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A3456%2F
+# localhost:1234/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fbasic2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Fbind-server-tests%2Fbasic2.jl&disable_ui=yes&slider_server_url=http%3A%2F%2Flocalhost%3A3456%2F
 
 
 
@@ -63,14 +63,14 @@ PlutoSliderServer.run_paths(notebook_paths; create_statefiles=true, port=port, s
 # localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jl
 
 
-# localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A5008%2F
+# localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter.jl&disable_ui=yes&slider_server_url=http%3A%2F%2Flocalhost%3A5008%2F
 
 
-# http://localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jl&disable_ui=yes&bind_server_url=http%3A%2F%2Flocalhost%3A5756%2F
+# http://localhost:7654/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jl&disable_ui=yes&slider_server_url=http%3A%2F%2Flocalhost%3A5756%2F
 
 
 
 
-# https://gallant-heisenberg-d86a8c.netlify.app/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jl&disable_ui=yes&bind_server_url=https%3A%2F%2Fbind-server-demo-1.plutojl.org%2F
+# https://gallant-heisenberg-d86a8c.netlify.app/editor.html?statefile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jlstate&notebookfile=https%3A%2F%2Fmkhj.fra1.cdn.digitaloceanspaces.com%2Finter2.jl&disable_ui=yes&slider_server_url=https%3A%2F%2Fbind-server-demo-1.plutojl.org%2F
 
 
