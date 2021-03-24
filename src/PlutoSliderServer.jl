@@ -48,9 +48,10 @@ UnionNothingString = Any
 
 @option struct SliderServerSettings
     exclude::Vector=String[]
-    port=2345
+    port::Integer=2345
     host="127.0.0.1"
-    simulated_lag=0
+    simulated_lag::Real=0
+    serve_static_export_folder::Bool=false
 end
 
 @option struct ExportSettings
@@ -214,7 +215,7 @@ function run_paths(
 
     if run_server
 
-        router = make_router(server_session, notebook_sessions)
+        router = make_router(server_session, notebook_sessions; static_dir=settings.SliderServer.serve_static_export_folder ? export_dir : nothing)
         # This is boilerplate HTTP code, don't read it
         host = settings.host
         port = settings.port
@@ -390,7 +391,7 @@ end
 ###
 # HTTP ROUTER
 
-function make_router(server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession})
+function make_router(server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
     router = HTTP.Router()
 
     function get_sesh(request::HTTP.Request)
@@ -538,6 +539,16 @@ function make_router(server_session::ServerSession, notebook_sessions::AbstractV
     HTTP.@register(router, "POST", "/staterequest/*/", serve_staterequest)
     HTTP.@register(router, "GET", "/staterequest/*/*", serve_staterequest)
     HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
+
+    if static_dir !== nothing
+        function serve_asset(request::HTTP.Request)
+            uri = HTTP.URI(request.target)
+            
+            filepath = project_relative_path(static_dir, relpath(HTTP.unescapeuri(uri.path), "/"))
+            Pluto.asset_response(filepath)
+        end
+        HTTP.@register(router, "GET", "/*", serve_asset)
+    end
 
     router
 end
