@@ -101,20 +101,3 @@ function bound_variable_connections_graph(notebook::Notebook)::Dict{Symbol,Vecto
     )
 end
 end
-
-
-# s = Pluto.ServerSession(options=Pluto.Configuration.from_flat_kwargs(workspace_use_distributed=true))
-# nb = let
-#     path = "/Users/fons/Documents/PlutoBindServer.jl/test/parallelpaths.jl"
-
-#     begin
-#         newpath = tempname()
-#         write(newpath, read(path))
-#         newpath
-#     end
-    
-#     Pluto.SessionActions.open(s, newpath; run_async=false)
-# end
-
-
-# bound_variable_connections_graph(nb)
