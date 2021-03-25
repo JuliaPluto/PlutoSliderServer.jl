@@ -75,16 +75,19 @@ end
 end
 
 
-function get_configuration(; kwargs...)
-    plutodeployment_toml = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
-
-    if isfile(plutodeployment_toml)
-        toml_d = TOML.parsefile(plutodeployment_toml)
+function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)
+    if !isnothing(toml_path) && isfile(toml_path)
+        toml_d = TOML.parsefile(toml_path)
 
         relevant_for_me = filter(toml_d) do (k,v)
-            k ∈ ["SliderServerSettings", "ExportSettings"]
+            k ∈ ["SliderServer", "Export"]
         end
         relevant_for_pluto = get(toml_d, "Pluto", Dict())
+
+        remaining = setdiff(keys(toml_d), ["SliderServer", "Export", "Pluto"])
+        if !isempty(remaining)
+            @error "Configuration categories not recognised:" remaining
+        end
 
         (
             Configurations.from_dict(PlutoDeploySettings, relevant_for_me; kwargs...),
@@ -157,10 +160,11 @@ function run_directory(
         notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir),
         static_export::Bool=true, run_server::Bool=true, 
         on_ready::Function=((args...)->()),
+        config_toml_path::Union{String,Nothing}=joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml"),
         kwargs...
     )
 
-    settings, pluto_options = get_configuration(;kwargs...)
+    settings, pluto_options = get_configuration(config_toml_path;kwargs...)
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
 

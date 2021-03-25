@@ -26,6 +26,7 @@ end
 
     github_action(
         Export_cache_dir=cache_dir,
+        Export_baked_state=true,
     )
 
     @test sort(list_files_recursive()) == sort([ 
@@ -71,9 +72,19 @@ end
         "subdir/c.plutojl",
     ])
 
+    config_contents = """
+    [Export]
+    baked_state = false
+    binder_url = "pannenkoek"
+    """
+
+    config_path = tempname()
+    write(config_path, config_contents)
+
     github_action(
         Export_offer_binder=true,
-        Export_baked_state=false,
+        Export_slider_server_url="appelsap",
+        config_toml_path=config_path,
     )
 
     @test sort(list_files_recursive()) == sort([
@@ -96,5 +107,7 @@ end
 
     @test occursin("a.jl", read("a.html", String))
     @test occursin("a.plutostate", read("a.html", String))
+    @test occursin("pannenkoek", read("a.html", String))
+    @test occursin("appelsap", read("a.html", String))
 end
 
