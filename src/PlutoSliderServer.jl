@@ -2,11 +2,9 @@ module PlutoSliderServer
 
 include("./MoreAnalysis.jl")
 import .MoreAnalysis
-
 include("./FileHelpers.jl")
 include("./Export.jl")
 using .Export
-include("./GitHubAction.jl")
 
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken

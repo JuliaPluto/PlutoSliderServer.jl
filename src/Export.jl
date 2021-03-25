@@ -138,7 +138,7 @@ function default_index(paths)
         <ul>
         $(join(
             if link === nothing
-                """<li>$(name)</li>"""
+                """<li>$(name) <em style="opacity: .5;">(Loading...)</em></li>"""
             else
                 """<li><a href="$(link)">$(name)</a></li>"""
             end
