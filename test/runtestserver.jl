@@ -27,6 +27,7 @@ cdn = let
 
         If you do not want to develop Pluto, then launch this script with the PlutoSliderServer.jl repository as environment.
         """
+        
         "http://localhost:1234/"
     else
         nothing
