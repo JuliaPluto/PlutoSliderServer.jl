@@ -24,8 +24,7 @@ Pluto = "0.14, 0.15"
 julia = "1.5"
 
 [extras]
-LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "LiveServer"]
+test = ["Test"]
