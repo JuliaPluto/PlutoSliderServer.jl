@@ -89,8 +89,9 @@ function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)
             @error "Configuration categories not recognised:" remaining
         end
 
+        kwargs_dict = Configurations.to_dict(Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
         (
-            Configurations.from_dict(PlutoDeploySettings, relevant_for_me; kwargs...),
+            Configurations.from_dict(PlutoDeploySettings, merge_recursive(relevant_for_me, kwargs_dict)),
             Pluto.Configuration.from_flat_kwargs(;(Symbol(k) => v for (k,v) in relevant_for_pluto)...),
         )
     else
@@ -101,6 +102,8 @@ function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)
     end
 end
 
+merge_recursive(a::AbstractDict, b::AbstractDict) = mergewith(merge_recursive, a, b)
+merge_recursive(a, b) = b
 
 include("./HTTPRouter.jl")
 
