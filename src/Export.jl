@@ -21,11 +21,14 @@ function generate_html(;
 
     original = read(Pluto.project_relative_path("frontend", "editor.html"), String)
 
-    if version isa Nothing
-        version = try_get_pluto_version()
+    cdn_root = if pluto_cdn_root === nothing
+        if version isa Nothing
+            version = try_get_pluto_version()
+        end
+        "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(version))/frontend/"
+    else
+        pluto_cdn_root
     end
-
-    cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(version))/frontend/")
 
     @info "Using CDN for Pluto assets:" cdn_root
 
