@@ -135,9 +135,9 @@ Search recursively for all Pluto notebooks in the current folder, and for each n
 - `notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir)`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
 """
 function export_directory(args...; kwargs...)
-    run_directory(args...; run_server=false, kwargs...)
+    run_directory(args...; static_export=true, run_server=false, kwargs...)
 end
-export_notebook(p; kwargs...) = run_notebook(p; run_server=false, kwargs...)
+export_notebook(p; kwargs...) = run_notebook(p; static_export=true, run_server=false, kwargs...)
 
 function run_notebook(path::String; kwargs...)
     run_directory(dirname(path); notebook_paths=[path], kwargs...)
@@ -161,7 +161,7 @@ If `static_export` is `true`, then additional `Export_` keywords can be given, s
 function run_directory(
         start_dir::String="."; 
         notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir),
-        static_export::Bool=true, run_server::Bool=true, 
+        static_export::Bool=false, run_server::Bool=true, 
         on_ready::Function=((args...)->()),
         config_toml_path::Union{String,Nothing}=joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml"),
         kwargs...

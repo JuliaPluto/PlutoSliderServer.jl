@@ -8,8 +8,7 @@ get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogg
 
 
 "A convenience function to call from a GitHub Action. See [`export_paths`](@ref) for the list of keyword arguments."
-function github_action(; generate_default_index=true, kwargs...)
-    start_dir = "."
+function github_action(start_dir::String="."; generate_default_index=true, kwargs...)
 
     export_directory(start_dir; kwargs...)
 
