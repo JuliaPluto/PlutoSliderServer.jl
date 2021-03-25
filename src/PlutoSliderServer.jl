@@ -122,6 +122,7 @@ Search recursively for all Pluto notebooks in the current folder, and for each n
 - `Export_slider_server_url::Union{Nothing,String}=nothing`: e.g. `https://bindserver.mycoolproject.org/` TODO docs
 - `Export_cache_dir::Union{Nothing,String}=nothing`: if provided, use this directory to read and write cached notebook states. Caches will be indexed by notebook hash, but you need to take care to invalidate the cache when Pluto or this export script updates. Useful in combination with https://github.com/actions/cache.
 - `Export_output_dir::String="."`: folder to write generated HTML files to (will create directories to preserve the input folder structure). Leave at the default to generate each HTML file in the same folder as the notebook file.
+- `notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir)`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
 """
 function export_directory(args...; kwargs...)
     run_directory(args...; run_server=false, kwargs...)
@@ -143,12 +144,13 @@ Run the Pluto bind server for all Pluto notebooks in the given directory (recurs
 - `SliderServer_port::Integer=2345`: Port to run the HTTP server on.
 - `SliderServer_host="127.0.0.1"`: Often set to `"0.0.0.0"` on a server.
 - `static_export::Bool=false`: Also export static files?
+- `notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir)`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
 
 If `static_export` is `true`, then additional `Export_` keywords can be given, see [`export_directory`](@ref).
 """
 function run_directory(
         start_dir::String="."; 
-        notebook_paths=find_notebook_files_recursive(start_dir),
+        notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir),
         static_export::Bool=true, run_server::Bool=true, 
         on_ready::Function=((args...)->()),
         kwargs...
@@ -168,8 +170,8 @@ function run_directory(
 
     run_server && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
 
-    # TODO how can we fix the binder version to a Pluto version? We can't use the Pluto hash because the binder repo is different from Pluto.jl itself. We can use Pluto versions, tag those on the binder repo.
-    if settings.Export.offer_binder && settings.Export.binder_url === nothing
+    if static_export && settings.Export.offer_binder && settings.Export.binder_url === nothing
+        # TODO how can we fix the binder version to a Pluto version? We can't use the Pluto hash because the binder repo is different from Pluto.jl itself. We can use Pluto versions, tag those on the binder repo.
         @warn "We highly recommend setting the `binder_url` keyword argument with a fixed commit hash. The default is not fixed to a specific version, and the binder button will break when Pluto updates.
         
         This might be automated in the future."
@@ -236,6 +238,7 @@ function run_directory(
         end
     else
         http_server_task = @async 1+1
+        serversocket = nothing
     end
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
@@ -244,7 +247,7 @@ function run_directory(
         @info "[$(i)/$(length(to_run))] Opening $(path)"
 
 
-        jl_contents = read(joinpath(start_dir, path))
+        jl_contents = read(joinpath(start_dir, path), String)
         hash = myhash(jl_contents)
 
         keep_running = run_server && path ∉ settings.SliderServer.exclude && occursin("@bind", jl_contents)
@@ -357,7 +360,11 @@ function run_directory(
     end
     @info "-- ALL NOTEBOOKS READY --"
 
-    on_ready(server_session, notebook_sessions)
+    on_ready((;
+        serversocket,
+        server_session, 
+        notebook_sessions,
+    ))
 
     wait(http_server_task)
 end
