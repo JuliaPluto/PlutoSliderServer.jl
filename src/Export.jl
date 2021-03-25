@@ -59,7 +59,7 @@ end
 
 export try_fromcache, try_tocache
 
-cache_filename(cache_dir::String, hash::String) = joinpath(cache_dir, HTTP.URIs.escapeuri(hash) * ".jlstate")
+cache_filename(cache_dir::String, hash::String) = joinpath(cache_dir, HTTP.URIs.escapeuri(hash) * ".plutostate")
 
 function try_fromcache(cache_dir::String, hash::String)
     p = cache_filename(cache_dir, hash)
