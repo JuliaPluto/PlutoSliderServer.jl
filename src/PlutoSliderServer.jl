@@ -100,27 +100,6 @@ end
 
 export export_directory, run_directory
 
-"""
-    run_directory(start_dir::String="."; , export_options...)
-
-Run the Pluto bind server for all Pluto notebooks in the given directory (recursive search). 
-
-# Keyword arguments
-- `SliderServer_exclude::Vector{String}=[]`: list of notebook files to skip. Provide paths relative to `start_dir`. _If `static_export` is `true`, then only paths in `SliderServer_exclude ∩ Export_exclude` will be skipped, paths in `setdiff(SliderServer_exclude, Export_exclude)` will be shut down after exporting._
-- `SliderServer_port::Integer=2345`: Port to run the HTTP server on.
-- `SliderServer_host="127.0.0.1"`: Often set to `"0.0.0.0"` on a server.
-- `static_export::Bool=false`: Also export static files?
-
-If `static_export` is `true`, then additional `Export_` keywords can be given, see [`export_directory`](@ref).
-"""
-function run_directory(start_dir::String="."; static_export::Bool=false, kwargs...)
-    notebookfiles = find_notebook_files_recursive(start_dir)
-    settings, pluto_options = get_configuration(;kwargs...)
-    export_dir = something(settings.Export.output_dir, start_dir)
-    run_paths(
-        notebookfiles, export_dir; 
-        settings, pluto_options)
-end
 
 """
     export_directory(start_dir::String="."; kwargs...)
@@ -143,41 +122,35 @@ Search recursively for all Pluto notebooks in the current folder, and for each n
 - `Export_cache_dir::Union{Nothing,String}=nothing`: if provided, use this directory to read and write cached notebook states. Caches will be indexed by notebook hash, but you need to take care to invalidate the cache when Pluto or this export script updates. Useful in combination with https://github.com/actions/cache.
 - `Export_output_dir::String="."`: folder to write generated HTML files to (will create directories to preserve the input folder structure). Leave at the default to generate each HTML file in the same folder as the notebook file.
 """
-function export_directory(start_dir::String="."; kwargs...)
-    notebookfiles = find_notebook_files_recursive(start_dir)
-    settings, pluto_options = get_configuration(;kwargs...)
-    export_dir = something(settings.Export.output_dir, start_dir)
-    run_paths(
-        notebookfiles, export_dir; 
-        settings, pluto_options,
-        run_server=false)
+function export_directory(args...; kwargs...)
+    run_directory(args...; run_server=false, kwargs...)
 end
 
-
-function export_paths(notebook_paths::Vector{String}, output_dir::Union{Nothing,String}=nothing; kwargs...)
-    settings, pluto_options = get_configuration(;kwargs...)
-    run_paths(notebook_paths, output_dir;
-        settings, pluto_options,
-        run_server=false)
-end
 
 """
-    run_paths(start_dir::String="."; , export_options...)
+    run_directory(start_dir::String="."; , export_options...)
 
 Run the Pluto bind server for all Pluto notebooks in the given directory (recursive search). 
 
 # Keyword arguments
-- `SliderServer_exclude::Vector{String}=[]`: list of notebook files to skip. Provide paths relative to `start_dir`.
-- `SliderServer_port::Integer=2345`
-- `SliderServer_host="127.0.0.1"` Often set to `"0.0.0.0"` on a server.
+- `SliderServer_exclude::Vector{String}=[]`: list of notebook files to skip. Provide paths relative to `start_dir`. _If `static_export` is `true`, then only paths in `SliderServer_exclude ∩ Export_exclude` will be skipped, paths in `setdiff(SliderServer_exclude, Export_exclude)` will be shut down after exporting._
+- `SliderServer_port::Integer=2345`: Port to run the HTTP server on.
+- `SliderServer_host="127.0.0.1"`: Often set to `"0.0.0.0"` on a server.
+- `static_export::Bool=false`: Also export static files?
+
+If `static_export` is `true`, then additional `Export_` keywords can be given, see [`export_directory`](@ref).
 """
-function run_paths(
-        notebook_paths::Vector{String}, output_dir::Union{Nothing,String}=nothing; 
-        settings::PlutoDeploySettings, 
+function run_directory(
+        start_dir::String="."; 
         static_export::Bool=true, run_server::Bool=true, 
-        pluto_options::Pluto.Configuration.Options=Pluto.Configuration.Options(), 
-        on_ready::Function=((args...)->())
+        on_ready::Function=((args...)->()),
+        kwargs...
     )
+
+    notebook_paths = find_notebook_files_recursive(start_dir)
+    settings, pluto_options = get_configuration(;kwargs...)
+    output_dir = something(settings.Export.output_dir, start_dir)
+    mkpath(output_dir)
 
     to_run = setdiff(notebook_paths, if static_export
         settings.SliderServer.exclude ∩ settings.Export.exclude
@@ -202,23 +175,17 @@ function run_paths(
 
     @info "Pluto notebooks to run:" to_run
 
-    if output_dir === nothing && any(!isabspath, notebook_paths)
-        throw(ArgumentError("You need to set the second argument to an output directory, or only use absolute notebook paths."))
-    end
-
-    export_dir = something(output_dir, "/") # "/" will be overriden by joinpath, since all notebook paths are absolute, by the assertion above
-    mkpath(export_dir)
 
     server_session = Pluto.ServerSession(;options=pluto_options)
 
-    notebook_sessions = NotebookSession[QueuedNotebookSession(hash=myhash(read(path))) for path in to_run]
+    notebook_sessions = NotebookSession[QueuedNotebookSession(hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if run_server
 
-        router = make_router(server_session, notebook_sessions; static_dir=settings.SliderServer.serve_static_export_folder ? export_dir : nothing)
+        router = make_router(server_session, notebook_sessions; static_dir=settings.SliderServer.serve_static_export_folder ? output_dir : nothing)
         # This is boilerplate HTTP code, don't read it
-        host = settings.host
-        port = settings.port
+        host = settings.SliderServer.host
+        port = settings.SliderServer.port
 
         # This is boilerplate HTTP code, don't read it
         hostIP = parse(Sockets.IPAddr, host)
@@ -273,7 +240,7 @@ function run_paths(
         
         @info "[$(i)/$(length(to_run))] Opening $(path)"
 
-        jl_contents = read(path)
+        jl_contents = read(joinpath(start_dir, path))
         hash = myhash(jl_contents)
 
         keep_running = run_server && path ∉ settings.SliderServer.exclude
@@ -284,7 +251,7 @@ function run_paths(
             original_state = cached_state
         else
             # open and run the notebook (TODO: tell pluto not to write to the notebook file)
-            notebook = Pluto.SessionActions.open(server_session, path; run_async=false)
+            notebook = Pluto.SessionActions.open(server_session, joinpath(start_dir, path); run_async=false)
             # get the state object
             original_state = Pluto.notebook_to_js(notebook)
             # shut down the notebook
@@ -300,15 +267,15 @@ function run_paths(
         if static_export
             export_jl_path = let
                 relative_to_notebooks_dir = path
-                joinpath(export_dir, relative_to_notebooks_dir)
+                joinpath(output_dir, relative_to_notebooks_dir)
             end
             export_html_path = let
                 relative_to_notebooks_dir = without_pluto_file_extension(path) * ".html"
-                joinpath(export_dir, relative_to_notebooks_dir)
+                joinpath(output_dir, relative_to_notebooks_dir)
             end
             export_statefile_path = let
                 relative_to_notebooks_dir = without_pluto_file_extension(path) * ".plutostate"
-                joinpath(export_dir, relative_to_notebooks_dir)
+                joinpath(output_dir, relative_to_notebooks_dir)
             end
 
 
@@ -323,12 +290,12 @@ function run_paths(
                 "undefined"
             end
             slider_server_url_js = if settings.Export.slider_server_url !== nothing
-                repr(slider_server_url)
+                repr(settings.Export.slider_server_url)
             else
                 "undefined"
             end
             binder_url_js = if settings.Export.binder_url !== nothing
-                repr(binder_url)
+                repr(settings.Export.binder_url)
             else
                 "undefined"
             end
@@ -367,14 +334,14 @@ function run_paths(
 
             # By setting the sesions to a running session, (modifying the notebook_sessions array),
             # the HTTP router will now start serving requests for this notebook.
-            notebook_sessions[i] = RunningNotebookSession(
+            notebook_sessions[i] = RunningNotebookSession(;
                 hash,
                 notebook, 
                 original_state, 
                 bond_connections,
             )
         else
-            notebook_sessions[i] = FinishedNotebookSession(
+            notebook_sessions[i] = FinishedNotebookSession(;
                 hash,
                 original_state,
             )
@@ -544,7 +511,7 @@ function make_router(server_session::ServerSession, notebook_sessions::AbstractV
         function serve_asset(request::HTTP.Request)
             uri = HTTP.URI(request.target)
             
-            filepath = project_relative_path(static_dir, relpath(HTTP.unescapeuri(uri.path), "/"))
+            filepath = joinpath(static_dir, relpath(HTTP.unescapeuri(uri.path), "/"))
             Pluto.asset_response(filepath)
         end
         HTTP.@register(router, "GET", "/*", serve_asset)
