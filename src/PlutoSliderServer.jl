@@ -58,6 +58,7 @@ end
     output_dir::UnionNothingString=nothing
     exclude::Vector=String[]
     ignore_cache::Vector=String[]
+    pluto_cdn_root::UnionNothingString=nothing
     baked_state::Bool=true
     offer_binder::Bool=true
     disable_ui::Bool=true
@@ -182,7 +183,7 @@ function run_directory(
 
     if run_server
 
-        router = make_router(server_session, notebook_sessions; static_dir=settings.SliderServer.serve_static_export_folder ? output_dir : nothing)
+        router = make_router(settings, server_session, notebook_sessions; static_dir=settings.SliderServer.serve_static_export_folder ? output_dir : nothing)
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port
@@ -312,7 +313,8 @@ function run_directory(
                 "\"data:;base64,$(statefile64)\""
             end
 
-            html_contents = generate_html(; 
+            html_contents = generate_html(;
+                pluto_cdn_root=settings.Export.pluto_cdn_root,
                 notebookfile_js, statefile_js,
                 slider_server_url_js, binder_url_js,
                 disable_ui=settings.Export.disable_ui
@@ -358,7 +360,7 @@ end
 ###
 # HTTP ROUTER
 
-function make_router(server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
+function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
     router = HTTP.Router()
 
     function get_sesh(request::HTTP.Request)
@@ -423,7 +425,7 @@ function make_router(server_session::ServerSession, notebook_sessions::AbstractV
 
             @debug "Deserialized bond values" bonds
 
-            let lag = settings.simulated_lag
+            let lag = settings.SliderServer.simulated_lag
                 lag > 0 && sleep(lag)
             end
 

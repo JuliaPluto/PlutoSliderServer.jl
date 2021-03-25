@@ -13,7 +13,7 @@ import Pkg
 myhash = base64encode ∘ sha256
 
 function generate_html(;
-        version=nothing, 
+        version=nothing, pluto_cdn_root=nothing,
         notebookfile_js="undefined", statefile_js="undefined", 
         slider_server_url_js="undefined", binder_url_js="undefined", 
         disable_ui=true
@@ -25,7 +25,7 @@ function generate_html(;
         version = try_get_pluto_version()
     end
 
-    cdn_root = "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(version))/frontend/"
+    cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(version))/frontend/")
 
     @info "Using CDN for Pluto assets:" cdn_root
 
