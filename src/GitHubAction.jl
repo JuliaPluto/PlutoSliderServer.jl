@@ -16,7 +16,7 @@ function github_action(; generate_default_index=true, kwargs...)
     generate_default_index && create_default_index()
 end
 
-"If no index.hmtl, index.md, index.jl file exists, create a default index.md that GitHub Pages will render into an index page, listing all notebooks."
+"If no index.html, index.md, index.jl file exists, create a default index.md that GitHub Pages will render into an index page, listing all notebooks."
 function create_default_index(;export_dir=".")
     default_md = """
     Notebooks:

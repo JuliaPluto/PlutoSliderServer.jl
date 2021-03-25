@@ -126,10 +126,15 @@ Search recursively for all Pluto notebooks in the current folder, and for each n
 function export_directory(args...; kwargs...)
     run_directory(args...; run_server=false, kwargs...)
 end
+export_notebook(p; kwargs...) = run_notebook(p; run_server=false, kwargs...)
+
+function run_notebook(path::String; kwargs...)
+    run_directory(dirname(path); notebook_paths=[path], kwargs...)
+end
 
 
 """
-    run_directory(start_dir::String="."; , export_options...)
+    run_directory(start_dir::String="."; export_options...)
 
 Run the Pluto bind server for all Pluto notebooks in the given directory (recursive search). 
 
@@ -143,12 +148,12 @@ If `static_export` is `true`, then additional `Export_` keywords can be given, s
 """
 function run_directory(
         start_dir::String="."; 
+        notebook_paths=find_notebook_files_recursive(start_dir),
         static_export::Bool=true, run_server::Bool=true, 
         on_ready::Function=((args...)->()),
         kwargs...
     )
 
-    notebook_paths = find_notebook_files_recursive(start_dir)
     settings, pluto_options = get_configuration(;kwargs...)
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
