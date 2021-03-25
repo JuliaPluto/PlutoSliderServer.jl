@@ -58,7 +58,7 @@ UnionNothingString = Any
     port::Integer=2345
     host="127.0.0.1"
     simulated_lag::Real=0
-    serve_static_export_folder::Bool=false
+    serve_static_export_folder::Bool=true
 end
 
 @option struct ExportSettings
