@@ -30,7 +30,7 @@ end
     )
 
     @test sort(list_files_recursive()) == sort([ 
-        "index.md",
+        "index.html",
         "a.jl",
         "a.html",
         "b.pluto.jl",
@@ -88,7 +88,7 @@ end
     )
 
     @test sort(list_files_recursive()) == sort([
-        "index.md",
+        "index.html",
 
         "a.jl",
         "a.html",
