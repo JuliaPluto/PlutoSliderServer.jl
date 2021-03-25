@@ -171,11 +171,14 @@ function run_directory(
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
 
-    to_run = setdiff(notebook_paths, if static_export
-        settings.SliderServer.exclude ∩ settings.Export.exclude
+    to_run = if static_export
+        setdiff(notebook_paths, settings.SliderServer.exclude ∩ settings.Export.exclude)
     else
-        settings.SliderServer.exclude
-    end)
+        s = setdiff(notebook_paths, settings.SliderServer.exclude)
+        filter(s) do f
+            occursin("@bind", read(joinpath(start_dir, f), String))
+        end
+    end
     
     @info "Settings" Text(settings)
 
@@ -261,7 +264,7 @@ function run_directory(
         jl_contents = read(joinpath(start_dir, path), String)
         hash = myhash(jl_contents)
 
-        keep_running = run_server && path ∉ settings.SliderServer.exclude && occursin("@bind", jl_contents)
+        keep_running = run_server && path ∉ settings.SliderServer.exclude
 
         cached_state = keep_running ? nothing : try_fromcache(settings.Export.cache_dir, hash)
         if cached_state !== nothing

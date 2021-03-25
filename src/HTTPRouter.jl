@@ -138,11 +138,14 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
         end
     end
     
-    HTTP.@register(router, "GET", "/", r -> (if all(x -> x isa RunningNotebookSession, notebook_sessions)
-        HTTP.Response(200, "Hi!")
-    else
-        HTTP.Response(503, "Still loading the notebooks... check back later!")
-    end |> with_cors! |> with_not_cachable!))
+    HTTP.@register(router, "GET", "/", r -> let
+        done = count(x -> !(x isa QueuedNotebookSession), notebook_sessions)
+        if done == length(notebook_sessions)
+            HTTP.Response(503, "Still loading the notebooks... check back later! [$(done)/$(length(notebook_sessions))]")
+        else
+            HTTP.Response(200, "Hi!")
+        end |> with_cors! |> with_not_cachable!
+    end)
     
     # !!!! IDEAAAA also have a get endpoint with the same thing but the bond data is base64 encoded in the URL
     # only use it when the amount of data is not too much :o
