@@ -238,18 +238,16 @@ function run_directory(
         http_server_task = @async 1+1
     end
 
-
-    settings.Export.cache_dir === nothing || mkpath(settings.Export.cache_dir)
-
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
     for (i, path) in enumerate(to_run)
         
         @info "[$(i)/$(length(to_run))] Opening $(path)"
 
+
         jl_contents = read(joinpath(start_dir, path))
         hash = myhash(jl_contents)
 
-        keep_running = run_server && path ∉ settings.SliderServer.exclude
+        keep_running = run_server && path ∉ settings.SliderServer.exclude && occursin("@bind", jl_contents)
 
         cached_state = keep_running ? nothing : try_fromcache(settings.Export.cache_dir, hash)
         if cached_state !== nothing
@@ -327,8 +325,10 @@ function run_directory(
             write(export_html_path, html_contents)
 
             # TODO: maybe we can avoid writing the .jl file if only the slider server is needed? the frontend only uses it to get its hash
-            if (var"we need the .jl file" = (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)) || 
-                (var"the .jl file is already there and might have changed" = isfile(export_jl_path))
+            var"we need the .jl file" = (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
+            var"the .jl file is already there and might have changed" = isfile(export_jl_path)
+
+            if var"we need the .jl file" || var"the .jl file is already there and might have changed"
                 write(export_jl_path, jl_contents)
             end
 
@@ -339,8 +339,7 @@ function run_directory(
             bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
             @info "Bond connections" Text(join(collect(bond_connections), "\n"))
 
-            # By setting the sesions to a running session, (modifying the notebook_sessions array),
-            # the HTTP router will now start serving requests for this notebook.
+            # By setting notebook_sessions[i] to a running session, (modifying the array), the HTTP router will now start serving requests for this notebook.
             notebook_sessions[i] = RunningNotebookSession(;
                 hash,
                 notebook, 
@@ -353,6 +352,7 @@ function run_directory(
                 original_state,
             )
         end
+
         @info "[$(i)/$(length(to_run))] Ready $(path)" hash
     end
     @info "-- ALL NOTEBOOKS READY --"

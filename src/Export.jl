@@ -75,6 +75,7 @@ try_fromcache(cache_dir::Nothing, hash) = nothing
 
 
 function try_tocache(cache_dir::String, hash::String, state)
+    mkpath(cache_dir)
     try
         open(cache_filename(cache_dir, hash), "w") do io
             Pluto.pack(io, state)
