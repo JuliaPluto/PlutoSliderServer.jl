@@ -141,9 +141,12 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
     HTTP.@register(router, "GET", "/", r -> let
         done = count(x -> !(x isa QueuedNotebookSession), notebook_sessions)
         if static_dir !== nothing
-            n = tempname() * ".html"
-            write(n, temp_index(notebook_sessions))
-            Pluto.asset_response(n)
+            path = joinpath(static_dir, "index.html")
+            if !isfile(path)
+                path = tempname() * ".html"
+                write(path, temp_index(notebook_sessions))
+            end
+            Pluto.asset_response(path)
         else
             if done == length(notebook_sessions)
                 HTTP.Response(503, "Still loading the notebooks... check back later! [$(done)/$(length(notebook_sessions))]")
