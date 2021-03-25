@@ -17,6 +17,10 @@ using Sockets
 using Configurations
 using TOML
 
+using Logging: global_logger
+using GitHubActions: GitHubActionsLogger
+get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
+
 myhash = base64encode ∘ sha256
 
 ###
@@ -25,6 +29,7 @@ myhash = base64encode ∘ sha256
 abstract type NotebookSession end
 
 Base.@kwdef struct RunningNotebookSession <: NotebookSession
+    path::String
     hash::String
     notebook::Pluto.Notebook
     original_state
@@ -33,10 +38,12 @@ Base.@kwdef struct RunningNotebookSession <: NotebookSession
 end
 
 Base.@kwdef struct QueuedNotebookSession <: NotebookSession
+    path::String
     hash::String
 end
 
 Base.@kwdef struct FinishedNotebookSession <: NotebookSession
+    path::String
     hash::String
     original_state
 end
@@ -67,6 +74,7 @@ end
     cache_dir::UnionNothingString=nothing
     slider_server_url::UnionNothingString=nothing
     binder_url::UnionNothingString=nothing
+    create_index::Bool=true
 end
 
 @option struct PlutoDeploySettings
@@ -109,7 +117,7 @@ include("./HTTPRouter.jl")
 
 
 
-export export_directory, run_directory
+export export_directory, run_directory, github_action
 
 
 """
@@ -138,11 +146,11 @@ function export_directory(args...; kwargs...)
     run_directory(args...; static_export=true, run_server=false, kwargs...)
 end
 export_notebook(p; kwargs...) = run_notebook(p; static_export=true, run_server=false, kwargs...)
+github_action = export_directory
 
 function run_notebook(path::String; kwargs...)
     run_directory(dirname(path); notebook_paths=[path], kwargs...)
 end
-
 
 """
     run_directory(start_dir::String="."; export_options...)
@@ -200,7 +208,7 @@ function run_directory(
 
     server_session = Pluto.ServerSession(;options=pluto_options)
 
-    notebook_sessions = NotebookSession[QueuedNotebookSession(hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
+    notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if run_server
 
@@ -253,6 +261,18 @@ function run_directory(
     else
         http_server_task = @async 1+1
         serversocket = nothing
+    end
+
+    if static_export && settings.Export.create_index
+        exists = any(["index.html", "index.md", ("index"*e for e in pluto_file_extensions)...]) do f
+            joinpath(output_dir, f) |> isfile
+        end
+        if !exists
+            write(joinpath(output_dir, "index.html"), default_index((
+                without_pluto_file_extension(path) => without_pluto_file_extension(path) * ".html"
+                for path in to_run
+            )))
+        end
     end
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
@@ -358,6 +378,7 @@ function run_directory(
 
             # By setting notebook_sessions[i] to a running session, (modifying the array), the HTTP router will now start serving requests for this notebook.
             notebook_sessions[i] = RunningNotebookSession(;
+                path,
                 hash,
                 notebook, 
                 original_state, 
@@ -365,6 +386,7 @@ function run_directory(
             )
         else
             notebook_sessions[i] = FinishedNotebookSession(;
+                path,
                 hash,
                 original_state,
             )

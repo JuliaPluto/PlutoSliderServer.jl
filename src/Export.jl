@@ -1,6 +1,6 @@
 module Export
 
-export github_action, export_paths, generate_html
+export github_action, export_paths, generate_html, default_index
 
 import Pluto
 import Pluto: ServerSession
@@ -118,7 +118,37 @@ function try_get_pluto_version()
 end
 
 
+function default_index(paths)
+    """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        <style>
+        body {
+            font-family: sans-serif;
+        }
+        </style>
+    </head>  
+    <body>
+        <h1>Notebooks</h1>
+        
+        <ul>
+        $(join(
+            if link === nothing
+                """<li>$(name)</li>"""
+            else
+                """<li><a href="$(link)">$(name)</a></li>"""
+            end
+            for (name,link) in paths
+        ))
+        </ul>
+    </body>
+    </html>
+    """
+end
 
 
 end

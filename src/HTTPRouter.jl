@@ -127,7 +127,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
     end
 
     function serve_bondconnections(request::HTTP.Request)        
-        sesh = get_sesh(request)        
+        sesh = get_sesh(request)
         
         response = if sesh isa RunningNotebookSession
             HTTP.Response(200, Pluto.pack(sesh.bond_connections)) |> with_cors! |> with_cachable! |> with_msgpack!
@@ -140,10 +140,16 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
     
     HTTP.@register(router, "GET", "/", r -> let
         done = count(x -> !(x isa QueuedNotebookSession), notebook_sessions)
-        if done == length(notebook_sessions)
-            HTTP.Response(503, "Still loading the notebooks... check back later! [$(done)/$(length(notebook_sessions))]")
+        if static_dir !== nothing
+            n = tempname() * ".html"
+            write(n, temp_index(notebook_sessions))
+            Pluto.asset_response(n)
         else
-            HTTP.Response(200, "Hi!")
+            if done == length(notebook_sessions)
+                HTTP.Response(503, "Still loading the notebooks... check back later! [$(done)/$(length(notebook_sessions))]")
+            else
+                HTTP.Response(200, "Hi!")
+            end
         end |> with_cors! |> with_not_cachable!
     end)
     
@@ -197,3 +203,14 @@ function with_not_cachable!(response::HTTP.Response)
     response
 end
 
+
+
+function temp_index(notebook_sessions::Vector{NotebookSession})
+    default_index(temp_index.(notebook_sessions))
+end
+function temp_index(s::QueuedNotebookSession)
+    without_pluto_file_extension(s.path) => nothing
+end
+function temp_index(s::Union{FinishedNotebookSession,RunningNotebookSession})
+    without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path)*".html"
+end
