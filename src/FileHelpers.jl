@@ -17,28 +17,28 @@ function without_pluto_file_extension(s)
     s
 end
 
+flatmap(args...) = vcat(map(args...)...)
+
+list_files_recursive(dir=".") = let
+    paths = flatmap(walkdir(dir)) do (root, dirs, files)
+        joinpath.([root], files)
+    end
+    relpath.(paths, [dir])
+end
+
 """
 Search recursively for Pluto notebook files.
 
 Return paths relative to the search directory.
 """
 function find_notebook_files_recursive(start_dir)
-    jlfiles = vcat(
-        map(walkdir(start_dir)) do (root, dirs, files)
-            map(
-                filter(endswith_pluto_file_extension, files)
-            ) do file
-                joinpath(root, file)
-            end
-        end...
-    )
+    jlfiles = filter(endswith_pluto_file_extension, list_files_recursive(start_dir))
+    
     plutofiles = filter(jlfiles) do f
-        readline(f) == "### A Pluto.jl notebook ###" &&
+        readline(joinpath(start_dir, f)) == "### A Pluto.jl notebook ###" &&
         (!occursin(".julia", f) || occursin(".julia", start_dir))
     end
 
-    relatives = relpath.(plutofiles, [start_dir])
-
     # reverse alphabetical order so that week5 becomes available before week4 :)
-    reverse(relatives)
+    reverse(plutofiles)
 end

@@ -1,15 +1,7 @@
 using PlutoSliderServer
+using PlutoSliderServer: list_files_recursive
 using Test
 using Logging
-
-flatmap(args...) = vcat(map(args...)...)
-
-list_files_recursive(dir=".") = let
-    paths = flatmap(walkdir(dir)) do (root, dirs, files)
-        joinpath.([root], files)
-    end
-    relpath.(paths, [dir])
-end
 
 original_dir1 = joinpath(@__DIR__, "dir1")
 make_test_dir() = let
