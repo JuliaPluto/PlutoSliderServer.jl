@@ -161,6 +161,13 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
     HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
 
     if static_dir !== nothing
+        function serve_pluto_asset(request::HTTP.Request)
+            uri = HTTP.URI(request.target)
+            
+            filepath = Pluto.project_relative_path("frontend", relpath(HTTP.unescapeuri(uri.path), "/pluto_asset/"))
+            Pluto.asset_response(filepath)
+        end
+        HTTP.@register(router, "GET", "/pluto_asset/*", serve_pluto_asset)
         function serve_asset(request::HTTP.Request)
             uri = HTTP.URI(request.target)
             

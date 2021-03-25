@@ -55,24 +55,16 @@ Edit the `runtestserver.jl` file to suit your needs.
 
 The bind server will start running on port 2345. It can happen that HTTP.jl does a goof and the port becomes unavaible until you reboot. Edit `runtestserver.jl` to change the port.
 
-### Step 4 (every time)
-
-We need to serve Pluto's static assets over HTTP, we use Pluto for that.
-
-```julia
-julia> import Pluto; Pluto.run(require_secret_for_access=false, require_secret_for_open_links=false, launch_browser=false, port=1234)
-```
-
-This server always serves the latest files, so editing `.js` files takes effect after refreshing the browser.
-
-### Step 5 -- easy version (every time)
+### Step 4 -- easy version (every time)
 
 If you run the Slider server using the runtestserver.jl, it will also run a static HTTP server for the exported files on the same port. E.g. the export for `test/dir1/a.jl` will be available at `localhost:2345/test/dir1/a.html`.
 
 Go to `localhost:2345/test/dir1/a.html`.
 
+Pluto's assets are also being server over this server, you can edit them and refresh.
 
-### Step 5 -- hard version (every time)
+
+### Step 4 -- hard version (every time)
 
 You can now open the editor in 'serverless' mode, by going to `http://localhost:1234/editor.html`. This should be stuck at "loading", because it has no backend connection and no statedump.
 
