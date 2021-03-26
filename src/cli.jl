@@ -114,8 +114,11 @@ function parse_commandline()
             help = "folder to write generated HTML files to (will create directories to preserve the input folder structure). Leave at the default to generate each HTML file in the same folder as the notebook file."
             default = "."
         "--run-test-server-shortcut"
-            help = """Runs a test server that servers all assets locally.
-            Equivalent to: --host 127.0.0.1 --port 2345 --separate-pluto-state --binder-url --serve-static-folder"""
+            help = """Runs a test server that servers all assets locally. Useful for development.
+Shortcut for running:
+    julia --project=. -e "using PlutoSliderServer; cli()" --
+        --host 127.0.0.1 --port 2345 --separate-pluto-state --serve-static-folder --export\
+        --pluto-root http://127.0.0.1:2345/pluto_asset/ --slider-server-url http://127.0.0.1:2345/ """
     action = :store_true
         "--sample-toml"
             help = "Print a sample TOML configuration file"
@@ -181,7 +184,8 @@ function cli()
     Export_slider_server_url = parsed_args["slider-server-url"]
     Export_cache_dir = parsed_args["cache-dir"]
     Export_output_dir = parsed_args["output-dir"]
-    
+    Export_pluto_cdn_root = parsed_args["pluto-static-root"]
+
     PlutoSliderServer.run_directory(
         parsed_args["startdir"];
         SliderServer_port=parsed_args["port"],
@@ -200,6 +204,7 @@ function cli()
         Export_slider_server_url=Export_slider_server_url,
         Export_cache_dir=Export_cache_dir,
         Export_output_dir=Export_output_dir,
+        Export_pluto_cdn_root=Export_pluto_cdn_root
     )
 end
 
