@@ -65,7 +65,7 @@ function parse_commandline()
             help = "The starting directory"
             default = "."
         "--host"
-            help = "host:port"
+            help = "Host. you may want to use 0.0.0.0 if you run on server / behind a reverse proxy"
             default = "127.0.0.1"
             arg_type = String
         "--port"
