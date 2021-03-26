@@ -123,7 +123,7 @@ Search recursively for all Pluto notebooks in the current folder, and for each n
   - The state object embedded
   - Extra functionality enabled, such as hidden UI, binder button, and a live bind server
 
-# Keyword rguments
+# Keyword arguments
 - `Export_exclude::Vector{String}=[]`: list of notebook files to skip. Provide paths relative to `start_dir`.
 - `Export_disable_ui::Bool=true`: hide all buttons and toolbars to make it look like an article.
 - `Export_baked_state::Bool=true`: base64-encode the state object and write it inside the .html file. If `false`, a separate `.plutostate` file is generated.
@@ -161,7 +161,8 @@ If `static_export` is `true`, then additional `Export_` keywords can be given, s
 function run_directory(
         start_dir::String="."; 
         notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir),
-        static_export::Bool=false, run_server::Bool=true, 
+        static_export::Bool=false,
+        run_server::Bool=true,
         on_ready::Function=((args...)->()),
         config_toml_path::Union{String,Nothing}=joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml"),
         kwargs...

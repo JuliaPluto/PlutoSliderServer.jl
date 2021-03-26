@@ -4,6 +4,7 @@ authors = ["Fons van der Plas <fonsvdplas@gmail.com>"]
 version = "0.2.0"
 
 [deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 Configurations = "5218b696-f38b-4ac9-8b61-a12ec717816d"
 GitHubActions = "6b79fd1a-b13a-48ab-b6b0-aaee1fee41df"
