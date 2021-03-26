@@ -61,7 +61,7 @@ function parse_commandline()
     )
 
     @add_arg_table clisettings begin
-        "start_dir"
+        "startdir"
             help = "The starting directory"
             default = "."
         "--host"
@@ -110,32 +110,58 @@ function parse_commandline()
         "--output-dir"
             help = "folder to write generated HTML files to (will create directories to preserve the input folder structure). Leave at the default to generate each HTML file in the same folder as the notebook file."
             default = "."
-        "--config", "-c", "--configuration_file"
-            help = "Use this option to provide a configuration TOML"
+        "--run-test-server"
+            help = "Runs a test server that servers all assets locally"
+    action = :store_true
         "--sample-toml"
             help = "Print a sample TOML configuration file"
         "--enable-api"
             help = "Allow API requests"
-    action = :store_true
+            action = :store_true
         "--secret"
             help = "Web API secret"
+        "--config", "-c", "--configuration_file"
+            help = "Use this option to provide a configuration TOML"
     end
     return parse_args(clisettings)
 end
-
+        
 function cli()
     parsed_args = parse_commandline()
-    println("Parsed args:")
-    for (arg, val) in parsed_args
-        println("  $arg  =>  $val ($(typeof(val)))")
+    if parsed_args["run-test-server"]
+        ENV["JULIA_DEBUG"] = PlutoSliderServer
+        test_dir = tempname(cleanup=false)
+        cp(parsed_args["startdir"], test_dir)
+    
+    
+        try
+            # open the folder on macos:
+            run(`open $(test_dir)`)
+        catch end
+
+        # cdn = nothing
+        cdn = "http://$(parsed_args["host"]):$(parsed_args["port"])/pluto_asset/"
+        slider_url = "http://$(parsed_args["host"]):$(parsed_args["port"])/"
+        @info "You can now go to $(slider_url) to test your notebooks!"
+        PlutoSliderServer.run_directory(
+            test_dir; 
+            static_export=true,
+            run_server=true,
+            SliderServer_serve_static_export_folder=true,
+            SliderServer_port=parsed_args["port"],
+            SliderServer_host=parsed_args["host"],
+            Export_baked_state=false,
+            Export_slider_server_url=slider_url,
+            Export_pluto_cdn_root=cdn
+        )
+        return
     end
     #= transform options =#
-    notebook_paths = parsed_args["notebook_paths"] == [] ? find_notebook_files_recursive(parsed_args["start_dir"]) : [parsed_args["start_dir"]]
+    notebook_paths = parsed_args["notebook_paths"] == [] ? find_notebook_files_recursive(parsed_args["startdir"]) : [parsed_args["startdir"]]
     static_export = parsed_args["export"] || parsed_args["export-only"]
     run_server = !parsed_args["dry-run"] && !parsed_args["export-only"]
     config_toml_path = parsed_args["config"]
     SliderServer_exclude = parsed_args["skip-run-notebooks"]
-    @info "Server arguments" notebook_paths static_export run_server config_toml_path
     
     Export_exclude = parsed_args["export-exclude"]
     Export_disable_ui = !parsed_args["enable-ui"]
@@ -145,11 +171,9 @@ function cli()
     Export_slider_server_url = parsed_args["slider-server-url"]
     Export_cache_dir = parsed_args["cache-dir"]
     Export_output_dir = parsed_args["output-dir"]
-
-    @info "Export arguments" Export_exclude Export_disable_ui Export_baked_state Export_offer_binder Export_binder_url Export_slider_server_url Export_cache_dir Export_output_dir
     
     PlutoSliderServer.run_directory(
-        parsed_args["start_dir"];
+        parsed_args["startdir"];
         SliderServer_port=parsed_args["port"],
         SliderServer_host=parsed_args["host"],
         SliderServer_exclude=SliderServer_exclude,
@@ -166,6 +190,32 @@ function cli()
         Export_cache_dir=Export_cache_dir,
         Export_output_dir=Export_output_dir,
     )
+end
+    
+function runserver(startdir)
+    test_dir = tempname(cleanup=false)
+    cp(startdir, test_dir)
+
+
+    try
+        # open the folder on macos:
+        run(`open $(test_dir)`)
+    catch end
+
+    port = 2345
+
+    # cdn = nothing
+    cdn = "http://127.0.0.1:$(port)/pluto_asset/"
+
+    PlutoSliderServer.run_directory(test_dir; 
+        static_export=true,
+        run_server=true,
+        SliderServer_serve_static_export_folder=true,
+        SliderServer_port=port,
+        SliderServer_host="127.0.0.1",
+        Export_baked_state=false,
+        Export_slider_server_url="http://127.0.0.1:$(port)/",
+        Export_pluto_cdn_root=cdn)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
