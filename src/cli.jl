@@ -1,4 +1,6 @@
 """
+TODOs:
+
 Notes:
 https://argparsejl.readthedocs.io/en/latest/argparse.html
 
@@ -101,7 +103,7 @@ function parse_commandline()
             help = "Export option. If set this flag splits the export to two files: a .plutostate and an .html. Default is to have state 'baked in' the file'"
             action = :store_true
         "--binder-url"
-            help = "Export option. Use with --offer-binder. This will set the binder URL that will be used as a backend. MIT Math uses: https://mybinder.org/v2/gh/mitmath/18S191/e2dec90"
+            help = "Export option. This will set the binder URL that will be used as a backend. MIT Math uses: https://mybinder.org/v2/gh/mitmath/18S191/e2dec90"
             default = ""
             arg_type = String
         "--slider-server-url"
@@ -124,7 +126,7 @@ function parse_commandline()
     return parse_args(clisettings)
 end
 
-function main()
+function cli()
     parsed_args = parse_commandline()
     println("Parsed args:")
     for (arg, val) in parsed_args
@@ -169,7 +171,9 @@ function main()
     )
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    cli()
+end
 
 """
 POST a notebook, calculate its hash and start if not already running

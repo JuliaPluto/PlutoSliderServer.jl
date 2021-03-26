@@ -108,8 +108,8 @@ merge_recursive(a, b) = b
 include("./HTTPRouter.jl")
 
 
-
-export export_directory, run_directory
+include("./cli.jl")
+export export_directory, run_directory, cli
 
 
 """
