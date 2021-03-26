@@ -44,10 +44,7 @@ WEB
 
 using ArgParse
 import Pkg
-import PlutoSliderServer
 import UUIDs:uuid4
-
-include("./FileHelpers.jl")
 
 project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(PlutoSliderServer))), xs...))
 

@@ -127,7 +127,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
     end
 
     function serve_bondconnections(request::HTTP.Request)        
-        sesh = get_sesh(request)        
+        sesh = get_sesh(request)
         
         response = if sesh isa RunningNotebookSession
             HTTP.Response(200, Pluto.pack(sesh.bond_connections)) |> with_cors! |> with_cachable! |> with_msgpack!
@@ -140,10 +140,19 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
     
     HTTP.@register(router, "GET", "/", r -> let
         done = count(x -> !(x isa QueuedNotebookSession), notebook_sessions)
-        if done == length(notebook_sessions)
-            HTTP.Response(503, "Still loading the notebooks... check back later! [$(done)/$(length(notebook_sessions))]")
+        if static_dir !== nothing
+            path = joinpath(static_dir, "index.html")
+            if !isfile(path)
+                path = tempname() * ".html"
+                write(path, temp_index(notebook_sessions))
+            end
+            Pluto.asset_response(path)
         else
-            HTTP.Response(200, "Hi!")
+            if done == length(notebook_sessions)
+                HTTP.Response(503, "Still loading the notebooks... check back later! [$(done)/$(length(notebook_sessions))]")
+            else
+                HTTP.Response(200, "Hi!")
+            end
         end |> with_cors! |> with_not_cachable!
     end)
     
@@ -155,6 +164,13 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
     HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
 
     if static_dir !== nothing
+        function serve_pluto_asset(request::HTTP.Request)
+            uri = HTTP.URI(request.target)
+            
+            filepath = Pluto.project_relative_path("frontend", relpath(HTTP.unescapeuri(uri.path), "/pluto_asset/"))
+            Pluto.asset_response(filepath)
+        end
+        HTTP.@register(router, "GET", "/pluto_asset/*", serve_pluto_asset)
         function serve_asset(request::HTTP.Request)
             uri = HTTP.URI(request.target)
             
@@ -197,3 +213,14 @@ function with_not_cachable!(response::HTTP.Response)
     response
 end
 
+
+
+function temp_index(notebook_sessions::Vector{NotebookSession})
+    default_index(temp_index.(notebook_sessions))
+end
+function temp_index(s::QueuedNotebookSession)
+    without_pluto_file_extension(s.path) => nothing
+end
+function temp_index(s::Union{FinishedNotebookSession,RunningNotebookSession})
+    without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path)*".html"
+end
