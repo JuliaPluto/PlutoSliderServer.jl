@@ -147,7 +147,7 @@ export_notebook(p; kwargs...) = run_notebook(p; static_export=true, run_server=f
 github_action = export_directory
 
 function run_notebook(path::String; kwargs...)
-    run_directory(dirname(path); notebook_paths=[path], kwargs...)
+    run_directory(dirname(path); notebook_paths=[basename(path)], kwargs...)
 end
 
 """
@@ -210,8 +210,10 @@ function run_directory(
     notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if run_server
-
-        router = make_router(settings, server_session, notebook_sessions; static_dir=settings.SliderServer.serve_static_export_folder ? output_dir : nothing)
+        static_dir = (
+            static_export && settings.SliderServer.serve_static_export_folder
+        ) ? output_dir : nothing
+        router = make_router(settings, server_session, notebook_sessions; static_dir )
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port

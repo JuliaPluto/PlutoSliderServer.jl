@@ -147,7 +147,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
         done = count(x -> !(x isa QueuedNotebookSession), notebook_sessions)
         if static_dir !== nothing
             path = joinpath(static_dir, "index.html")
-            if !isfile(path)
+            if !isfile(path) || done < length(notebook_sessions)
                 path = tempname() * ".html"
                 write(path, temp_index(notebook_sessions))
             end
