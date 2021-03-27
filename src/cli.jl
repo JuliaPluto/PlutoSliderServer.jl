@@ -68,7 +68,7 @@ function parse_commandline()
             help = "Host. you may want to use 0.0.0.0 if you run on server / behind a reverse proxy"
             default = "127.0.0.1"
             arg_type = String
-        "--port"
+    "--port"
             help = "port"
             default = 2345
             arg_type = Int
@@ -117,7 +117,7 @@ function parse_commandline()
             help = """Runs a test server that servers all assets locally. Useful for development.
 Shortcut for running:
     julia --project=. -e "using PlutoSliderServer; cli()" --
-        --host 127.0.0.1 --port 2345 --separate-pluto-state --serve-static-folder --export\
+        --host 127.0.0.1 --port 2345 --separate-pluto-state --serve-static-folder --export\\
         --pluto-root http://127.0.0.1:2345/pluto_asset/ --slider-server-url http://127.0.0.1:2345/ """
     action = :store_true
         "--sample-toml"
@@ -138,7 +138,7 @@ end
         
 function cli()
     parsed_args = parse_commandline()
-    if parsed_args["run-test-server"]
+    if parsed_args["run-test-server-shortcut"]
         if parsed_args["debug"]
             ENV["JULIA_DEBUG"] = PlutoSliderServer
         end
@@ -204,7 +204,7 @@ function cli()
         Export_slider_server_url=Export_slider_server_url,
         Export_cache_dir=Export_cache_dir,
         Export_output_dir=Export_output_dir,
-        Export_pluto_cdn_root=Export_pluto_cdn_root
+Export_pluto_cdn_root=Export_pluto_cdn_root
     )
 end
 

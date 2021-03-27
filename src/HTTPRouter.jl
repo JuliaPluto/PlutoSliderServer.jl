@@ -1,6 +1,11 @@
 
 ###
 # HTTP ROUTER
+include("./WebAPI.jl")
+
+macro wrap(fn)
+    :($fn)
+end
 
 function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
     router = HTTP.Router()
@@ -22,7 +27,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
 
             This means that the notebook file used by the web client does not precisely match any of the notebook files running in this server. 
 
-            If this is an automated setup, then this could happen inotebooketween deployments. 
+            If this is an automated setup, then this could happen inbetween deployments. 
             
             If this is a manual setup, then running the .jl notebook file might have caused a small change (e.g. the version number or a whitespace change). Copy notebooks to a temporary directory before running them using the bind server. =#
             @info "Request hash not found. See errror hint in my source code." notebook_hash
@@ -61,7 +66,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
             bonds = try
                 get_bonds(request)
             catch e
-                @error "Failed to deserialize bond values" exception=(e, catch_backtrace())
+                @error "Failed to deserialize bond values" exception = (e, catch_backtrace())
                 return HTTP.Response(500, "Failed to deserialize bond values") |> with_cors! |> with_not_cachable!
             end
 
@@ -90,7 +95,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
 
                     topological_order, new_state
                 catch e
-                    @error "Failed to set bond values" exception=(e, catch_backtrace())
+                    @error "Failed to set bond values" exception = (e, catch_backtrace())
                     nothing, nothing
                 end
             end
@@ -162,6 +167,12 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
     HTTP.@register(router, "POST", "/staterequest/*/", serve_staterequest)
     HTTP.@register(router, "GET", "/staterequest/*/*", serve_staterequest)
     HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
+    HTTP.@register(router, "GET", "/notebooks/", @wrap WebAPI.get_notebooks)
+    HTTP.@register(router, "GET", "/notebook/*/", @wrap WebAPI.get_notebook)
+    HTTP.@register(router, "POST", "/notebook/*/", @wrap WebAPI.start_notebook)
+    HTTP.@register(router, "DELETE", "/notebook/*/", @wrap WebAPI.stop_notebook)
+    HTTP.@register(router, "POST", "/reload_filesystem/", @wrap WebAPI.reload_filesystem)
+
 
     if static_dir !== nothing
         function serve_pluto_asset(request::HTTP.Request)
@@ -222,5 +233,5 @@ function temp_index(s::QueuedNotebookSession)
     without_pluto_file_extension(s.path) => nothing
 end
 function temp_index(s::Union{FinishedNotebookSession,RunningNotebookSession})
-    without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path)*".html"
+    without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path) * ".html"
 end
