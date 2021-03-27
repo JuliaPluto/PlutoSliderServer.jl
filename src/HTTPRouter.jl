@@ -3,10 +3,6 @@
 # HTTP ROUTER
 include("./WebAPI.jl")
 
-macro wrap(fn)
-    :($fn)
-end
-
 function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
     router = HTTP.Router()
 
@@ -167,12 +163,6 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
     HTTP.@register(router, "POST", "/staterequest/*/", serve_staterequest)
     HTTP.@register(router, "GET", "/staterequest/*/*", serve_staterequest)
     HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
-    HTTP.@register(router, "GET", "/notebooks/", @wrap WebAPI.get_notebooks)
-    HTTP.@register(router, "GET", "/notebook/*/", @wrap WebAPI.get_notebook)
-    HTTP.@register(router, "POST", "/notebook/*/", @wrap WebAPI.start_notebook)
-    HTTP.@register(router, "DELETE", "/notebook/*/", @wrap WebAPI.stop_notebook)
-    HTTP.@register(router, "POST", "/reload_filesystem/", @wrap WebAPI.reload_filesystem)
-
 
     if static_dir !== nothing
         function serve_pluto_asset(request::HTTP.Request)
@@ -190,7 +180,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
         end
         HTTP.@register(router, "GET", "/*", serve_asset)
     end
-
+    WebAPI.extend_router(router, server_session, notebook_sessions, get_sesh)
     router
 end
 
