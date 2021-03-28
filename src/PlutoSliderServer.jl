@@ -15,8 +15,8 @@ using Sockets
 using Configurations
 using TOML
 
-using Logging: global_logger
-using GitHubActions: GitHubActionsLogger
+using Logging:global_logger
+using GitHubActions:GitHubActionsLogger
 get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
 
 myhash = base64encode ∘ sha256
@@ -31,7 +31,7 @@ Base.@kwdef struct RunningNotebookSession <: NotebookSession
     hash::String
     notebook::Pluto.Notebook
     original_state
-    token::Token=Token()
+    token::Token = Token()
     bond_connections::Dict{Symbol,Vector{Symbol}}
 end
 
@@ -54,30 +54,30 @@ end
 UnionNothingString = Any
 
 @option struct SliderServerSettings
-    exclude::Vector=String[]
-    port::Integer=2345
-    host="127.0.0.1"
-    simulated_lag::Real=0
-    serve_static_export_folder::Bool=true
+    exclude::Vector = String[]
+    port::Integer = 2345
+    host = "127.0.0.1"
+    simulated_lag::Real = 0
+    serve_static_export_folder::Bool = true
 end
 
 @option struct ExportSettings
-    output_dir::UnionNothingString=nothing
-    exclude::Vector=String[]
-    ignore_cache::Vector=String[]
-    pluto_cdn_root::UnionNothingString=nothing
-    baked_state::Bool=true
-    offer_binder::Bool=true
-    disable_ui::Bool=true
-    cache_dir::UnionNothingString=nothing
-    slider_server_url::UnionNothingString=nothing
-    binder_url::UnionNothingString=nothing
-    create_index::Bool=true
+    output_dir::UnionNothingString = nothing
+    exclude::Vector = String[]
+    ignore_cache::Vector = String[]
+    pluto_cdn_root::UnionNothingString = nothing
+    baked_state::Bool = true
+    offer_binder::Bool = true
+    disable_ui::Bool = true
+    cache_dir::UnionNothingString = nothing
+    slider_server_url::UnionNothingString = nothing
+    binder_url::UnionNothingString = nothing
+    create_index::Bool = true
 end
 
 @option struct PlutoDeploySettings
-    SliderServer::SliderServerSettings=SliderServerSettings()
-    Export::ExportSettings=ExportSettings()
+    SliderServer::SliderServerSettings = SliderServerSettings()
+    Export::ExportSettings = ExportSettings()
 end
 
 
@@ -85,7 +85,7 @@ function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)
     if !isnothing(toml_path) && isfile(toml_path)
         toml_d = TOML.parsefile(toml_path)
 
-        relevant_for_me = filter(toml_d) do (k,v)
+        relevant_for_me = filter(toml_d) do (k, v)
             k ∈ ["SliderServer", "Export"]
         end
         relevant_for_pluto = get(toml_d, "Pluto", Dict())
@@ -98,7 +98,7 @@ function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)
         kwargs_dict = Configurations.to_dict(Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
         (
             Configurations.from_dict(PlutoDeploySettings, merge_recursive(relevant_for_me, kwargs_dict)),
-            Pluto.Configuration.from_flat_kwargs(;(Symbol(k) => v for (k,v) in relevant_for_pluto)...),
+            Pluto.Configuration.from_flat_kwargs(;(Symbol(k) => v for (k, v) in relevant_for_pluto)...),
         )
     else
         (
@@ -115,7 +115,7 @@ include("./HTTPRouter.jl")
 
 
 include("./cli.jl")
-export export_directory, run_directory, github_action, cli
+export export_directory, run_directory, github_action, cli, FinishedNotebookSession, RunningNotebookSession, QueuedNotebookSession, myhash, MoreAnalysis
 
 
 """
@@ -169,7 +169,7 @@ function run_directory(
         notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir),
         static_export::Bool=false,
         run_server::Bool=true,
-        on_ready::Function=((args...)->()),
+        on_ready::Function=((args...) -> ()),
         config_toml_path::Union{String,Nothing}=joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml"),
         kwargs...
     )
@@ -212,8 +212,8 @@ function run_directory(
     if run_server
         static_dir = (
             static_export && settings.SliderServer.serve_static_export_folder
-        ) ? output_dir : nothing
-        router = make_router(settings, server_session, notebook_sessions; static_dir )
+    ) ? output_dir : nothing
+        router = make_router(settings, server_session, notebook_sessions; static_dir)
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port
@@ -260,12 +260,12 @@ function run_directory(
             end
         end
     else
-        http_server_task = @async 1+1
+        http_server_task = @async 1 + 1
         serversocket = nothing
     end
 
     if static_export && settings.Export.create_index
-        exists = any(["index.html", "index.md", ("index"*e for e in pluto_file_extensions)...]) do f
+        exists = any(["index.html", "index.md", ("index" * e for e in pluto_file_extensions)...]) do f
             joinpath(output_dir, f) |> isfile
         end
         if !exists
