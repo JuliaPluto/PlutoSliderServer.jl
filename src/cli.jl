@@ -1,53 +1,10 @@
-"""
-TODOs:
-
-Notes:
-https://argparsejl.readthedocs.io/en/latest/argparse.html
-
-APIs:
-
-Command line
-functionality:
-    - export html
-    - export statefiles
-    - run notebook server
-
-configuration
-    --export
-    - --output_dir
-    - --exclude
-    - --ignore_cache
-    - --pluto_cdn_root
-    - --baked_state
-    - --offer_binder
-    - --disable_ui
-    - --cache_dir
-    - --slider_server_url
-    - --binder_url
-
-    --run
-    - --SliderServer_exclude
-    - --SliderServer_port
-    - --SliderServer_host
-    - --static_export
-    - --notebook_paths
-
-    --disable-admin-secret [disable] (otherwise randomly generated, as in pluto)
-
-WEB
-    - [CREATE] start notebook by hash or by post
-    - [READ] is already there? think more
-    - [UPDATE is either POST new or not needed]
-    - [DELETE] stop notebook by hash
-
-"""
-
 using ArgParse
 import Pkg
 import UUIDs:uuid4
 
 project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(PlutoSliderServer))), xs...))
 
+global github_url = nothing
 
 function parse_commandline()
     clisettings = ArgParseSettings(
@@ -135,9 +92,10 @@ Shortcut for running:
     end
     return parse_args(clisettings)
 end
-        
+    
 function cli()
     parsed_args = parse_commandline()
+    # That's bad, I know
     if parsed_args["run-test-server-shortcut"]
         if parsed_args["debug"]
             ENV["JULIA_DEBUG"] = PlutoSliderServer
@@ -211,20 +169,3 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     cli()
 end
-
-"""
-POST a notebook, calculate its hash and start if not already running
-"""
-function run_notebook()
-
-end
-
-"""
-POST a notebook hash and stop it if it's running
-"""
-
-function stop_notebook()
-
-end
-
-

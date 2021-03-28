@@ -11,7 +11,7 @@ endswith_pluto_file_extension(s) = any(endswith(s, e) for e in pluto_file_extens
 function without_pluto_file_extension(s)
     for e in pluto_file_extensions
         if endswith(s, e)
-            return s[1:end-length(e)]
+            return s[1:end - length(e)]
         end
     end
     s
