@@ -66,7 +66,6 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
         end
         @info msg
         return HTTP.Response(200, msg)
-        
     end
 
     function reload_filesystem(request::HTTP.Request)
