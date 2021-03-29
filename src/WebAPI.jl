@@ -103,11 +103,15 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
     end
 
     function reload_filesystem(request::HTTP.Request)
-
-        @info request.headers
         if get(ENV, "GITHUB_SECRET", "") !== ""
-            secure_header = request.headers["X-Hub-Signature-256"]
-            digest = hmac_sha256(collect(codeunits(ENV["GITHUB_SECRET"])), request.body)
+            i = findfirst(a -> a.first == "X-Hub-Signature-256", request.headers)
+            @info request.headers i
+            if (isnothing(i))
+                @warn "Can't validate: header not found"
+            end
+            secure_header = request.headers[i].second
+            digest = "sha256=" * bytes2hex(hmac_sha256(collect(codeunits(ENV["GITHUB_SECRET"])), request.body))
+            println(length(request.body))
             println("Digest: " * digest)
             println("header: " * secure_header)
             println(digest == secure_header)
@@ -160,7 +164,7 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
     HTTP.@register(router, "GET", "/notebook/*/", get_notebook)
     HTTP.@register(router, "POST", "/notebook/*/", start_notebook)
     HTTP.@register(router, "DELETE", "/notebook/*/", stop_notebook)
-    HTTP.@register(router, "GET", "/github_webhook/", reload_filesystem)
+    HTTP.@register(router, "POST", "/github_webhook/", reload_filesystem)
 
 end
 end
