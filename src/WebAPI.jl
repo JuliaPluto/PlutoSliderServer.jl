@@ -1,15 +1,16 @@
 module WebAPI
 using HTTP
+using SHA
 import Pluto
 import PlutoSliderServer: FinishedNotebookSession, RunningNotebookSession, QueuedNotebookSession, myhash, MoreAnalysis, find_notebook_files_recursive
 
 # curl -X DELETE http://127.0.0.1:2345/notebook/uut+KtbdWht451eFX7gBhnqfHRSarm0KK6NyontJkQE=/
 # curl -X GET http://127.0.0.1:2345/notebook/uut+KtbdWht451eFX7gBhnqfHRSarm0KK6NyontJkQE=/
 # curl -X POST --data-binary "@./notebook2.jl.assets/notebook2.jl" http://127.0.0.1:2345/notebook/start/
-# curl -X GET http://127.0.0.1:2345/git_pull_and_rescan/?github_url=https://github.com/pankgeorg/spam
+# curl -X GET http://127.0.0.1:2345/github_webhook/?github_url=https://github.com/pankgeorg/spam
 
 function path_hash(path)
-    myhash(open(f -> read(f, String), path))
+    myhash(read(path))
 end
 
 function add_to_session(server_session, notebook_sessions, path)
@@ -18,7 +19,7 @@ function add_to_session(server_session, notebook_sessions, path)
     bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
     session = RunningNotebookSession(;
         path=path,
-        hash=hash,
+        hash=path_hash(path),
         notebook=notebook, 
         original_state=original_state, 
         bond_connections=bond_connections,
@@ -102,6 +103,16 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
     end
 
     function reload_filesystem(request::HTTP.Request)
+
+        @info request.headers
+        if get(ENV, "GITHUB_SECRET", "") !== ""
+            secure_header = request.headers["X-Hub-Signature-256"]
+            digest = hmac_sha256(collect(codeunits(ENV["GITHUB_SECRET"])), request.body)
+            println("Digest: " * digest)
+            println("header: " * secure_header)
+            println(digest == secure_header)
+        end
+
         params = HTTP.queryparams(HTTP.URI(request.target))
         github_url = get(params, "github_url", [])
         folder = split(github_url, "/")[end]
@@ -117,7 +128,7 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
                 return HTTP.Response(501, "Can't pull")
             end
             start_dir = "$this_folder/$folder"
-            paths = ["$start_dir/$path" for path in find_notebook_files_recursive(start_dir)]
+            paths = ["$start_dir/$path" for path in find_notebook_files_recursive(start_dir) if !isnothing(path)]
             new_hashes = map(path_hash, paths)
 
             running_hashes = map(notebook_sessions) do sesh
@@ -135,6 +146,7 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
             for hash in to_start
                 runpath = paths[findfirst(h -> hash === h, new_hashes)]
                 add_to_session(server_session, notebook_sessions, runpath)
+                @info "started" runpath
             end
             HTTP.Response(200, "Reload complete")
         catch e
@@ -148,7 +160,7 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
     HTTP.@register(router, "GET", "/notebook/*/", get_notebook)
     HTTP.@register(router, "POST", "/notebook/*/", start_notebook)
     HTTP.@register(router, "DELETE", "/notebook/*/", stop_notebook)
-    HTTP.@register(router, "GET", "/git_pull_and_rescan/", reload_filesystem)
+    HTTP.@register(router, "GET", "/github_webhook/", reload_filesystem)
 
 end
 end
