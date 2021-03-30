@@ -307,6 +307,7 @@ function run_directory(
                 try_tocache(settings.Export.cache_dir, hash, original_state)
             catch e
                 @error "Failed to run notebook!" path exception=(e,catch_backtrace())
+                continue
             end
         end
         
