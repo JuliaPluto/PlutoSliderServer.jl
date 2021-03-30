@@ -286,22 +286,28 @@ function run_directory(
 
         keep_running = run_server && path ∉ settings.SliderServer.exclude
 
+        local notebook, original_state
+        
         cached_state = keep_running ? nothing : try_fromcache(settings.Export.cache_dir, hash)
         if cached_state !== nothing
             @info "Loaded from cache, skipping notebook run" hash
             original_state = cached_state
         else
-            # open and run the notebook (TODO: tell pluto not to write to the notebook file)
-            notebook = Pluto.SessionActions.open(server_session, joinpath(start_dir, path); run_async=false)
-            # get the state object
-            original_state = Pluto.notebook_to_js(notebook)
-            # shut down the notebook
-            if !keep_running
-                @info "Shutting down notebook process"
-                Pluto.SessionActions.shutdown(server_session, notebook)
-            end
+            try
+                # open and run the notebook (TODO: tell pluto not to write to the notebook file)
+                notebook = Pluto.SessionActions.open(server_session, joinpath(start_dir, path); run_async=false)
+                # get the state object
+                original_state = Pluto.notebook_to_js(notebook)
+                # shut down the notebook
+                if !keep_running
+                    @info "Shutting down notebook process"
+                    Pluto.SessionActions.shutdown(server_session, notebook)
+                end
 
-            try_tocache(settings.Export.cache_dir, hash, original_state)
+                try_tocache(settings.Export.cache_dir, hash, original_state)
+            catch e
+                @error "Failed to run notebook!" path exception=(e,catch_backtrace())
+            end
         end
         
 
