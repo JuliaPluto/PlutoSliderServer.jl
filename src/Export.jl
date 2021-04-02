@@ -131,6 +131,9 @@ function default_index(paths)
             font-family: sans-serif;
         }
         </style>
+
+        <link rel="stylesheet" href="index.css">
+        <script src="index.js" type="module" defer></script>
     </head>  
     <body>
         <h1>Notebooks</h1>
