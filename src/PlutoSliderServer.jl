@@ -285,10 +285,11 @@ function run_directory(
         hash = myhash(jl_contents)
 
         keep_running = run_server && path ∉ settings.SliderServer.exclude
+        skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
         local notebook, original_state
         
-        cached_state = keep_running ? nothing : try_fromcache(settings.Export.cache_dir, hash)
+        cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, hash)
         if cached_state !== nothing
             @info "Loaded from cache, skipping notebook run" hash
             original_state = cached_state
