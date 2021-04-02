@@ -17,7 +17,9 @@ using TOML
 
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
-get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
+function __init__()
+    get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
+end
 
 myhash = base64encode ∘ sha256
 
