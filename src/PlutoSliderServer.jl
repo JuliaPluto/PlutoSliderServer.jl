@@ -20,6 +20,7 @@ using GitHubActions: GitHubActionsLogger
 function __init__()
     get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
 end
+showall(xs) = Text(join(string.(xs),"\n"))
 
 myhash = base64encode ∘ sha256
 
@@ -200,10 +201,10 @@ function run_directory(
     end
 
     if to_run != notebook_paths
-        @info "Excluded notebooks:" setdiff(notebook_paths, to_run)
+        @info "Excluded notebooks:" showall(setdiff(notebook_paths, to_run))
     end
 
-    @info "Pluto notebooks to run:" to_run
+    @info "Pluto notebooks to run:" showall(to_run)
 
 
     server_session = Pluto.ServerSession(;options=pluto_options)
@@ -309,6 +310,7 @@ function run_directory(
 
                 try_tocache(settings.Export.cache_dir, hash, original_state)
             catch e
+                (e isa InterruptException) || rethrow(e)
                 @error "Failed to run notebook!" path exception=(e,catch_backtrace())
                 continue
             end
@@ -384,7 +386,7 @@ function run_directory(
 
         if keep_running
             bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
-            @info "Bond connections" Text(join(collect(bond_connections), "\n"))
+            @info "Bond connections" showall(collect(bond_connections))
 
             # By setting notebook_sessions[i] to a running session, (modifying the array), the HTTP router will now start serving requests for this notebook.
             notebook_sessions[i] = RunningNotebookSession(;
