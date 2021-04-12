@@ -1,58 +1,13 @@
 module Export
 
-export github_action, export_paths, generate_html, default_index
+export generate_html, default_index
 
 import Pluto
-import Pluto: ServerSession
+import Pluto: ServerSession, generate_html
 using HTTP
 using Base64
 using SHA
 import Pkg
-
-
-myhash = base64encode ∘ sha256
-
-function generate_html(;
-        version=nothing, pluto_cdn_root=nothing,
-        notebookfile_js="undefined", statefile_js="undefined", 
-        slider_server_url_js="undefined", binder_url_js="undefined", 
-        disable_ui=true
-    )::String
-
-    original = read(Pluto.project_relative_path("frontend", "editor.html"), String)
-
-    cdn_root = if pluto_cdn_root === nothing
-        if version isa Nothing
-            version = try_get_pluto_version()
-        end
-        "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(version))/frontend/"
-    else
-        pluto_cdn_root
-    end
-
-    @info "Using CDN for Pluto assets:" cdn_root
-
-    cdnified = replace(
-	replace(original, 
-		"href=\"./" => "href=\"$(cdn_root)"),
-        "src=\"./" => "src=\"$(cdn_root)")
-    
-    result = replace(cdnified, 
-        "<!-- [automatically generated launch parameters can be inserted here] -->" => 
-        """
-        <script data-pluto-file="launch-parameters">
-        window.pluto_notebookfile = $(notebookfile_js)
-        window.pluto_disable_ui = $(disable_ui ? "true" : "false")
-        window.pluto_statefile = $(statefile_js)
-        window.pluto_slider_server_url = $(slider_server_url_js)
-        window.pluto_binder_url = $(binder_url_js)
-        </script>
-        <!-- [automatically generated launch parameters can be inserted here] -->
-        """
-    )
-
-    return result
-end
 
 
 ## CACHE
@@ -91,7 +46,7 @@ try_tocache(cache_dir::Nothing, hash, state) = nothing
 ## FINDING THE PLUTO VERSION
 
 
-function try_get_pluto_version()
+function try_get_exact_pluto_version()
     try
         deps = Pkg.API.dependencies()
 
