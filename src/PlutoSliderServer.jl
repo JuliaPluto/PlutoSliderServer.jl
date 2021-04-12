@@ -136,8 +136,8 @@ Search recursively for all Pluto notebooks in the current folder, and for each n
 - `Export_exclude::Vector{String}=[]`: list of notebook files to skip. Provide paths relative to `start_dir`.
 - `Export_disable_ui::Bool=true`: hide all buttons and toolbars to make it look like an article.
 - `Export_baked_state::Bool=true`: base64-encode the state object and write it inside the .html file. If `false`, a separate `.plutostate` file is generated.
-- `Export_offer_binder::Bool=false`: show a "Run on Binder" button on the notebooks. Use `binder_url` to choose a binder repository.
-- `Export_binder_url::Union{Nothing,String}=nothing`: e.g. `https://mybinder.org/v2/gh/mitmath/18S191/e2dec90` TODO docs
+- `Export_offer_binder::Bool=true`: show a "Run on Binder" button on the notebooks.
+- `Export_binder_url::Union{Nothing,String}=nothing`: e.g. `https://mybinder.org/v2/gh/mitmath/18S191/e2dec90`. Defaults to a binder repo that runs the correct version of Pluto -- https://github.com/fonsp/pluto-on-binder. TODO docs
 - `Export_slider_server_url::Union{Nothing,String}=nothing`: e.g. `https://bindserver.mycoolproject.org/` TODO docs
 - `Export_cache_dir::Union{Nothing,String}=nothing`: if provided, use this directory to read and write cached notebook states. Caches will be indexed by notebook hash, but you need to take care to invalidate the cache when Pluto or this export script updates. Useful in combination with https://github.com/actions/cache.
 - `Export_output_dir::String="."`: folder to write generated HTML files to (will create directories to preserve the input folder structure). Leave at the default to generate each HTML file in the same folder as the notebook file.
@@ -176,6 +176,7 @@ function run_directory(
         kwargs...
     )
 
+    pluto_version = Export.try_get_exact_pluto_version()
     settings, pluto_options = get_configuration(config_toml_path;kwargs...)
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
@@ -192,13 +193,6 @@ function run_directory(
     @info "Settings" Text(settings)
 
     run_server && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
-
-    if static_export && settings.Export.offer_binder && settings.Export.binder_url === nothing
-        # TODO how can we fix the binder version to a Pluto version? We can't use the Pluto hash because the binder repo is different from Pluto.jl itself. We can use Pluto versions, tag those on the binder repo.
-        @warn "We highly recommend setting the `binder_url` keyword argument with a fixed commit hash. The default is not fixed to a specific version, and the binder button will break when Pluto updates.
-        
-        This might be automated in the future."
-    end
 
     if to_run != notebook_paths
         @info "Excluded notebooks:" showall(setdiff(notebook_paths, to_run))
@@ -337,7 +331,7 @@ function run_directory(
             mkpath(dirname(export_statefile_path))
 
 
-            notebookfile_js = if settings.Export.offer_binder
+            notebookfile_js = if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
                 repr(basename(export_jl_path))
             else
                 "undefined"
@@ -347,8 +341,8 @@ function run_directory(
             else
                 "undefined"
             end
-            binder_url_js = if settings.Export.binder_url !== nothing
-                repr(settings.Export.binder_url)
+            binder_url_js = if settings.Export.offer_binder
+                repr(something(settings.Export.binder_url, "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(pluto_version))"))
             else
                 "undefined"
             end
