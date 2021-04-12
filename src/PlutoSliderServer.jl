@@ -367,6 +367,7 @@ function run_directory(
 
             html_contents = generate_html(;
                 pluto_cdn_root=settings.Export.pluto_cdn_root,
+                version=pluto_version,
                 notebookfile_js, statefile_js,
                 slider_server_url_js, binder_url_js,
                 disable_ui=settings.Export.disable_ui
