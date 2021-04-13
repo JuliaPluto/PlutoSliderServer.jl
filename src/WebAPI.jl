@@ -4,6 +4,8 @@ using SHA
 import Pluto
 import PlutoSliderServer: FinishedNotebookSession, RunningNotebookSession, QueuedNotebookSession, myhash, MoreAnalysis, find_notebook_files_recursive
 
+import JSON
+
 # curl -X DELETE http://127.0.0.1:2345/notebook/uut+KtbdWht451eFX7gBhnqfHRSarm0KK6NyontJkQE=/
 # curl -X GET http://127.0.0.1:2345/notebook/uut+KtbdWht451eFX7gBhnqfHRSarm0KK6NyontJkQE=/
 # curl -X POST --data-binary "@./notebook2.jl.assets/notebook2.jl" http://127.0.0.1:2345/notebook/start/
@@ -114,15 +116,18 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
             println(length(request.body))
             println("Digest: " * digest)
             println("header: " * secure_header)
-            println(digest == secure_header)
+            security_test = digest == secure_header
+            if !security_test
+                return HTTP.Response(501, "Not authorized!")
+            end
         end
-
+        
         params = HTTP.queryparams(HTTP.URI(request.target))
-        github_url = get(params, "github_url", [])
-        folder = split(github_url, "/")[end]
+        github_url = get(get(JSON.parse(String(request.body)), "repository", Dict()), "html_url", nothing)
+        folder = !isnothing(github_url) ? split(github_url, "/")[end] : "spam"
         exclude_hases = get(params, "exclude", [])
-        try
-            if length(folder) > 0 
+        @async try
+                if length(folder) > 0 
                 toclone = github_url
                 this_folder = pwd()
                 @info this_folder
@@ -155,9 +160,12 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
             HTTP.Response(200, "Reload complete")
         catch e
            @warn "Fail in reloading " e
-           HTTP.Response(503, "Failed to reload")
+        HTTP.Response(503, "Failed to reload")
         finally
         end
+
+        return HTTP.Response(200, "Webhook accepted, async job started!")
+
     end
 
     HTTP.@register(router, "GET", "/notebooks/", get_notebooks)
