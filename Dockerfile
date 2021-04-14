@@ -23,4 +23,4 @@ EXPOSE 80
 VOLUME ${NOTEBOOK_DIR}
 WORKDIR ${NOTEBOOK_DIR}
 
-CMD [ "julia", "-e", "'using PlutoSliderServer; cli()'", "--", "--port", "80", "--host", "0.0.0.0", "--run-test-server-shortcut"]
+CMD [ "julia", "-e", "using PlutoSliderServer; cli()", "--", "--port", "80", "--host", "0.0.0.0", "--run-test-server-shortcut"]
