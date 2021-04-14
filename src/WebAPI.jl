@@ -166,7 +166,7 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
         HTTP.Response(503, "Failed to reload")
         finally
         end
-
+        sleep(max(rand(), 0.1)) # That's both trigger async AND protection against timing attacks :O
         return HTTP.Response(200, "Webhook accepted, async job started!")
 
     end
