@@ -132,6 +132,9 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
                 this_folder = pwd()
                 @info this_folder
                 run(`rm -rf "$folder"`)
+                # Clone without history
+                # Fetch/Pull if you have latest
+                # Also have some cleanup around!
                 run(`git clone "$toclone"`)
             else 
                 return HTTP.Response(501, "Can't pull")
