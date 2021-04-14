@@ -106,7 +106,7 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
 
     function reload_filesystem(request::HTTP.Request)
         if get(ENV, "GITHUB_SECRET", "") !== ""
-            i = findfirst(a -> a.first == "X-Hub-Signature-256", request.headers)
+            i = findfirst(a -> lowercase(a.first) == lowercase("X-Hub-Signature-256"), request.headers)
             @info request.headers i
             if (isnothing(i))
                 @warn "Can't validate: header not found"
