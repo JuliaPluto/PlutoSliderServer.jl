@@ -200,7 +200,8 @@ function run_directory(
 
     @info "Pluto notebooks to run:" showall(to_run)
 
-
+    pluto_options.server.disable_writing_notebook_files = true
+    pluto_options.evaluation.lazy_workspace_creation = true
     server_session = Pluto.ServerSession(;options=pluto_options)
 
     notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
@@ -368,11 +369,7 @@ function run_directory(
             )
             write(export_html_path, html_contents)
 
-            # TODO: maybe we can avoid writing the .jl file if only the slider server is needed? the frontend only uses it to get its hash
-            var"we need the .jl file" = (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
-            var"the .jl file is already there and might have changed" = isfile(export_jl_path)
-
-            if var"we need the .jl file" || var"the .jl file is already there and might have changed"
+            if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
                 write(export_jl_path, jl_contents)
             end
 
