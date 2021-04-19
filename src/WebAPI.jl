@@ -15,7 +15,7 @@ function path_hash(path)
     myhash(read(path))
 end
 
-function add_to_session(server_session, notebook_sessions, path)
+function add_to_session!(server_session, notebook_sessions, path)
     notebook = Pluto.SessionActions.open(server_session, path; run_async=false)
     original_state = Pluto.notebook_to_js(notebook)
     bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
@@ -29,7 +29,7 @@ function add_to_session(server_session, notebook_sessions, path)
     push!(notebook_sessions, session)
 end
 
-function remove_from_session(server_session, notebook_sessions, hash)
+function remove_from_session!(server_session, notebook_sessions, hash)
     i = findfirst(notebook_sessions) do sesh
         sesh.hash === hash
     end
@@ -46,7 +46,7 @@ function remove_from_session(server_session, notebook_sessions, hash)
     )
 end
 
-function extend_router(router, server_session, notebook_sessions, get_sesh)
+function extend_router!(router, server_session, notebook_sessions, get_sesh)
 
     function get_notebooks(request::HTTP.Request)
         hashes = map(notebook_sessions) do sesh
@@ -82,7 +82,7 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
         open(path, "w") do io
             write(io, notebookbytes)
         end
-        add_to_session(server_session, notebook_sessions, path)
+        add_to_session!(server_session, notebook_sessions, path)
 
         HTTP.Response(200, "Started notebook successfully " * hash)
     end
@@ -95,7 +95,7 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
         finished = sesh isa FinishedNotebookSession
         notebook_hash = sesh.hash
         if running
-            remove_from_session(server_session, notebook_sessions, notebook_hash)
+            remove_from_session!(server_session, notebook_sessions, notebook_hash)
             msg = "Successfully shut down " * sesh.hash
         else
             msg = "Nothing to do!"
@@ -152,12 +152,12 @@ function extend_router(router, server_session, notebook_sessions, get_sesh)
             @info "delete" to_delete
             @info "start" to_start
             for hash in to_delete
-                remove_from_session(server_session, notebook_sessions, hash)
+                remove_from_session!(server_session, notebook_sessions, hash)
             end
 
             for hash in to_start
                 runpath = paths[findfirst(h -> hash === h, new_hashes)]
-                add_to_session(server_session, notebook_sessions, runpath)
+                add_to_session!(server_session, notebook_sessions, runpath)
                 @info "started" runpath
             end
             HTTP.Response(200, "Reload complete")

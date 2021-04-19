@@ -180,7 +180,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
         end
         HTTP.@register(router, "GET", "/*", serve_asset)
     end
-    WebAPI.extend_router(router, server_session, notebook_sessions, get_sesh)
+    WebAPI.extend_router!(router, server_session, notebook_sessions, get_sesh)
     router
 end
 

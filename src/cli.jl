@@ -102,8 +102,6 @@ function cli()
         end
         test_dir = tempname(cleanup=false)
         cp(parsed_args["startdir"], test_dir)
-    
-    
         try
             # open the folder on macos:
             run(`open $(test_dir)`)
