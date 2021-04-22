@@ -262,6 +262,7 @@ function run_directory(
     end
 
     if static_export && settings.Export.create_index
+        ENV["current_root"] = output_dir
         exists = any(["index.html", "index.md", ("index" * e for e in pluto_file_extensions)...]) do f
             joinpath(output_dir, f) |> isfile
         end

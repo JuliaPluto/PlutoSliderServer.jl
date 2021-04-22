@@ -22,7 +22,7 @@ function try_fromcache(cache_dir::String, hash::String)
         try
             open(Pluto.unpack, p, "r")
         catch e
-            @warn "Failed to load statefile from cache" hash exception=(e,catch_backtrace())
+            @warn "Failed to load statefile from cache" hash exception = (e, catch_backtrace())
         end
     end
 end
@@ -36,7 +36,7 @@ function try_tocache(cache_dir::String, hash::String, state)
             Pluto.pack(io, state)
         end
     catch e
-        @warn "Failed to write to cache file" hash exception=(e,catch_backtrace())
+        @warn "Failed to write to cache file" hash exception = (e, catch_backtrace())
     end
 end
 try_tocache(cache_dir::Nothing, hash, state) = nothing
@@ -67,7 +67,7 @@ function try_get_exact_pluto_version()
             p.git_revision
         end
     catch e
-        @error "Failed to get exact Pluto version from dependency. Your website is not guaranteed to work forever." exception=(e, catch_backtrace())
+        @error "Failed to get exact Pluto version from dependency. Your website is not guaranteed to work forever." exception = (e, catch_backtrace())
         Pluto.PLUTO_VERSION
     end
 end
@@ -92,7 +92,6 @@ function default_index(paths)
     </head>  
     <body>
         <h1>Notebooks</h1>
-        
         <ul>
         $(join(
             if link === nothing
@@ -100,7 +99,7 @@ function default_index(paths)
             else
                 """<li><a href="$(link)">$(name)</a></li>"""
             end
-            for (name,link) in paths
+            for (name, link) in paths
         ))
         </ul>
     </body>
