@@ -6,6 +6,8 @@ Web server to run just the @bind parts of a [Pluto.jl](https://github.com/fonsp/
 
 See it in action at [computationalthinking.mit.edu](https://computationalthinking.mit.edu/Spring21/week1/)! Sliders, buttons and camera inputs work _instantly_, without having to wait for a Julia process. Plutoplutopluto
 
+[![](https://data.jsdelivr.com/v1/package/gh/fonsp/Pluto.jl/badge)](https://www.jsdelivr.com/package/gh/fonsp/Pluto.jl)
+
 ## How it works
 
 TODO
