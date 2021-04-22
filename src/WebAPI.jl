@@ -20,7 +20,7 @@ end
 function add_to_session!(server_session, notebook_sessions, path, settings, pluto_options)
 
     # Panayiotis: Can we re-set pluto_options???
-
+    hash = path_hash(path) # Before running!
     keep_running = path ∉ settings.SliderServer.exclude
     skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
@@ -41,7 +41,7 @@ function add_to_session!(server_session, notebook_sessions, path, settings, plut
                 @info "Bond connections" showall(collect(bond_connections))
                 session = RunningNotebookSession(;
                     path=path,
-                    hash=path_hash(path),
+                    hash=hash,
                     notebook=notebook, 
                     original_state=original_state, 
                     bond_connections=bond_connections,
