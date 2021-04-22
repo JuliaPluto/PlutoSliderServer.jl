@@ -1,6 +1,11 @@
 module FileHelpers
-import Pluto:is_pluto_notebook
+import Pluto: Pluto, is_pluto_notebook, without_pluto_file_extension
+using Base64
 using FromFile
+
+
+@from "Export.jl" import Export: Export, generate_html
+pluto_version = Export.try_get_exact_pluto_version()
 
 flatmap(args...) = vcat(map(args...)...)
 
@@ -27,7 +32,7 @@ function find_notebook_files_recursive(start_dir)
     reverse(not_interal_notebook_files)
 end
 
-function generate_static_export(path, settings)
+function generate_static_export(path, settings, original_state=nothing, output_dir=".", jl_contents=nothing)
     export_jl_path = let
         relative_to_notebooks_dir = path
         joinpath(output_dir, relative_to_notebooks_dir)
@@ -79,8 +84,10 @@ function generate_static_export(path, settings)
     html_contents = generate_html(;
         pluto_cdn_root=settings.Export.pluto_cdn_root,
         version=pluto_version,
-        notebookfile_js, statefile_js,
-        slider_server_url_js, binder_url_js,
+        notebookfile_js,
+        statefile_js,
+        slider_server_url_js,
+        binder_url_js,
         disable_ui=settings.Export.disable_ui
     )
     write(export_html_path, html_contents)
@@ -89,7 +96,7 @@ function generate_static_export(path, settings)
     var"we need the .jl file" = (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
     var"the .jl file is already there and might have changed" = isfile(export_jl_path)
 
-    if var"we need the .jl file" || var"the .jl file is already there and might have changed"
+    if !isnothing(jl_contents) && var"we need the .jl file" || var"the .jl file is already there and might have changed"
         write(export_jl_path, jl_contents)
     end
 

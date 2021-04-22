@@ -8,7 +8,6 @@ using SHA
 using Sockets
 using FromFile
 using Configurations
-using TOML
 
 using Logging:global_logger
 using GitHubActions:GitHubActionsLogger
@@ -28,13 +27,12 @@ myhash = base64encode ∘ sha256
 
 ###
 # SESSION DEFINITION
-include("./Types.jl")
-using .Types
+@from "Types.jl" using Types
+
 ###
 # CONFIGURATION
 
-include("./Settings.jl")
-using .Settings
+@from "Settings.jl" using Settings
 
 include("./HTTPRouter.jl")
 
@@ -200,11 +198,8 @@ function run_directory(
         
         @info "[$(i)/$(length(to_run))] Opening $(path)"
 
-        add_to_session!(server_session, notebook_sessions, path, settings, pluto_options)
+        last_sess = add_to_session!(server_session, notebook_sessions, path, settings, pluto_options, static_export, output_dir)
 
-        if static_export
-            generate_static_export(path, settings)
-        end
         @info "[$(i)/$(length(to_run))] Ready $(path)" hash
     end
     @info "-- ALL NOTEBOOKS READY --"

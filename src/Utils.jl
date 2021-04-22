@@ -25,10 +25,11 @@ end
 
 
 
-function add_to_session!(server_session, notebook_sessions, path, settings, pluto_options)
+function add_to_session!(server_session, notebook_sessions, path, settings, pluto_options, static_export=false, output_dir=".")
     # Panayiotis: Can we re-set pluto_options???
     hash = path_hash(path) # Before running!
     hindex = findfirst(s -> s.hash == hash, notebook_sessions)
+    jl_contents = read(path, String)
     keep_running = path ∉ settings.SliderServer.exclude
     skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
@@ -68,14 +69,14 @@ function add_to_session!(server_session, notebook_sessions, path, settings, plut
             else
                 notebook_sessions[hindex] = session
             end
+            if static_export
+                generate_static_export(path, settings, original_state, output_dir, jl_contents)
+            end
         catch e
             (e isa InterruptException) || rethrow(e)
             @error "Failed to run notebook!" path exception = (e, catch_backtrace())
             return
         end
-    end
-    if !isnothing(settings.Export.output_dir)
-        generate_static_export(path, settings)
     end
 end
 
