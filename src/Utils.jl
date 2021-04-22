@@ -13,7 +13,8 @@ using .Settings
 
 include("./MoreAnalysis.jl")
 using .MoreAnalysis
-include("./NotebookSession.jl")
+include("./Types.jl")
+using .Types
 
 include("./Export.jl")
 include("./FileHelpers.jl")
@@ -60,7 +61,6 @@ function add_to_session!(server_session, notebook_sessions, path, settings, plut
                     original_state=original_state, 
                     bond_connections=bond_connections,
                 )
-                push!(notebook_sessions, session)
             else 
                 @info "Shutting down notebook process"
                 Pluto.SessionActions.shutdown(server_session, notebook)

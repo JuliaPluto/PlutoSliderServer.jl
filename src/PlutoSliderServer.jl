@@ -31,7 +31,8 @@ myhash = base64encode ∘ sha256
 
 ###
 # SESSION DEFINITION
-include("./NotebookSession.jl")
+include("./Types.jl")
+using .Types
 ###
 # CONFIGURATION
 
