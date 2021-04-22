@@ -1,27 +1,24 @@
 module PlutoSliderServer
 
-include("./MoreAnalysis.jl")
-import .MoreAnalysis
-include("./FileHelpers.jl")
-import .FileHelpers: find_notebook_files_recursive, list_files_recursive, generate_static_export
-
-include("./Export.jl")
-using .Export
-
-include("./Utils.jl")
-using .Utils
-
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
 using HTTP
 using Base64
 using SHA
 using Sockets
+using FromFile
 using Configurations
 using TOML
 
 using Logging:global_logger
 using GitHubActions:GitHubActionsLogger
+
+@from "MoreAnalysis.jl" import MoreAnalysis
+@from "FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive, generate_static_export, generate_html
+
+@from "Export.jl" using Export
+@from "Utils.jl" using Utils
+
 function __init__()
     get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
 end

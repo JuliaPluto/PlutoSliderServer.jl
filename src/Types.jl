@@ -6,7 +6,6 @@ export NotebookSession, RunningNotebookSession, QueuedNotebookSession, FinishedN
 
 abstract type NotebookSession end
 
-
 Base.@kwdef struct RunningNotebookSession <: NotebookSession
     path::String
     hash::String

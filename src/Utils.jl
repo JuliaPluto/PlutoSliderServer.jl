@@ -1,25 +1,18 @@
 module Utils
 
 export add_to_session!, remove_from_session!
-
+using FromFile
 using Base64
 using SHA
 import Pluto
 
-import PlutoSliderServer:generate_html
+@from "Settings.jl" using Settings
 
-include("./Settings.jl")
-using .Settings
+@from "MoreAnalysis.jl" using MoreAnalysis
+@from "Types.jl" using Types
 
-include("./MoreAnalysis.jl")
-using .MoreAnalysis
-include("./Types.jl")
-using .Types
-
-include("./Export.jl")
-include("./FileHelpers.jl")
-import .FileHelpers:generate_static_export
-import .Export: try_fromcache, try_tocache, default_index
+@from "FileHelpers.jl" import FileHelpers:generate_static_export, generate_html
+@from "Export.jl" import Export: Export, try_fromcache, try_tocache, default_index
 
 showall(xs) = Text(join(string.(xs),"\n"))
 pluto_version = Export.try_get_exact_pluto_version()

@@ -9,6 +9,7 @@ using Base64
 using SHA
 import Pkg
 
+using FromFile
 
 ## CACHE
 

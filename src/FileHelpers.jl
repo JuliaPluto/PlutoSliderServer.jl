@@ -1,5 +1,6 @@
 module FileHelpers
 import Pluto:is_pluto_notebook
+using FromFile
 
 flatmap(args...) = vcat(map(args...)...)
 

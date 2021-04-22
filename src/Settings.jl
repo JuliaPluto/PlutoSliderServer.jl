@@ -1,6 +1,7 @@
 module Settings
 using Configurations
 import Pluto
+using FromFile
 
 UnionNothingString = Any
 export SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration, merge_recursive
