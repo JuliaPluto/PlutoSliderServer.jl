@@ -1,7 +1,6 @@
 
 ###
 # HTTP ROUTER
-include("./WebAPI.jl")
 
 function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
     router = HTTP.Router()
@@ -180,7 +179,6 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
         end
         HTTP.@register(router, "GET", "/*", serve_asset)
     end
-    WebAPI.extend_router!(router, server_session, notebook_sessions, get_sesh)
     router
 end
 
