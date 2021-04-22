@@ -55,8 +55,6 @@ end
 ###
 # CONFIGURATION
 
-UnionNothingString = Any
-
 @option struct SliderServerSettings
     exclude::Vector=String[]
     port::Integer=2345
@@ -66,49 +64,33 @@ UnionNothingString = Any
 end
 
 @option struct ExportSettings
-    output_dir::UnionNothingString=nothing
+    output_dir::Union{Nothing,String}=nothing
     exclude::Vector=String[]
     ignore_cache::Vector=String[]
-    pluto_cdn_root::UnionNothingString=nothing
+    pluto_cdn_root::Union{Nothing,String}=nothing
     baked_state::Bool=true
     offer_binder::Bool=true
     disable_ui::Bool=true
-    cache_dir::UnionNothingString=nothing
-    slider_server_url::UnionNothingString=nothing
-    binder_url::UnionNothingString=nothing
+    cache_dir::Union{Nothing,String}=nothing
+    slider_server_url::Union{Nothing,String}=nothing
+    binder_url::Union{Nothing,String}=nothing
     create_index::Bool=true
 end
 
 @option struct PlutoDeploySettings
     SliderServer::SliderServerSettings=SliderServerSettings()
     Export::ExportSettings=ExportSettings()
+    Pluto::Pluto.Configuration.Options=Pluto.Configuration.Options()
 end
-
 
 function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)
     if !isnothing(toml_path) && isfile(toml_path)
         toml_d = TOML.parsefile(toml_path)
-
-        relevant_for_me = filter(toml_d) do (k,v)
-            k ∈ ["SliderServer", "Export"]
-        end
-        relevant_for_pluto = get(toml_d, "Pluto", Dict())
-
-        remaining = setdiff(keys(toml_d), ["SliderServer", "Export", "Pluto"])
-        if !isempty(remaining)
-            @error "Configuration categories not recognised:" remaining
-        end
-
+        
         kwargs_dict = Configurations.to_dict(Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
-        (
-            Configurations.from_dict(PlutoDeploySettings, merge_recursive(relevant_for_me, kwargs_dict)),
-            Pluto.Configuration.from_flat_kwargs(;(Symbol(k) => v for (k,v) in relevant_for_pluto)...),
-        )
+        Configurations.from_dict(PlutoDeploySettings, merge_recursive(toml_d, kwargs_dict))
     else
-        (
-            Configurations.from_kwargs(PlutoDeploySettings; kwargs...),
-            Pluto.Configuration.Options(),
-        )
+        Configurations.from_kwargs(PlutoDeploySettings; kwargs...)
     end
 end
 
@@ -178,7 +160,7 @@ function run_directory(
     )
 
     pluto_version = Export.try_get_exact_pluto_version()
-    settings, pluto_options = get_configuration(config_toml_path;kwargs...)
+    settings = get_configuration(config_toml_path;kwargs...)
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
 
@@ -201,9 +183,9 @@ function run_directory(
 
     @info "Pluto notebooks to run:" showall(to_run)
 
-    pluto_options.server.disable_writing_notebook_files = true
-    pluto_options.evaluation.lazy_workspace_creation = true
-    server_session = Pluto.ServerSession(;options=pluto_options)
+    settings.Pluto.server.disable_writing_notebook_files = true
+    settings.Pluto.evaluation.lazy_workspace_creation = true
+    server_session = Pluto.ServerSession(;options=settings.Pluto)
 
     notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
