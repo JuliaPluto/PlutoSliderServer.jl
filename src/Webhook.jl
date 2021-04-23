@@ -2,14 +2,16 @@ module Webhook
     export register_webhook!
 
     using FromFile
-    @from "./Actions.jl" using Actions
+    @from "Actions.jl" using Actions
+    @from "Types.jl" import Types: get_configuration
+
     using HTTP
 
     # This function wraps our functions with PlutoSliderServer context. run_server & start_dir are set by the webhook options.
     function register_webhook!(router, notebook_sessions, server_session, settings, static_dir)
 
 
-        function reload_filesystem(request::HTTP.Request)
+        function pull(request::HTTP.Request)
             # Need to save configuration
             if get(ENV, "GITHUB_SECRET", "") !== ""
                 security_test = validate_github_headers(request, ENV["GITHUB_SECRET"])
@@ -18,49 +20,53 @@ module Webhook
                 end
             end
 
-            params = HTTP.queryparams(HTTP.URI(request.target))
-            github_url = get(get(JSON.parse(String(request.body)), "repository", Dict()), "html_url", nothing)
-            folder = !isnothing(github_url) ? split(github_url, "/")[end] : "spam"
-            exclude_hases = get(params, "exclude", [])
+            # github_url = get(get(JSON.parse(String(request.body)), "repository", Dict()), "html_url", nothing)
             @async try
-                if length(folder) > 0 
-                    toclone = github_url
-                    this_folder = pwd()
-                    @info this_folder
-                    run(`rm -rf "$folder"`)
-                    # Clone without history
-                    # Fetch/Pull if you have latest
-                    # Also have some cleanup around!
-                    run(`git clone --depth 1 "$toclone"`)
-                else 
-                    return HTTP.Response(501, "Can't pull")
+                run(`git pull`)
+                run(`git checkout`)
+                config_toml_path = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
+                new_settings = get_configuration(config_toml_path)
+                @info new_settings
+                @info new_settings == settings
+                # TODO: Restart if settings changed
+                old_paths = map(notebook_sessions) do sesh
+                    sesh isa RunningNotebookSession ? sesh.path : nothing
                 end
-                start_dir = "$this_folder/$folder"
+                old_hashes = map(notebook_sessions) do sesh
+                    sesh isa RunningNotebookSession ? sesh.hash : nothing
+                end
 
-                @info "New Settings" Text(settings)
-
-                paths = [path for path in find_notebook_files_recursive(start_dir) if !isnothing(path)]
-                new_hashes = map(path_hash, paths)
+                new_paths = [path for path in find_notebook_files_recursive(start_dir) if !isnothing(path)]
+                renew_paths = [path for path in new_paths if path ∈ old_paths && path_hash(path) ∉ old_hashes]
+                dead_paths =  [path for path in old_paths if path ∉ new_paths]
 
                 running_hashes = map(notebook_sessions) do sesh
                     sesh isa RunningNotebookSession ? sesh.hash : nothing
                 end
 
-                to_delete = [h for h in running_hashes if !(h ∈ new_hashes) && !isnothing(h)]
-                to_start = [h for h in new_hashes if !(h ∈ running_hashes) && !isnothing(h)]
-                to_run = [p for p in paths if (path_hash(p) ∈ to_start)]
+                to_delete = [path_hash(path) for path in dead_paths if !isnothing(path)]
+                to_start = [path for path in new_paths if !isnothing(path) && path ∉ old_paths]
+                to_renew = [path for path in renew_paths]
                 @info "delete" to_delete
                 @info "start" to_start
                 @info "to run: " to_run
+
                 for hash in to_delete
                     remove_from_session!(notebook_sessions, server_session, hash)
                 end
 
-                for hash in to_start
-                    runpath = paths[findfirst(h -> hash === h, new_hashes)]
-                    add_to_session!(notebook_sessions, server_session, path, settings, run_server=true, start_dir)
-                    @info "started" runpath
-                    generate_static_export(path, settings, original_state=nothing, output_dir=".", jl_contents=nothing)
+                for path in to_renew
+                    session, jl_contents, original_state = renew_session!(notebook_sessions, server_session, path, settings)
+                    if path ∉ settings.Export.exclude
+                        generate_static_export(path, settings, original_state, output_dir, jl_contents)
+                    end
+                end
+
+                for path in to_start
+                    session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, true, folder)
+                    if path ∉ settings.Export.exclude
+                        generate_static_export(path, settings, original_state, output_dir, jl_contents)
+                    end
                 end
                 # Create index!
                 if settings.SliderServer.serve_static_export_folder && settings.Export.create_index
@@ -81,10 +87,10 @@ module Webhook
             end
             sleep(max(rand(), 0.1)) # That's both trigger async AND protection against timing attacks :O
             return HTTP.Response(200, "Webhook accepted, async job started!")
-
         end
+
         # Register Webhook
-        HTTP.@register(router, "POST", "/github_webhook/", reload_filesystem)
+        HTTP.@register(router, "POST", "/github_webhook/", pull)
 
         if static_dir === nothing
             function serve_pluto_asset(request::HTTP.Request)

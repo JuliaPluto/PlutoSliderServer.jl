@@ -68,6 +68,27 @@ module Actions
         notebook_sessions[i], jl_contents, original_state
     end
 
+    function renew_session!(notebook_sessions, server_session, path)
+        @info "Renewing " path
+        new_hash = path_hash(path)
+        i = findfirst(s -> s.path == path, notebook_sessions)
+        if isnothing(i)
+            @warn "Can't find session to renew"
+            return (nothing, nothing, nothing)
+        end
+        session = notebook_sessions[i]
+        ## DID NOTEBOOK GET UPDATED?
+        bond_connections = MoreAnalysis.bound_variable_connections_graph(session.notebook)
+        original_state = Pluto.notebook_to_js(session.notebook)
+        notebook_sessions[i] = RunningNotebookSession(;
+             path,
+             hash=new_hash,
+             notebook=session.notebook,
+             original_state,
+             bond_connections,
+         )
+    end
+
     function remove_from_session!(notebook_sessions, server_session, hash)
         i = findfirst(notebook_sessions) do sesh
             sesh.hash === hash

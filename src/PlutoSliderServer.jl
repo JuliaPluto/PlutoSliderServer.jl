@@ -15,8 +15,6 @@ using HTTP
 using Base64
 using SHA
 using Sockets
-using Configurations
-using TOML
 
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
@@ -24,23 +22,7 @@ function __init__()
     get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
 end
 
-function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)
-    if !isnothing(toml_path) && isfile(toml_path)
-        toml_d = TOML.parsefile(toml_path)
-        
-        kwargs_dict = Configurations.to_dict(Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
-        Configurations.from_dict(PlutoDeploySettings, merge_recursive(toml_d, kwargs_dict))
-    else
-        Configurations.from_kwargs(PlutoDeploySettings; kwargs...)
-    end
-end
-
-merge_recursive(a::AbstractDict, b::AbstractDict) = mergewith(merge_recursive, a, b)
-merge_recursive(a, b) = b
-
 include("./HTTPRouter.jl")
-
-
 
 export export_directory, run_directory, github_action, run
 
