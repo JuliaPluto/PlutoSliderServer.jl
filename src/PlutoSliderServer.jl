@@ -328,7 +328,7 @@ function run_directory(
     end
 
     if static_export
-        function generate_static_export(path, settings, original_state=nothing, output_dir=".", jl_contents=nothing)
+        function generate_static_export(path, settings, original_state, output_dir, jl_contents)
             export_jl_path = let
                 relative_to_notebooks_dir = path
                 joinpath(output_dir, relative_to_notebooks_dir)
