@@ -201,16 +201,16 @@ function run_directory(
         
         @info "[$(i)/$(length(to_run))] Opening $(path)"
 
-    local session, jl_contents, original_state
-    # That's because you can't continue in a loop
-    try
-        session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, run_server, start_dir)
-    catch e
-        rethrow(e)
-        continue
-    end
-
-    if static_export
+        local session, jl_contents, original_state
+        # That's because you can't continue in a loop
+        try
+            session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, run_server, start_dir)
+        catch e
+            rethrow(e)
+            continue
+        end
+    
+        if static_export
             generate_static_export(path, settings, original_state, output_dir, jl_contents)
         end
 
