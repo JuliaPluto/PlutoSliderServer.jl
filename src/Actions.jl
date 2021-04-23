@@ -6,6 +6,7 @@ module Actions
     @from "./MoreAnalysis.jl" import MoreAnalysis 
     @from "./Export.jl" using Export
     @from "./Types.jl" using Types
+    @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
     myhash = base64encode ∘ sha256
     showall(xs) = Text(join(string.(xs),"\n"))
 
@@ -18,7 +19,7 @@ module Actions
             push!(notebook_sessions, QueuedNotebookSession(;path, hash=hash))
             i = length(notebook_sessions)
         end
-        keep_running = run_server && path ∉ settings.SliderServer.exclude
+        keep_running = occursin("@bind", read(joinpath(start_dir, path), String)) && path ∉ settings.SliderServer.exclude
         skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
         local notebook, original_state
@@ -67,7 +68,41 @@ module Actions
         notebook_sessions[i], jl_contents, original_state
     end
 
-    function generate_static_export(path, settings, original_state=nothing, output_dir=".", jl_contents=nothing)
+    function remove_from_session!(notebook_sessions, server_session, hash)
+        i = findfirst(notebook_sessions) do sesh
+            sesh.hash === hash
+        end
+        if i === nothing
+            @warn hash "Don't stop anything"
+            return
+        end
+        sesh = notebook_sessions[i]
+        Pluto.SessionActions.shutdown(server_session, sesh.notebook)
+        notebook_sessions[i] = FinishedNotebookSession(;
+            sesh.path,
+            sesh.hash,
+            sesh.original_state,
+        )
+    end
+
+    function run_folder(folder, notebook_sessions, server_session, settings, output_dir)
+        to_run = get_paths_from(folder, settings)[1:3]
+        for path in to_run
+            @info path "starting"
+            session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, true, folder)
+            if path ∉ settings.Export.exclude
+                generate_static_export(path, settings, original_state, output_dir, jl_contents)
+            end
+        end
+        @info "success"
+    end
+
+    function get_paths_from(folder, settings)
+        notebook_paths = find_notebook_files_recursive(folder)
+        to_run = setdiff(notebook_paths, settings.SliderServer.exclude)
+    end
+
+    function generate_static_export(path, settings, original_state, output_dir, jl_contents)
         pluto_version = Export.try_get_exact_pluto_version()
         export_jl_path = let
             relative_to_notebooks_dir = path
