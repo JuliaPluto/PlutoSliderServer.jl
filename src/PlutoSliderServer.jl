@@ -5,8 +5,11 @@ using FromFile
 @from "./MoreAnalysis.jl" import MoreAnalysis
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
+<<<<<<< HEAD
 @from "./Actions.jl" import Actions: add_to_session!, generate_static_export, myhash, showall
 @from "./Types.jl" using Types
+=======
+>>>>>>> use FromFile and make sure formatting doesn't change
 
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
