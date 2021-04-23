@@ -260,10 +260,15 @@ function run_directory(
         
         @info "[$(i)/$(length(to_run))] Opening $(path)"
 
-
+        function add_to_session!(notebook_sessions, server_session, path, settings)
         jl_contents = read(joinpath(start_dir, path), String)
         hash = myhash(jl_contents)
-
+        # The 5 lines below are needed if the code is not invoked within PlutoSliderServer.run_directory
+        i = findfirst(s -> s.hash == hash, notebook_sessions)
+        if isnothing(i)
+            push!(notebook_sessions, QueuedNotebookSession(;path, hash=hash))
+            i = length(notebook_sessions)
+        end
         keep_running = run_server && path ∉ settings.SliderServer.exclude
         skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
@@ -307,10 +312,21 @@ function run_directory(
             catch e
                 (e isa InterruptException) || rethrow(e)
                 @error "Failed to run notebook!" path exception=(e,catch_backtrace())
-                continue
+                # continue
             end
         end
-        
+        notebook_sessions[i], jl_contents, original_state
+    end
+
+    local session, jl_contents, original_state
+    # That's because you can't continue in a loop
+    try
+        session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings)
+    catch e
+        rethrow(e)
+        continue
+    end
+
     if static_export
         function generate_static_export(path, settings, original_state=nothing, output_dir=".", jl_contents=nothing)
             export_jl_path = let
