@@ -1,11 +1,10 @@
 module PlutoSliderServer
 
-include("./MoreAnalysis.jl")
-import .MoreAnalysis
-include("./FileHelpers.jl")
-import .FileHelpers: find_notebook_files_recursive, list_files_recursive
-include("./Export.jl")
-using .Export
+using FromFile
+
+@from "./MoreAnalysis.jl" import MoreAnalysis
+@from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
+@from "./Export.jl" using Export
 
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
