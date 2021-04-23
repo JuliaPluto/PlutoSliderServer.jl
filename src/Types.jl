@@ -1,7 +1,8 @@
 module Types
     using Configurations
+    using TOML
     import Pluto: Pluto, Token, Notebook
-    export NotebookSession, RunningNotebookSession, QueuedNotebookSession, FinishedNotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings
+    export NotebookSession, RunningNotebookSession, QueuedNotebookSession, FinishedNotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration
     ###
     # SESSION DEFINITION
     
@@ -60,5 +61,18 @@ module Types
         Export::ExportSettings=ExportSettings()
         Pluto::Pluto.Configuration.Options=Pluto.Configuration.Options()
     end
-
+    
+    function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)
+        if !isnothing(toml_path) && isfile(toml_path)
+            toml_d = TOML.parsefile(toml_path)
+            
+            kwargs_dict = Configurations.to_dict(Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
+            Configurations.from_dict(PlutoDeploySettings, merge_recursive(toml_d, kwargs_dict))
+        else
+            Configurations.from_kwargs(PlutoDeploySettings; kwargs...)
+        end
+    end
+    
+    merge_recursive(a::AbstractDict, b::AbstractDict) = mergewith(merge_recursive, a, b)
+    merge_recursive(a, b) = b
 end
