@@ -284,7 +284,25 @@ function run_directory(
                     @info "Shutting down notebook process"
                     Pluto.SessionActions.shutdown(server_session, notebook)
                 end
+                if keep_running
+                    bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
+                    @info "Bond connections" showall(collect(bond_connections))
 
+                    # By setting notebook_sessions[i] to a running session, (modifying the array), the HTTP router will now start serving requests for this notebook.
+                    notebook_sessions[i] = RunningNotebookSession(;
+                        path,
+                        hash,
+                        notebook,
+                        original_state,
+                        bond_connections,
+                    )
+                else
+                    notebook_sessions[i] = FinishedNotebookSession(;
+                        path,
+                        hash,
+                        original_state,
+                    )
+                end
                 try_tocache(settings.Export.cache_dir, hash, original_state)
             catch e
                 (e isa InterruptException) || rethrow(e)
@@ -358,26 +376,6 @@ function run_directory(
             @info "Written to $(export_html_path)"
             end
             generate_static_export(path, settings, original_state, output_dir, jl_contents)
-        end
-
-        if keep_running
-            bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
-            @info "Bond connections" showall(collect(bond_connections))
-
-            # By setting notebook_sessions[i] to a running session, (modifying the array), the HTTP router will now start serving requests for this notebook.
-            notebook_sessions[i] = RunningNotebookSession(;
-                path,
-                hash,
-                notebook, 
-                original_state, 
-                bond_connections,
-            )
-        else
-            notebook_sessions[i] = FinishedNotebookSession(;
-                path,
-                hash,
-                original_state,
-            )
         end
 
         @info "[$(i)/$(length(to_run))] Ready $(path)" hash
