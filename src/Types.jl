@@ -37,6 +37,8 @@ module Types
         host="127.0.0.1"
         simulated_lag::Real=0
         serve_static_export_folder::Bool=true
+        start_dir="." # Relative to julia that is running
+        repository::Union{Nothing,String}=nothing
     end
     
     @option struct ExportSettings

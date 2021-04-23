@@ -5,8 +5,9 @@ using FromFile
 @from "./MoreAnalysis.jl" import MoreAnalysis
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
-@from "./Actions.jl" import Actions: add_to_session!, generate_static_export, myhash, showall
+@from "./Actions.jl" import Actions: add_to_session!, generate_static_export, run_folder, myhash, showall
 @from "./Types.jl" using Types
+@from "./Webhook.jl" import Webhook: register_webhook!
 
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
@@ -41,7 +42,7 @@ include("./HTTPRouter.jl")
 
 
 
-export export_directory, run_directory, github_action
+export export_directory, run_directory, github_action, run
 
 
 """
@@ -134,6 +135,7 @@ function run_directory(
             static_export && settings.SliderServer.serve_static_export_folder
         ) ? output_dir : nothing
         router = make_router(settings, server_session, notebook_sessions; static_dir )
+        register_webhook!(router, notebook_sessions, server_session, settings, static_dir)
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port
@@ -228,4 +230,106 @@ function run_directory(
 end
 
 
+    function run_server(
+        config_toml_path::Union{String,Nothing}=joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml");
+        on_ready::Function=((args...)->()),
+        kwargs...
+    )
+        settings = get_configuration(config_toml_path; kwargs...)
+        static_dir = settings.SliderServer.serve_static_export_folder ? settings.Export.output_dir : nothing
+
+        settings.Pluto.server.disable_writing_notebook_files = true
+        settings.Pluto.evaluation.lazy_workspace_creation = true
+    
+        server_session = Pluto.ServerSession(;options=settings.Pluto)
+        notebook_sessions = NotebookSession[]
+    
+        pluto_version = Export.try_get_exact_pluto_version()
+        output_dir = settings.Export.output_dir
+        mkpath(output_dir)
+
+        pluto_version = Export.try_get_exact_pluto_version()
+        settings = get_configuration(config_toml_path;kwargs...)
+        router = make_router(settings, server_session, notebook_sessions; static_dir )
+
+        # Extend router functionality here
+        register_webhook!(router, notebook_sessions, server_session, settings, static_dir)
+
+        # This is boilerplate HTTP code, don't read it
+        host = settings.SliderServer.host
+        port = settings.SliderServer.port
+
+        # This is boilerplate HTTP code, don't read it
+        hostIP = parse(Sockets.IPAddr, host)
+        if port === nothing
+            port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
+        else
+            serversocket = try
+                Sockets.listen(hostIP, UInt16(port))
+            catch e
+                @error "Port with number $port is already in use."
+                return
+            end
+        end
+
+        @info "Starting server..." host Int(port)
+
+        # This is boilerplate HTTP code, don't read it
+        # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
+        http_server_task = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
+            request::HTTP.Request = http.message
+            request.body = read(http)
+            HTTP.closeread(http)
+        
+            params = HTTP.queryparams(HTTP.URI(request.target))
+        
+            response_body = HTTP.handle(router, request)
+        
+            request.response::HTTP.Response = response_body
+            request.response.request = request
+            try
+                HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
+                HTTP.startwrite(http)
+                write(http, request.response.body)
+                HTTP.closewrite(http)
+            catch e
+                if isa(e, Base.IOError) || isa(e, ArgumentError)
+                    # @warn "Attempted to write to a closed stream at $(request.target)"
+                else
+                    rethrow(e)
+                end
+            end
+        end
+
+        on_ready((;
+            serversocket,
+            server_session, 
+            notebook_sessions,
+        ))
+
+        wait(http_server_task)
+    end
+
+    function run()
+        config_toml_path = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
+        settings = get_configuration(config_toml_path)
+    
+        function on_ready(result)
+            server_session = result.server_session
+            notebook_sessions = result.notebook_sessions
+
+            @info "Server ready, starting folder" settings.SliderServer.start_dir
+            run_folder(
+                settings.SliderServer.start_dir,
+                notebook_sessions,
+                server_session,
+                settings,
+                settings.Export.output_dir
+            )
+        end
+        run_server(
+            config_toml_path;
+            on_ready=on_ready
+        )
+    end
 end
