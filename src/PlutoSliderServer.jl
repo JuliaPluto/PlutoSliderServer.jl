@@ -293,8 +293,8 @@ function run_directory(
             end
         end
         
-
-        if static_export
+    if static_export
+        function generate_static_export(path, settings, original_state=nothing, output_dir=".", jl_contents=nothing)
             export_jl_path = let
                 relative_to_notebooks_dir = path
                 joinpath(output_dir, relative_to_notebooks_dir)
@@ -356,6 +356,8 @@ function run_directory(
             end
 
             @info "Written to $(export_html_path)"
+            end
+            generate_static_export(path, settings, original_state, output_dir, jl_contents)
         end
 
         if keep_running
