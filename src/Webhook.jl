@@ -85,11 +85,14 @@ module Webhook
                     end
                 end
                 # Create index!
+                running_sessions = filter(notebook_sessions) do sesh
+                    sesh isa RunningNotebookSession
+                end
+                running_paths = map(s -> s.path, running_sessions)
                 if settings.SliderServer.serve_static_export_folder && settings.Export.create_index
-
                     write(joinpath(settings.Export.output_dir, "index.html"), default_index((
                         without_pluto_file_extension(path) => without_pluto_file_extension(path) * ".html"
-                        for path in to_start ∪ to_renew
+                        for path in running_paths
                     )))
                     @info "Wrote index to" settings.Export.output_dir
                 end
