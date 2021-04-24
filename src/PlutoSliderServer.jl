@@ -24,7 +24,7 @@ end
 
 include("./HTTPRouter.jl")
 
-export export_directory, run_directory, github_action, run
+export export_directory, run_directory, github_action, runrepository, run_server
 
 
 """
