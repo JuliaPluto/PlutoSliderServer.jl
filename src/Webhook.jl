@@ -8,6 +8,7 @@ module Webhook
     @from "Export.jl" import Export: default_index
     import Pluto: without_pluto_file_extension
     using HTTP
+    using SHA
 
     # This function wraps our functions with PlutoSliderServer context. run_server & start_dir are set by the webhook options.
     function register_webhook!(router, notebook_sessions, server_session, settings, static_dir)
