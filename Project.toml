@@ -6,6 +6,7 @@ version = "0.2.2"
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 Configurations = "5218b696-f38b-4ac9-8b61-a12ec717816d"
+FileWatching = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 FromFile = "ff7dd447-1dcb-4ce3-b8ac-22a812192de7"
 GitHubActions = "6b79fd1a-b13a-48ab-b6b0-aaee1fee41df"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
