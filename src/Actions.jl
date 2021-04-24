@@ -1,13 +1,16 @@
 module Actions
-    import Pluto: Pluto, without_pluto_file_extension
+    import Pluto: Pluto, without_pluto_file_extension, @asynclog
     using Base64
     using SHA
     using FromFile
+    using FileWatching
+
     export myhash, path_hash, showall, add_to_session!, renew_session!, remove_from_session!, register_webhook, run_folder, get_paths_from, generate_static_export
     @from "./MoreAnalysis.jl" import MoreAnalysis 
     @from "./Export.jl" using Export
     @from "./Types.jl" using Types
     @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
+    @from "./UpdateFromFile.jl" import UpdateFromFile: update_from_file
     myhash = base64encode ∘ sha256
     path_hash = path -> myhash(read(path))
 
@@ -15,7 +18,7 @@ module Actions
 
     """
     Core Action. 
-    
+
     add_to_session! lets PlutoSliderServer know about a new session
     start_dir should come from settings
     """
@@ -51,6 +54,16 @@ module Actions
                     Pluto.SessionActions.shutdown(server_session, notebook)
                 end
                 if keep_running
+                    @asynclog while true
+                        # TODO: actually stop watching when/if the session closes
+                        watch_file(notebook.path)
+                        sleep(2)
+                        session, jl_contents, original_state = renew_session!(notebook_sessions, server_session, path, settings)
+                        if path ∉ settings.Export.exclude
+                            generate_static_export(path, settings, original_state, settings.Export.output_dir, jl_contents)
+                        end
+                    end
+
                     bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
                     @info "Bond connections" showall(collect(bond_connections))
 
@@ -118,15 +131,25 @@ module Actions
     """
     function renew_session!(notebook_sessions, server_session, path, settings)
         @info "Renewing " path
-        jl_contents = read(joinpath(settings.SliderServer.start_dir, path), String)
-        new_hash = path_hash(path)
         i = findfirst(s -> s.path == path, notebook_sessions)
         if isnothing(i)
             @warn "Can't find session to renew"
             return (nothing, nothing, nothing)
         end
+        jl_contents = try
+            read(joinpath(settings.SliderServer.start_dir, path), String)
+        catch e
+            @warn "notebook deleted; removing"
+            remove_from_session!(notebook_sessions, server_session, notebook_sessions[i].hash)
+            return
+        end
+        new_hash = path_hash(path)
         session = notebook_sessions[i]
-        waitnotebookready(session.notebook)
+        if new_hash == session.hash
+           println("Renewing unnecessary; returning!") 
+        end
+        update_from_file(server_session, session.notebook)
+        # waitnotebookready(session.notebook)
         bond_connections = MoreAnalysis.bound_variable_connections_graph(session.notebook)
         original_state = Pluto.notebook_to_js(session.notebook)
         notebook_sessions[i] = RunningNotebookSession(;
