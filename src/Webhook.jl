@@ -3,14 +3,29 @@ module Webhook
 
     using FromFile
     @from "Actions.jl" using Actions
-    @from "Types.jl" import Types: get_configuration
-
+    @from "Types.jl" using Types
+    @from "FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
+    @from "Export.jl" import Export: default_index
+    import Pluto: without_pluto_file_extension
     using HTTP
 
     # This function wraps our functions with PlutoSliderServer context. run_server & start_dir are set by the webhook options.
     function register_webhook!(router, notebook_sessions, server_session, settings, static_dir)
 
+        """
+        Handle any events from GitHub.
+        Use with Webhook - see README for detailed HOWTO
+        This function assumes you run slider server from a GitHub repository.
+        When invoked (POST @ /github_webhook endpoint, properly authenticated)
+        the server will try to
+            - reload all changed files,
+            - stop all deleted files and
+            - start any new files
+        respecting the settings (exlusions etc.)
 
+        TODO: restart julia process if settings (assumed to be at
+        `pluto-deployment-environment/PlutoDeployment.toml`) change.
+        """
         function pull(request::HTTP.Request)
             # Need to save configuration
             if get(ENV, "GITHUB_SECRET", "") !== ""
@@ -23,7 +38,7 @@ module Webhook
             # github_url = get(get(JSON.parse(String(request.body)), "repository", Dict()), "html_url", nothing)
             @async try
                 run(`git pull`)
-                run(`git checkout`)
+                # run(`git checkout`)
                 config_toml_path = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
                 new_settings = get_configuration(config_toml_path)
                 @info new_settings
@@ -36,7 +51,7 @@ module Webhook
                     sesh isa RunningNotebookSession ? sesh.hash : nothing
                 end
 
-                new_paths = [path for path in find_notebook_files_recursive(start_dir) if !isnothing(path)]
+                new_paths = [path for path in find_notebook_files_recursive(settings.SliderServer.start_dir) if !isnothing(path) && path ∉ settings.SliderServer.exclude]
                 renew_paths = [path for path in new_paths if path ∈ old_paths && path_hash(path) ∉ old_hashes]
                 dead_paths =  [path for path in old_paths if path ∉ new_paths]
 
@@ -49,7 +64,7 @@ module Webhook
                 to_renew = [path for path in renew_paths]
                 @info "delete" to_delete
                 @info "start" to_start
-                @info "to run: " to_run
+                @info "to run: " to_renew
 
                 for hash in to_delete
                     remove_from_session!(notebook_sessions, server_session, hash)
@@ -58,24 +73,24 @@ module Webhook
                 for path in to_renew
                     session, jl_contents, original_state = renew_session!(notebook_sessions, server_session, path, settings)
                     if path ∉ settings.Export.exclude
-                        generate_static_export(path, settings, original_state, output_dir, jl_contents)
+                        generate_static_export(path, settings, original_state, settings.Export.output_dir, jl_contents)
                     end
                 end
 
                 for path in to_start
-                    session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, true, folder)
+                    session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, true, settings.SliderServer.start_dir)
                     if path ∉ settings.Export.exclude
-                        generate_static_export(path, settings, original_state, output_dir, jl_contents)
+                        generate_static_export(path, settings, original_state, settings.Export.output_dir, jl_contents)
                     end
                 end
                 # Create index!
                 if settings.SliderServer.serve_static_export_folder && settings.Export.create_index
-                    output_dir = something(ENV["current_root"], settings.Export.output_dir, "$start_dir")
-                    write(joinpath(output_dir, "index.html"), default_index((
+
+                    write(joinpath(settings.Export.output_dir, "index.html"), default_index((
                         without_pluto_file_extension(path) => without_pluto_file_extension(path) * ".html"
-                        for path in to_run
+                        for path in to_start ∪ to_renew
                     )))
-                    @info "Wrote index to" output_dir
+                    @info "Wrote index to" settings.Export.output_dir
                 end
                 @info "run successully!"
             catch e

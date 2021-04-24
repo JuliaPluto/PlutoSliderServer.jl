@@ -211,7 +211,14 @@ function run_directory(
     wait(http_server_task)
 end
 
+    """
+    Runs HTTP server and creates the session structs on top of which
+    the rest of the operations can build.
+    Useful only when used with an `on_ready` function; does nothing Useful
+    otherwise.
 
+    See `run` for an invocation example.
+    """
     function run_server(
         config_toml_path::Union{String,Nothing}=joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml");
         on_ready::Function=((args...)->()),
@@ -243,56 +250,78 @@ end
 
         # This is boilerplate HTTP code, don't read it
         hostIP = parse(Sockets.IPAddr, host)
-        if port === nothing
-            port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
-        else
-            serversocket = try
-                Sockets.listen(hostIP, UInt16(port))
-            catch e
-                @error "Port with number $port is already in use."
-                return
-            end
-        end
-
-        @info "Starting server..." host Int(port)
-
-        # This is boilerplate HTTP code, don't read it
-        # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
-        http_server_task = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
-            request::HTTP.Request = http.message
-            request.body = read(http)
-            HTTP.closeread(http)
-        
-            params = HTTP.queryparams(HTTP.URI(request.target))
-        
-            response_body = HTTP.handle(router, request)
-        
-            request.response::HTTP.Response = response_body
-            request.response.request = request
-            try
-                HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
-                HTTP.startwrite(http)
-                write(http, request.response.body)
-                HTTP.closewrite(http)
-            catch e
-                if isa(e, Base.IOError) || isa(e, ArgumentError)
-                    # @warn "Attempted to write to a closed stream at $(request.target)"
-                else
-                    rethrow(e)
+        local serversocket
+        try
+            if port === nothing
+                port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
+            else
+                serversocket = try
+                    Sockets.listen(hostIP, UInt16(port))
+                catch e
+                    @error "Port with number $port is already in use."
+                    return
                 end
             end
+
+            @info "Starting server..." host Int(port)
+
+            # This is boilerplate HTTP code, don't read it
+            # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
+            http_server_task = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
+                request::HTTP.Request = http.message
+                request.body = read(http)
+                HTTP.closeread(http)
+            
+                params = HTTP.queryparams(HTTP.URI(request.target))
+            
+                response_body = HTTP.handle(router, request)
+            
+                request.response::HTTP.Response = response_body
+                request.response.request = request
+                try
+                    HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
+                    HTTP.startwrite(http)
+                    write(http, request.response.body)
+                    HTTP.closewrite(http)
+                catch e
+                    if isa(e, Base.IOError) || isa(e, ArgumentError)
+                        # @warn "Attempted to write to a closed stream at $(request.target)"
+                    else
+                        rethrow(e)
+                    end
+                end
+            end
+        
+            on_ready((;
+                serversocket,
+                server_session, 
+                notebook_sessions,
+            ))
+            wait(http_server_task)
+        catch e
+            if !(e isa InterruptException)
+                @warn "Something went wrong" 
+                rethrow(e)
+            else
+                @info "Interrupted, closing..."
+            end
+
+        finally
+            close(serversocket)
+            @info "Closed server"
         end
-
-        on_ready((;
-            serversocket,
-            server_session, 
-            notebook_sessions,
-        ))
-
-        wait(http_server_task)
     end
+    
+    """
+    Opinionated run function.
+    Loads settings from `pluto-deployment-environment/PlutoDeploySettings.toml`
+    and runs the notebooks that exist in the repository
+    
+    Additionally, registers a webhook which listens to GitHub events.
 
-    function run()
+    Only configurable editing PlutoDeploySettings.toml
+    """
+    function runrepository()
         config_toml_path = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
         settings = get_configuration(config_toml_path)
     
