@@ -5,7 +5,7 @@ module Actions
     using FromFile
     using FileWatching
 
-    export myhash, path_hash, showall, add_to_session!, renew_session!, remove_from_session!, register_webhook, run_folder, get_paths_from, generate_static_export
+    export myhash, path_hash, showall, add_to_session!, renew_session!, remove_from_session!, register_webhook, generate_static_export
     @from "./MoreAnalysis.jl" import MoreAnalysis 
     @from "./Export.jl" using Export
     @from "./Types.jl" using Types
@@ -149,6 +149,7 @@ module Actions
            println("Renewing unnecessary; returning!") 
         end
         update_from_file(server_session, session.notebook)
+        # If pluto implements the filewatching itself, switch to the line below:
         # waitnotebookready(session.notebook)
         bond_connections = MoreAnalysis.bound_variable_connections_graph(session.notebook)
         original_state = Pluto.notebook_to_js(session.notebook)
@@ -179,31 +180,6 @@ module Actions
             sesh.hash,
             sesh.original_state,
         )
-    end
-
-    """
-    Starts and creates static exports for all notebooks in a folder,
-    respecting the settings provided
-    """
-    function run_folder(folder, notebook_sessions, server_session, settings, output_dir)
-        to_run = get_paths_from(folder, settings)
-        for path in to_run
-            @info path "starting"
-            session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, true, folder)
-            if path ∉ settings.Export.exclude
-                generate_static_export(path, settings, original_state, output_dir, jl_contents)
-            end
-        end
-        @info "success"
-    end
-
-    """
-    Helper function to get the paths in a folder , excluding those
-    set for exclusion in settings
-    """
-    function get_paths_from(folder, settings)
-        notebook_paths = find_notebook_files_recursive(folder)
-        to_run = setdiff(notebook_paths, settings.SliderServer.exclude)
     end
 
     """

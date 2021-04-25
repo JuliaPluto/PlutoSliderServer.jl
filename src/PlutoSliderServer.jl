@@ -5,7 +5,7 @@ using FromFile
 @from "./MoreAnalysis.jl" import MoreAnalysis
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
-@from "./Actions.jl" import Actions: add_to_session!, generate_static_export, run_folder, myhash, showall
+@from "./Actions.jl" import Actions: add_to_session!, generate_static_export, myhash, showall
 @from "./Types.jl" using Types
 @from "./Webhook.jl" import Webhook: register_webhook!
 
@@ -24,7 +24,7 @@ end
 
 include("./HTTPRouter.jl")
 
-export export_directory, run_directory, github_action, runrepository, run_server
+export export_directory, run_directory, github_action
 
 
 """
