@@ -1,0 +1,10 @@
+{
+    "julia.format.calls": false,
+    "julia.format.comments": false,
+    "julia.format.curly": false,
+    "julia.format.docs": false,
+    "julia.format.indents": false,
+    "julia.format.ops": false,
+    "julia.format.iterOps": false,
+    "julia.format.tuples": false
+}

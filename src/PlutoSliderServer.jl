@@ -1,11 +1,10 @@
 module PlutoSliderServer
 
-include("./MoreAnalysis.jl")
-import .MoreAnalysis
-include("./FileHelpers.jl")
-import .FileHelpers: find_notebook_files_recursive, list_files_recursive
-include("./Export.jl")
-using .Export
+using FromFile
+
+@from "./MoreAnalysis.jl" import MoreAnalysis
+@from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
+@from "./Export.jl" using Export
 
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
@@ -261,10 +260,15 @@ function run_directory(
         
         @info "[$(i)/$(length(to_run))] Opening $(path)"
 
-
+        function add_to_session!(notebook_sessions, server_session, path, settings)
         jl_contents = read(joinpath(start_dir, path), String)
         hash = myhash(jl_contents)
-
+        # The 5 lines below are needed if the code is not invoked within PlutoSliderServer.run_directory
+        i = findfirst(s -> s.hash == hash, notebook_sessions)
+        if isnothing(i)
+            push!(notebook_sessions, QueuedNotebookSession(;path, hash=hash))
+            i = length(notebook_sessions)
+        end
         keep_running = run_server && path ∉ settings.SliderServer.exclude
         skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
@@ -285,17 +289,46 @@ function run_directory(
                     @info "Shutting down notebook process"
                     Pluto.SessionActions.shutdown(server_session, notebook)
                 end
+                if keep_running
+                    bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
+                    @info "Bond connections" showall(collect(bond_connections))
 
+                    # By setting notebook_sessions[i] to a running session, (modifying the array), the HTTP router will now start serving requests for this notebook.
+                    notebook_sessions[i] = RunningNotebookSession(;
+                        path,
+                        hash,
+                        notebook,
+                        original_state,
+                        bond_connections,
+                    )
+                else
+                    notebook_sessions[i] = FinishedNotebookSession(;
+                        path,
+                        hash,
+                        original_state,
+                    )
+                end
                 try_tocache(settings.Export.cache_dir, hash, original_state)
             catch e
                 (e isa InterruptException) || rethrow(e)
                 @error "Failed to run notebook!" path exception=(e,catch_backtrace())
-                continue
+                # continue
             end
         end
-        
+        notebook_sessions[i], jl_contents, original_state
+    end
 
-        if static_export
+    local session, jl_contents, original_state
+    # That's because you can't continue in a loop
+    try
+        session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings)
+    catch e
+        rethrow(e)
+        continue
+    end
+
+    if static_export
+        function generate_static_export(path, settings, original_state, output_dir, jl_contents)
             export_jl_path = let
                 relative_to_notebooks_dir = path
                 joinpath(output_dir, relative_to_notebooks_dir)
@@ -357,26 +390,8 @@ function run_directory(
             end
 
             @info "Written to $(export_html_path)"
-        end
-
-        if keep_running
-            bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
-            @info "Bond connections" showall(collect(bond_connections))
-
-            # By setting notebook_sessions[i] to a running session, (modifying the array), the HTTP router will now start serving requests for this notebook.
-            notebook_sessions[i] = RunningNotebookSession(;
-                path,
-                hash,
-                notebook, 
-                original_state, 
-                bond_connections,
-            )
-        else
-            notebook_sessions[i] = FinishedNotebookSession(;
-                path,
-                hash,
-                original_state,
-            )
+            end
+            generate_static_export(path, settings, original_state, output_dir, jl_contents)
         end
 
         @info "[$(i)/$(length(to_run))] Ready $(path)" hash
