@@ -5,12 +5,11 @@ module Actions
     using FromFile
     using FileWatching
 
-    export myhash, path_hash, showall, add_to_session!, renew_session!, remove_from_session!, register_webhook, generate_static_export
+    export myhash, path_hash, showall, add_to_session!, renew_session!, remove_from_session!, register_webhook, generate_static_export, update_from_file
     @from "./MoreAnalysis.jl" import MoreAnalysis 
     @from "./Export.jl" using Export
     @from "./Types.jl" using Types
     @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
-    @from "./UpdateFromFile.jl" import UpdateFromFile: update_from_file
     myhash = base64encode ∘ sha256
     path_hash = path -> myhash(read(path))
 
@@ -54,15 +53,16 @@ module Actions
                     Pluto.SessionActions.shutdown(server_session, notebook)
                 end
                 if keep_running
-                    @asynclog while true
-                        # TODO: actually stop watching when/if the session closes
-                        watch_file(notebook.path)
-                        sleep(2)
-                        session, jl_contents, original_state = renew_session!(notebook_sessions, server_session, path, settings)
-                        if path ∉ settings.Export.exclude
-                            generate_static_export(path, settings, original_state, settings.Export.output_dir, jl_contents)
-                        end
-                    end
+                    # filewatching
+                    # @asynclog while true
+                    #     # TODO: actually stop watching when/if the session closes
+                    #     watch_file(notebook.path)
+                    #     sleep(2)
+                    #     session, jl_contents, original_state = renew_session!(notebook_sessions, server_session, path, settings)
+                    #     if path ∉ settings.Export.exclude
+                    #         generate_static_export(path, settings, original_state, settings.Export.output_dir, jl_contents)
+                    #     end
+                    # end
 
                     bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
                     @info "Bond connections" showall(collect(bond_connections))
@@ -148,7 +148,8 @@ module Actions
         if new_hash == session.hash
            println("Renewing unnecessary; returning!") 
         end
-        update_from_file(server_session, session.notebook)
+        # filewatching
+        # update_from_file(server_session, session.notebook)
         # If pluto implements the filewatching itself, switch to the line below:
         # waitnotebookready(session.notebook)
         bond_connections = MoreAnalysis.bound_variable_connections_graph(session.notebook)

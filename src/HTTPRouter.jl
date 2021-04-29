@@ -2,7 +2,7 @@
 ###
 # HTTP ROUTER
 
-function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
+function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::NotebookSessionList; static_dir::Union{String,Nothing}=nothing)
     router = HTTP.Router()
 
     function get_sesh(request::HTTP.Request)

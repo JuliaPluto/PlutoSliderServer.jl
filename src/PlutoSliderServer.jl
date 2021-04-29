@@ -110,7 +110,9 @@ function run_directory(
     settings.Pluto.evaluation.lazy_workspace_creation = true
     server_session = Pluto.ServerSession(;options=settings.Pluto)
 
-    notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
+    notebook_sessions = NotebookSessionList(;
+        notebooksessions=[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
+    )
 
     if run_server
         static_dir = (
