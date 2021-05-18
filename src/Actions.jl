@@ -99,7 +99,8 @@ module Actions
             "undefined"
         end
         binder_url_js = if settings.Export.offer_binder
-            repr(something(settings.Export.binder_url, "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(pluto_version))"))
+            repr(something(settings.Export.binder_url, "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(Pluto.PLUTO_VERSION))"))
+            # not string(pluto_version) because it has to be an `x.y.z` version number, not a commit hash
         else
             "undefined"
         end
