@@ -149,7 +149,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
             Pluto.asset_response(path)
         else
             if done < length(notebook_sessions)
-                HTTP.Response(503, "Still loading the notebooks... check back later! [$(done)/$(length(notebook_sessions))]")
+                HTTP.Response(503, "Still loading the notebooks... check back later! [$(done)/$(length(notebook_sessions)) ready]")
             else
                 HTTP.Response(200, "Hi!")
             end
