@@ -35,14 +35,19 @@ function reload(notebook_sessions, server_session, settings)
         filter_sessions!(!occursin(exit), notebook_sessions, server_session)
         
         for path in update
-            session, jl_contents, original_state = renew_session!(notebook_sessions, server_session, path, settings)
+            sesh, jl_contents, original_state = renew_session!(notebook_sessions, server_session, path; settings)
             if path ∉ settings.Export.exclude
                 generate_static_export(path, settings, original_state, settings.Export.output_dir, jl_contents)
             end
         end
 
         for path in enter
-            session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, true, settings.SliderServer.start_dir)
+            sesh, jl_contents, original_state = add_to_session!(
+                notebook_sessions, server_session, path;
+                settings=settings, 
+                shutdown_after_completed=false, 
+                start_dir=settings.SliderServer.start_dir
+            )
             if path ∉ settings.Export.exclude
                 generate_static_export(path, settings, original_state, settings.Export.output_dir, jl_contents)
             end
@@ -59,6 +64,5 @@ function reload(notebook_sessions, server_session, settings)
             )))
             @info "Wrote index to" settings.Export.output_dir
         end
-        @info "run successully!"
     end
 end

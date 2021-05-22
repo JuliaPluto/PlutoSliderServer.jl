@@ -186,12 +186,17 @@ function run_directory(
 
         local session, jl_contents, original_state
         # That's because you can't continue in a loop
-        try
-            session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, run_server, start_dir)
-        catch e
-            rethrow(e)
-            continue
-        end
+        # try
+            session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path;
+                settings, 
+                shutdown_after_completed=!run_server, 
+                start_dir
+                )
+        # catch e
+            # @error "asdfadf" ex=(e,catch_backtrace())
+            # rethrow(e)
+            # continue
+        # end
     
         if static_export
             generate_static_export(path, settings, original_state, output_dir, jl_contents)

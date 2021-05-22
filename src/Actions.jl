@@ -5,10 +5,9 @@ module Actions
     using FromFile
     using FileWatching
 
-    export myhash, path_hash, showall, add_to_session!, renew_session!, filter_sessions!, register_webhook, generate_static_export, update_from_file
     @from "./MoreAnalysis.jl" import MoreAnalysis 
-    @from "./Export.jl" using Export
-    @from "./Types.jl" using Types
+    @from "./Export.jl" import Export: Export, generate_html, try_fromcache, try_tocache
+    @from "./Types.jl" import Types: PlutoDeploySettings, withlock, RunningNotebookSession, QueuedNotebookSession, FinishedNotebookSession, NotebookSession
     @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
     myhash = base64encode ∘ sha256
     path_hash = path -> myhash(read(path))
@@ -21,7 +20,12 @@ module Actions
     add_to_session! lets PlutoSliderServer know about a new session
     start_dir should come from settings
     """
-    function add_to_session!(notebook_sessions, server_session, path, settings, run_server, start_dir)
+    function add_to_session!(notebook_sessions, server_session, path;
+            settings, 
+            start_dir,
+            shutdown_after_completed::Bool=false,
+            )
+        withlock(notebook_sessions) do
         # TODO: Take these from Settings
         jl_contents = read(joinpath(start_dir, path), String)
         hash = myhash(jl_contents)
@@ -31,7 +35,7 @@ module Actions
             push!(notebook_sessions, QueuedNotebookSession(;path, hash=hash))
             i = length(notebook_sessions)
         end
-        keep_running = occursin("@bind", read(joinpath(start_dir, path), String)) && path ∉ settings.SliderServer.exclude
+        keep_running = !shutdown_after_completed && occursin("@bind", jl_contents) && path ∉ settings.SliderServer.exclude
         skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
         local notebook, original_state
@@ -53,17 +57,6 @@ module Actions
                     Pluto.SessionActions.shutdown(server_session, notebook)
                 end
                 if keep_running
-                    # filewatching
-                    # @asynclog while true
-                    #     # TODO: actually stop watching when/if the session closes
-                    #     watch_file(notebook.path)
-                    #     sleep(2)
-                    #     session, jl_contents, original_state = renew_session!(notebook_sessions, server_session, path, settings)
-                    #     if path ∉ settings.Export.exclude
-                    #         generate_static_export(path, settings, original_state, settings.Export.output_dir, jl_contents)
-                    #     end
-                    # end
-
                     bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
                     @info "Bond connections" showall(collect(bond_connections))
 
@@ -90,6 +83,7 @@ module Actions
             end
         end
         notebook_sessions[i], jl_contents, original_state
+        end
     end
 
     """
@@ -129,7 +123,8 @@ module Actions
                 -> pluto picksup the change [is the file ready?]
             -> renew_session [is pluto running? has pluto picked up file change?]
     """
-    function renew_session!(notebook_sessions, server_session, path, settings)
+    function renew_session!(notebook_sessions, server_session, path; 
+        settings::PlutoDeploySettings)
         @info "Renewing " path
         i = findfirst(s -> s.path == path, notebook_sessions)
         if isnothing(i)

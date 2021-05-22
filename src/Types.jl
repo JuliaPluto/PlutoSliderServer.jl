@@ -1,6 +1,6 @@
 module Types
     using Configurations
-    using TOML
+    import TOML
     import Pluto: Pluto, Token, Notebook
     export NotebookSession, RunningNotebookSession, QueuedNotebookSession, FinishedNotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration, withlock
     ###
@@ -81,14 +81,14 @@ module Types
     const locked_objects = Dict{UInt,Token}()
     function withlock(f, x)
         l = get!(Token, locked_objects, objectid(x))
-        put!(l)
+        take!(l)
         local result
         try
             result = f()
         catch e
             rethrow(e)
         finally
-            take!(l)
+            put!(l)
         end
         result
     end
