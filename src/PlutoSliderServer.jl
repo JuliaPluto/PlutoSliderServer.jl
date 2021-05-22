@@ -7,7 +7,7 @@ using FromFile
 @from "./Export.jl" using Export
 @from "./Actions.jl" import Actions: add_to_session!, generate_static_export, myhash, showall
 @from "./Types.jl" using Types: Types, NotebookSession, QueuedNotebookSession, RunningNotebookSession, FinishedNotebookSession, get_configuration
-@from "./Webhook.jl" import Webhook: register_webhook!
+@from "./Webhook.jl" import register_webhook!
 @from "./HTTPRouter.jl" import make_router
 
 import Pluto

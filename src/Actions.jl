@@ -5,7 +5,7 @@ module Actions
     using FromFile
     using FileWatching
 
-    export myhash, path_hash, showall, add_to_session!, renew_session!, remove_from_session!, register_webhook, generate_static_export, update_from_file
+    export myhash, path_hash, showall, add_to_session!, renew_session!, filter_sessions!, register_webhook, generate_static_export, update_from_file
     @from "./MoreAnalysis.jl" import MoreAnalysis 
     @from "./Export.jl" using Export
     @from "./Types.jl" using Types
@@ -140,7 +140,7 @@ module Actions
             read(joinpath(settings.SliderServer.start_dir, path), String)
         catch e
             @warn "notebook deleted; removing"
-            remove_from_session!(notebook_sessions, server_session, notebook_sessions[i].hash)
+            filter_sessions!(s -> s -> s.path != path, notebook_sessions, server_session)
             return
         end
         new_hash = path_hash(path)
@@ -164,23 +164,21 @@ module Actions
          notebook_sessions[i], jl_contents, original_state
     end
     """
-    Core Action. Stops a notebook from running in PlutoSliderServer
+    Core Action. Stop notebook from running in PlutoSliderServer.
+
+    Works like [`Base.filter!`](@ref).
     """
-    function remove_from_session!(notebook_sessions, server_session, hash)
-        i = findfirst(notebook_sessions) do sesh
-            sesh.hash === hash
+    function filter_sessions!(f::Function, notebook_sessions, server_session)
+        withlock(notebook_sessions) do
+            for sesh in enumerate(notebook_sessions)
+                if f(sesh) === false
+                    if sesh isa RunningNotebookSession
+                        Pluto.SessionActions.shutdown(server_session, sesh.notebook)
+                    end
+                    filter!(s -> s !== sesh, notebook_sessions)
+                end
+            end
         end
-        if i === nothing
-            @warn hash "Don't stop anything"
-            return
-        end
-        sesh = notebook_sessions[i]
-        Pluto.SessionActions.shutdown(server_session, sesh.notebook)
-        notebook_sessions[i] = FinishedNotebookSession(;
-            sesh.path,
-            sesh.hash,
-            sesh.original_state,
-        )
     end
 
     """
