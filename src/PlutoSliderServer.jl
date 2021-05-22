@@ -116,7 +116,7 @@ function run_directory(
             static_export && settings.SliderServer.serve_static_export_folder
         ) ? output_dir : nothing
         router = make_router(settings, server_session, notebook_sessions; static_dir )
-        register_webhook!(router, notebook_sessions, server_session, settings, static_dir)
+        register_webhook!(router, notebook_sessions, server_session, settings)
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port
