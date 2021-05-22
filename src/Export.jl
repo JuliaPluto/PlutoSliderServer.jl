@@ -67,7 +67,7 @@ function try_get_exact_pluto_version()
             p.git_revision
         end
     catch e
-        @error "Failed to get exact Pluto version from dependency. Your website is not guaranteed to work forever." # exception=(e, catch_backtrace())
+        @error "Failed to get exact Pluto version from dependency. Your website is not guaranteed to work forever." exception=(e, catch_backtrace())
         Pluto.PLUTO_VERSION
     end
 end
