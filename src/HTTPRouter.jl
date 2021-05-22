@@ -1,8 +1,19 @@
+using FromFile
 
-###
-# HTTP ROUTER
+import Pluto
+import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
+using HTTP
+using Base64
+using SHA
+using Sockets
 
-function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::NotebookSessionList; static_dir::Union{String,Nothing}=nothing)
+using Logging: global_logger
+using GitHubActions: GitHubActionsLogger
+
+@from "./Types.jl" using Types: Types, NotebookSession, NotebookSession, RunningNotebookSession, FinishedNotebookSession, QueuedNotebookSession, PlutoDeploySettings, get_configuration
+
+
+function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
     router = HTTP.Router()
 
     function get_sesh(request::HTTP.Request)

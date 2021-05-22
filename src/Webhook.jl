@@ -2,10 +2,10 @@ module Webhook
     export register_webhook!
 
     using FromFile
-    @from "Actions.jl" using Actions
-    @from "Types.jl" using Types
-    @from "FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
-    @from "Export.jl" import Export: default_index
+    @from "./Actions.jl" using Actions
+    @from "./Types.jl" using Types: Types, withlock, get_configuration
+    @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
+    @from "./Export.jl" import Export: default_index
     import Pluto: without_pluto_file_extension
     using HTTP
     using SHA
@@ -27,7 +27,7 @@ module Webhook
         TODO: restart julia process if settings (assumed to be at
         `pluto-deployment-environment/PlutoDeployment.toml`) change.
         """
-        function pull(request::HTTP.Request)
+        function handle_github_webhook(request::HTTP.Request)
             # Need to save configuration
             if get(ENV, "GITHUB_SECRET", "") !== ""
                 security_test = validate_github_headers(request, ENV["GITHUB_SECRET"])
@@ -44,7 +44,7 @@ module Webhook
                 @info new_settings
                 @info new_settings == settings
                 # TODO: Restart if settings changed
-                lock(notebook_sessions) do
+                withlock(notebook_sessions) do
                     old_paths = map(notebook_sessions) do sesh
                         sesh isa RunningNotebookSession ? sesh.path : nothing
                     end
@@ -101,15 +101,13 @@ module Webhook
                 @warn "Fail in reloading " e
                 showerror(stderr, e, stacktrace(catch_backtrace()))
                 rethrow(e)
-             HTTP.Response(503, "Failed to reload")
-             finally
             end
             sleep(max(rand(), 0.1)) # That's both trigger async AND protection against timing attacks :O
             return HTTP.Response(200, "Webhook accepted, async job started!")
         end
 
         # Register Webhook
-        HTTP.@register(router, "POST", "/github_webhook/", pull)
+        HTTP.@register(router, "POST", "/github_webhook/", handle_github_webhook)
 
         if static_dir === nothing
             function serve_pluto_asset(request::HTTP.Request)

@@ -6,8 +6,9 @@ using FromFile
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
 @from "./Actions.jl" import Actions: add_to_session!, generate_static_export, myhash, showall
-@from "./Types.jl" using Types
+@from "./Types.jl" using Types: Types, NotebookSession, QueuedNotebookSession, RunningNotebookSession, FinishedNotebookSession, get_configuration
 @from "./Webhook.jl" import Webhook: register_webhook!
+@from "./HTTPRouter.jl" import make_router
 
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
@@ -21,8 +22,6 @@ using GitHubActions: GitHubActionsLogger
 function __init__()
     get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
 end
-
-include("./HTTPRouter.jl")
 
 export export_directory, run_directory, github_action
 
@@ -110,9 +109,7 @@ function run_directory(
     settings.Pluto.evaluation.lazy_workspace_creation = true
     server_session = Pluto.ServerSession(;options=settings.Pluto)
 
-    notebook_sessions = NotebookSessionList(;
-        notebooksessions=[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
-    )
+    notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if run_server
         static_dir = (
@@ -212,4 +209,6 @@ function run_directory(
 
     wait(http_server_task)
 end
+
+
 end

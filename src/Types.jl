@@ -2,7 +2,7 @@ module Types
     using Configurations
     using TOML
     import Pluto: Pluto, Token, Notebook
-    export NotebookSessionList, NotebookSession, RunningNotebookSession, QueuedNotebookSession, FinishedNotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration
+    export NotebookSession, RunningNotebookSession, QueuedNotebookSession, FinishedNotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration, withlock
     ###
     # SESSION DEFINITION
     
@@ -27,56 +27,9 @@ module Types
         hash::String
         original_state
     end
-    
-    Base.@kwdef struct NotebookSessionList
-        notebooksessions::Vector{NotebookSession}
-        listlock::ReentrantLock = Base.ReentrantLock()
-    end
+
     ###
     # CONFIGURATION
-    function Base.lock(fn:: Function, 📃::NotebookSessionList)
-        lock(fn, 📃.listlock)
-    end
-
-    function Base.lock(📃::NotebookSessionList)
-        lock(📃.listlock)
-    end
-
-    function Base.push!(📃::NotebookSessionList, item::Any)
-        lock(📃.listlock) do 
-            push!(📃.notebooksessions, item)
-        end
-    end
-    
-    function Base.iterate(📃::NotebookSessionList)
-        iterate(📃.notebooksessions)
-    end
-    
-    function Base.iterate(📃::NotebookSessionList, state)
-        iterate(📃.notebooksessions, state)
-    end
-    
-    function Base.getindex(📃::NotebookSessionList, i::Any)
-        getindex(📃.notebooksessions, i)
-    end
-    
-    function Base.findfirst(fn::Function, 📃::NotebookSessionList)
-        findfirst(fn, 📃.notebooksessions)
-    end
-    
-    function Base.setindex!(📃::NotebookSessionList, v, i::Any)
-        lock(📃.listlock) do 
-            setindex!(📃.notebooksessions, v,  i)
-        end
-    end
-    
-    function Base.size(📃::NotebookSessionList)
-        size(📃.notebooksessions)
-    end
-    
-    function Base.eltype(📃::NotebookSessionList)
-        NotebookSession
-    end
 
     @option struct SliderServerSettings
         exclude::Vector=String[]
@@ -121,5 +74,23 @@ module Types
     
     merge_recursive(a::AbstractDict, b::AbstractDict) = mergewith(merge_recursive, a, b)
     merge_recursive(a, b) = b
+
+    ###
+    # LOCK
+
+    const locked_objects = Dict{UInt,Token}()
+    function withlock(f, x)
+        l = get!(Token, locked_objects, objectid(x))
+        put!(l)
+        local result
+        try
+            result = f()
+        catch e
+            rethrow(e)
+        finally
+            take!(l)
+        end
+        result
+    end
 end
 
