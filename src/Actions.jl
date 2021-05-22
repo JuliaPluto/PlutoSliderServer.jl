@@ -7,7 +7,7 @@ module Actions
 
     @from "./MoreAnalysis.jl" import MoreAnalysis 
     @from "./Export.jl" import Export: Export, generate_html, try_fromcache, try_tocache
-    @from "./Types.jl" import Types: PlutoDeploySettings, withlock, RunningNotebookSession, QueuedNotebookSession, FinishedNotebookSession, NotebookSession
+    @from "./Types.jl" import Types: PlutoDeploySettings, RunningNotebookSession, QueuedNotebookSession, FinishedNotebookSession, NotebookSession
     @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
     myhash = base64encode ∘ sha256
     path_hash = path -> myhash(read(path))
@@ -25,7 +25,6 @@ module Actions
             start_dir,
             shutdown_after_completed::Bool=false,
             )
-        withlock(notebook_sessions) do
         # TODO: Take these from Settings
         jl_contents = read(joinpath(start_dir, path), String)
         hash = myhash(jl_contents)
@@ -83,7 +82,6 @@ module Actions
             end
         end
         notebook_sessions[i], jl_contents, original_state
-        end
     end
 
     """
@@ -164,14 +162,12 @@ module Actions
     Works like [`Base.filter!`](@ref).
     """
     function filter_sessions!(f::Function, notebook_sessions, server_session)
-        withlock(notebook_sessions) do
-            for sesh in enumerate(notebook_sessions)
-                if f(sesh) === false
-                    if sesh isa RunningNotebookSession
-                        Pluto.SessionActions.shutdown(server_session, sesh.notebook)
-                    end
-                    filter!(s -> s !== sesh, notebook_sessions)
+        for sesh in enumerate(notebook_sessions)
+            if f(sesh) === false
+                if sesh isa RunningNotebookSession
+                    Pluto.SessionActions.shutdown(server_session, sesh.notebook)
                 end
+                filter!(s -> s !== sesh, notebook_sessions)
             end
         end
     end
