@@ -45,6 +45,7 @@ module Types
         ignore_cache::Vector=String[]
         pluto_cdn_root::Union{Nothing,String}=nothing
         baked_state::Bool=true
+        baked_notebookfile::Bool=true
         offer_binder::Bool=true
         disable_ui::Bool=true
         cache_dir::Union{Nothing,String}=nothing

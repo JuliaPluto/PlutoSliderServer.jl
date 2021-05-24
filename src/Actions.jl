@@ -89,7 +89,11 @@ module Actions
 
 
         notebookfile_js = if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
-            repr(basename(export_jl_path))
+            if settings.Export.baked_state
+                "\"data:;base64,$(base64encode(jl_contents))\""
+            else
+                repr(basename(export_jl_path))
+            end
         else
             "undefined"
         end
@@ -126,7 +130,7 @@ module Actions
         )
         write(export_html_path, html_contents)
 
-        if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
+        if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing) && !settings.Export.baked_state
             write(export_jl_path, jl_contents)
         end
 
