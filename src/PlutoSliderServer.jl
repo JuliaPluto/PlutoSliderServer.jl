@@ -183,6 +183,7 @@ function run_directory(
 
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
+    while reload(notebook_sessions, server_session)
     for (i, path) in enumerate(to_run)
         
         @info "[$(i)/$(length(to_run))] Opening $(path)"
@@ -205,7 +206,7 @@ function run_directory(
             generate_static_export(path, settings, original_state, output_dir, jl_contents)
         end
 
-        @info "[$(i)/$(length(to_run))] Ready $(path)" hash
+        # @info "[$(i)/$(length(to_run))] Ready $(path)" hash
     end
     @info "-- ALL NOTEBOOKS READY --"
 

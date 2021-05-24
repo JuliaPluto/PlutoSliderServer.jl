@@ -38,36 +38,57 @@ function reloadonce(notebook_sessions, server_session;
         @info "to stop" exit
 
         filter_sessions!(!occursin(exit), notebook_sessions, server_session)
-        
-        for path in update
+
+        local path, sesh, jl_contents, original_state
+        local did_update = false, did_enter = false
+        if !isempty(update)
+            path = first(update)
+
             sesh, jl_contents, original_state = renew_session!(notebook_sessions, server_session, path; settings)
             if path ∉ settings.Export.exclude
                 generate_static_export(path, settings, original_state, settings.Export.output_dir, jl_contents)
             end
-        end
+            did_update = true
+        elseif !isempty(enter)
+            path = first(enter)
 
-        for path in enter
             sesh, jl_contents, original_state = add_to_session!(
                 notebook_sessions, server_session, path;
-                settings=settings, 
-                shutdown_after_completed=false, 
+                settings, 
+                shutdown_after_completed, 
                 start_dir=settings.SliderServer.start_dir
             )
             if path ∉ settings.Export.exclude
                 generate_static_export(path, settings, original_state, settings.Export.output_dir, jl_contents)
             end
+            did_enter = true
         end
+
+         
+        did_something = did_update || did_enter
+
+        if did_something
+            ready = did_update + length(notebook_sessions) - length(update)
+            total = length(enter) + length(notebook_sessions)
+
+            @info "[$(ready)/$(total)]  Ready $(path)" sesh.hash
+        end
+
+
         # Create index!
-        running_sessions = filter(notebook_sessions) do sesh
-            sesh isa RunningNotebookSession
-        end
-        running_paths = map(s -> s.path, running_sessions)
-        if settings.SliderServer.serve_static_export_folder && settings.Export.create_index
-            write(joinpath(settings.Export.output_dir, "index.html"), default_index((
-                without_pluto_file_extension(path) => without_pluto_file_extension(path) * ".html"
-                for path in running_paths
-            )))
-            @info "Wrote index to" settings.Export.output_dir
-        end
+        # running_sessions = filter(notebook_sessions) do sesh
+        #     sesh isa RunningNotebookSession
+        # end
+        # running_paths = map(s -> s.path, running_sessions)
+        # if settings.SliderServer.serve_static_export_folder && settings.Export.create_index
+        #     write(joinpath(settings.Export.output_dir, "index.html"), default_index((
+        #         without_pluto_file_extension(path) => without_pluto_file_extension(path) * ".html"
+        #         for path in running_paths
+        #     )))
+        #     @info "Wrote index to" settings.Export.output_dir
+        # end
+
+
+        return need_to_run_again = length(update) + length(enter) > 1
     end
 end
