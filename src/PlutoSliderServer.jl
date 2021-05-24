@@ -8,6 +8,7 @@ using FromFile
 @from "./Actions.jl" import Actions: add_to_session!, generate_static_export, myhash, showall
 @from "./Types.jl" using Types: Types, NotebookSession, QueuedNotebookSession, RunningNotebookSession, FinishedNotebookSession, get_configuration
 @from "./Webhook.jl" import register_webhook!
+@from "./ReloadFolder.jl" import reload, reloadonce
 @from "./HTTPRouter.jl" import make_router
 
 import Pluto
@@ -115,8 +116,8 @@ function run_directory(
         static_dir = (
             static_export && settings.SliderServer.serve_static_export_folder
         ) ? output_dir : nothing
-        router = make_router(settings, server_session, notebook_sessions; static_dir )
-        register_webhook!(router, notebook_sessions, server_session, settings)
+        router = make_router(notebook_sessions, server_session; settings, static_dir )
+        register_webhook!(router, notebook_sessions, server_session; settings)
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port
@@ -178,6 +179,8 @@ function run_directory(
             )))
         end
     end
+
+
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
     for (i, path) in enumerate(to_run)

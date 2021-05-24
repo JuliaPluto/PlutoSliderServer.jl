@@ -1,5 +1,5 @@
 using FromFile
-@from "./Types.jl" using Types: get_configuration
+@from "./Types.jl" using Types: PlutoDeploySettings, get_configuration
 @from "./Export.jl" import Export: default_index
 @from "./ReloadFolder.jl" import reload
 
@@ -8,7 +8,7 @@ using HTTP
 using SHA
 
 # This function wraps our functions with PlutoSliderServer context. run_server & start_dir are set by the webhook options.
-function register_webhook!(router, notebook_sessions, server_session, settings)
+function register_webhook!(router, notebook_sessions, server_session; settings::PlutoDeploySettings)
 
     """
     Handle any events from GitHub.
@@ -42,7 +42,7 @@ function register_webhook!(router, notebook_sessions, server_session, settings)
             @info new_settings == settings
             # TODO: Restart if settings changed
             
-            reload(notebook_sessions, server_session, settings)
+            reload(notebook_sessions, server_session; settings)
         catch e
             @warn "Fail in reloading " e
             showerror(stderr, e, stacktrace(catch_backtrace()))

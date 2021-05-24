@@ -13,7 +13,10 @@ using GitHubActions: GitHubActionsLogger
 @from "./Types.jl" using Types: Types, NotebookSession, NotebookSession, RunningNotebookSession, FinishedNotebookSession, QueuedNotebookSession, PlutoDeploySettings, get_configuration
 
 
-function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
+function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, server_session::ServerSession; 
+    settings::PlutoDeploySettings,
+    static_dir::Union{String,Nothing}=nothing,
+    )
     router = HTTP.Router()
 
     function get_sesh(request::HTTP.Request)

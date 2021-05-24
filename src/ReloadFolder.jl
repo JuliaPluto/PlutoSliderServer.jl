@@ -1,6 +1,6 @@
 using FromFile
 @from "./Actions.jl" using Actions: Actions, path_hash
-@from "./Types.jl" using Types: Types, withlock, get_configuration
+@from "./Types.jl" using Types: Types, PlutoDeploySettings, withlock, get_configuration
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
 @from "./Export.jl" import Export: default_index
 import Pluto: without_pluto_file_extension
@@ -21,7 +21,12 @@ function d3join(notebook_sessions, new_paths)
     )
 end
 
-function reload(notebook_sessions, server_session, settings)
+reload(args...; kwargs...) = while reloadonce(args...; kwargs...); end
+
+function reloadonce(notebook_sessions, server_session; 
+        settings::PlutoDeploySettings,
+        shutdown_after_completed::Bool=false,
+    )
     enter, update, exit = d3join(
         notebook_sessions,
         setdiff(find_notebook_files_recursive(settings.SliderServer.start_dir), settings.SliderServer.exclude)
