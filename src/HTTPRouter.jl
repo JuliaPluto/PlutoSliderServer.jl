@@ -164,8 +164,8 @@ function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, serve
             end
             Pluto.asset_response(path)
         else
-            if done == length(notebook_sessions)
-                HTTP.Response(503, "Still loading the notebooks... check back later! [$(done)/$(length(notebook_sessions))]")
+            if done < length(notebook_sessions)
+                HTTP.Response(503, "Still loading the notebooks... check back later! [$(done)/$(length(notebook_sessions)) ready]")
             else
                 HTTP.Response(200, "Hi!")
             end
