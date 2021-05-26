@@ -5,11 +5,11 @@ using FromFile
 @from "./Export.jl" import Export: default_index
 import Pluto: without_pluto_file_extension
 
-function d3join(notebook_sessions, new_paths)
+function d3join(notebook_sessions, new_paths; start_dir::AbstractString)
     old_paths = map(s -> s.path, notebook_sessions)
-    old_hashes = map(s -> s.hash, notebook_sessions)
+    old_hashes = map(s -> s.current_hash, notebook_sessions)
 
-    new_hashes = path_hash.(new_paths)
+    new_hashes = path_hash.(joinpath.([start_dir], new_paths))
 
     (
         enter = setdiff(new_paths, old_paths),
@@ -27,12 +27,13 @@ select(f::Function, xs) = for x in xs
     end
 end
 
-function update_sessions!(notebook_sessions, new_paths; 
-    settings::PlutoDeploySettings,
-)
+function update_sessions!(notebook_sessions, new_paths;
+        start_dir::AbstractString
+    )
     enter, update, exit = d3join(
         notebook_sessions,
-        new_paths
+        new_paths;
+        start_dir
     )
 
     withlock(notebook_sessions) do
@@ -42,7 +43,7 @@ function update_sessions!(notebook_sessions, new_paths;
             push!(notebook_sessions, NotebookSession(;
                 path=path,
                 current_hash=nothing,
-                desired_hash=path_hash(path),
+                desired_hash=path_hash(joinpath(start_dir, path)),
                 run=nothing,
             ))
         end
@@ -52,7 +53,7 @@ function update_sessions!(notebook_sessions, new_paths;
             new = NotebookSession(;
                 path=path,
                 current_hash=old.current_hash,
-                desired_hash=(path ∈ exit ? nothing : path_hash(path)),
+                desired_hash=(path ∈ exit ? nothing : path_hash(joinpath(start_dir, path))),
                 run=old.run,
             )
             replace!(notebook_sessions, old => new)
@@ -61,3 +62,4 @@ function update_sessions!(notebook_sessions, new_paths;
 
     notebook_sessions
 end
+

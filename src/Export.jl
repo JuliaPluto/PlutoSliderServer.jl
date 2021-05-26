@@ -45,9 +45,13 @@ try_tocache(cache_dir::Nothing, hash, state) = nothing
 
 ## FINDING THE PLUTO VERSION
 
+const found_pluto_version = Ref{Any}(nothing)
 
 function try_get_exact_pluto_version()
-    try
+    if found_pluto_version[] !== nothing
+        return found_pluto_version[]
+    end
+    found_pluto_version[] = try
         deps = Pkg.API.dependencies()
 
         p_index = findfirst(p -> p.name == "Pluto", deps)

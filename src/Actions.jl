@@ -3,14 +3,15 @@ import Pluto: Pluto, without_pluto_file_extension, @asynclog
 using Base64
 using SHA
 using FromFile
-using FileWatching
 
 @from "./MoreAnalysis.jl" import MoreAnalysis 
 @from "./Export.jl" import Export: Export, generate_html, try_fromcache, try_tocache
 @from "./Types.jl" import Types: PlutoDeploySettings, NotebookSession, RunningNotebook, FinishedNotebook
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
 myhash = base64encode ∘ sha256
-path_hash = path -> myhash(read(path))
+function path_hash(path)
+    myhash(read(path))
+end
 
 showall(xs) = Text(join(string.(xs),"\n"))
 
@@ -51,7 +52,8 @@ function process(s::NotebookSession{Nothing,String,<:Any};
     )::NotebookSession
 
     path = s.path
-    new_hash = path_hash(path)
+    abs_path = joinpath(start_dir, path)
+    new_hash = path_hash(abs_path)
     if new_hash != s.desired_hash
         @error "Hashfk ajhsdf kha sdkfjh "
     end
@@ -59,7 +61,7 @@ function process(s::NotebookSession{Nothing,String,<:Any};
     @info "Launching the notebook"
 
     # TODO: Take these from Settings
-    jl_contents = read(joinpath(start_dir, path), String)
+    jl_contents = read(abs_path, String)
     hash = myhash(jl_contents)
     
     keep_running = !shutdown_after_completed
@@ -77,7 +79,7 @@ function process(s::NotebookSession{Nothing,String,<:Any};
     else
         try
             # open and run the notebook (TODO: tell pluto not to write to the notebook file)
-            notebook = Pluto.SessionActions.open(server_session, joinpath(start_dir, path); run_async=false)
+            notebook = Pluto.SessionActions.open(server_session, abs_path; run_async=false)
             # get the state object
             original_state = Pluto.notebook_to_js(notebook)
             # shut down the notebook
@@ -134,7 +136,8 @@ function process(s::NotebookSession{String,String,<:Any};
     )::NotebookSession
 
     if s.current_hash != s.desired_hash
-        new_hash = path_hash(s.path)
+        abs_path = joinpath(start_dir, s.path)
+        new_hash = path_hash(abs_path)
         if new_hash != s.desired_hash
             @error "Hashfk ajhsdf kha sdkfjh "
         end
@@ -228,9 +231,9 @@ will_process(s) = should_update(s) || should_launch(s) || should_shutdown(s)
 #         filter_sessions!(s -> s -> s.path != path, notebook_sessions, server_session)
 #         return
 #     end
-#     new_hash = path_hash(path)
+#     new_hash = path_hash(abs_path)
 #     session = notebook_sessions[i]
-#     if new_hash == session.hash
+#     if new_hash == session.current_hash
 #         println("Renewing unnecessary; returning!") 
 #     end
 #     # filewatching

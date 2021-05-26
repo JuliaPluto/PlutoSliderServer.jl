@@ -5,10 +5,10 @@ using FromFile
 @from "./MoreAnalysis.jl" import MoreAnalysis
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
-@from "./Actions.jl" import process
+@from "./Actions.jl" import process, should_shutdown, should_update, should_launch
 @from "./Types.jl" using Types: Types, NotebookSession, get_configuration, withlock
 @from "./Webhook.jl" import register_webhook!
-@from "./ReloadFolder.jl" import update_sessions!
+@from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router
 
 import Pluto
@@ -17,6 +17,7 @@ using HTTP
 using Base64
 using SHA
 using Sockets
+import BetterFileWatching: watch_folder
 
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
@@ -83,7 +84,6 @@ function run_directory(
         kwargs...
     )
 
-    pluto_version = Export.try_get_exact_pluto_version()
     settings = get_configuration(config_toml_path;kwargs...)
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
@@ -131,7 +131,7 @@ function run_directory(
             @info new_settings == settings
             # TODO: Restart if settings changed
             
-            reload(notebook_sessions, server_session; settings)
+            # reload(notebook_sessions, server_session; settings)
         end
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
@@ -196,21 +196,56 @@ function run_directory(
     end
 
 
+    function refresh_until_synced(check_dir_on_every_step::Bool)
+        check_dir_on_every_step && update_sessions!(notebook_sessions, getpaths(); start_dir)
+
+        should_continue = 
+        withlock(notebook_sessions) do
+            # todo: try catch to release lock?
+            to_shutdown = select(should_shutdown, notebook_sessions)
+            to_update = select(should_update, notebook_sessions)
+            to_launch = select(should_launch, notebook_sessions)
+    
+            s = something(to_shutdown, to_update, to_launch, "not found")
+    
+            if s != "not found"
+                replace!(notebook_sessions, s => process(s;
+                    server_session,
+                    settings,
+                    output_dir,
+                    start_dir,
+                    shutdown_after_completed=!run_server,
+                ))
+
+                true
+            else
+                @info "-- ALL NOTEBOOKS READY --"
+                false
+            end
+        end
+
+        should_continue && refresh_until_synced(check_dir_on_every_step)
+    end
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
-    update_sessions!(notebook_sessions, getpaths(); settings)
-    withlock(notebook_sessions) do
-        for i in eachindex(notebook_sessions)
-            notebook_sessions[i] = process(notebook_sessions[i];
-                server_session,
-                settings,
-                output_dir,
-                start_dir,
-                shutdown_after_completed=!run_server,
-            )
+    update_sessions!(notebook_sessions, getpaths(); start_dir)
+    refresh_until_synced(false)
+
+    watch_dir_task = Pluto.@asynclog if settings.SliderServer.watch_dir
+        while true
+            watch_folder(start_dir)
+            @info "File change detected!"
+            sleep(.5)
+            refresh_until_synced(true)
+            @info "File changes handled"
         end
     end
-    @info "-- ALL NOTEBOOKS READY --"
+
+    if settings.SliderServer.watch_dir
+        # todo: skip first watch_folder so that we dont need this sleepo
+        sleep(2)
+    end
+
 
     on_ready((;
         serversocket,
@@ -218,7 +253,12 @@ function run_directory(
         notebook_sessions,
     ))
 
-    wait(http_server_task)
+    try
+        wait(http_server_task)
+    catch e
+        schedule(watch_dir_task, e; error=true)
+        e isa InterruptException || rethrow(e)
+    end
 end
 
 

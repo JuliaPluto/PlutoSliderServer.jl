@@ -25,7 +25,7 @@ using Base64
         still_booting[] = false
     end
 
-    t = Pluto.@async begin
+    t = Pluto.@asynclog begin
         try
             PlutoSliderServer.run_directory(test_dir;
             static_export=false,

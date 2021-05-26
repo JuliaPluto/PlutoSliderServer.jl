@@ -3,7 +3,7 @@ module Types
     import TOML
     import Pluto: Pluto, Token, Notebook
     export NotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration, withlock
-    
+
     ###
     # SESSION DEFINITION
 
@@ -39,6 +39,7 @@ module Types
         simulated_lag::Real=0
         serve_static_export_folder::Bool=true
         start_dir="." # Relative to julia that is running
+        watch_dir::Bool=false
         repository::Union{Nothing,String}=nothing
     end
     
