@@ -1,3 +1,5 @@
+import PlutoSliderServer
+
 just_run_test_server = false
 ENV["JULIA_DEBUG"] = PlutoSliderServer
 
