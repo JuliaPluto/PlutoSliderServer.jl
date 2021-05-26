@@ -18,7 +18,7 @@ showall(xs) = Text(join(string.(xs),"\n"))
 
 ###
 # Shutdown
-function process(s::NotebookSession{String,Nothing,RunningNotebook};
+function process(s::NotebookSession{String,Nothing,<:Any};
         server_session::Pluto.ServerSession,
         settings::PlutoDeploySettings,
         output_dir::AbstractString,
@@ -29,6 +29,15 @@ function process(s::NotebookSession{String,Nothing,RunningNotebook};
     
     if s.run isa RunningNotebook
         Pluto.SessionActions.shutdown(server_session, s.run.notebook)
+    end
+
+    try
+        remove_static_export(s.path;
+            settings,
+            output_dir,
+        )
+    catch e
+        @warn "Failed to remove static export files" s.path exception=(e,catch_backtrace())
     end
     
     @info "Shut down" s.path
@@ -135,26 +144,33 @@ function process(s::NotebookSession{String,String,<:Any};
         shutdown_after_completed::Bool=false,
     )::NotebookSession
 
+    @info "Update method called" s.path s.current_hash s.desired_hash
+
     if s.current_hash != s.desired_hash
-        abs_path = joinpath(start_dir, s.path)
-        new_hash = path_hash(abs_path)
-        if new_hash != s.desired_hash
-            @error "Hashfk ajhsdf kha sdkfjh "
+        @info "Updating notebook..." s.path
+        
+        # Simple way to update: shut down notebook and start new one
+        if s.run isa RunningNotebook
+            Pluto.SessionActions.shutdown(server_session, s.run.notebook)
         end
 
-        @info "TODO: update the notebook"
+        @info "Shutdown done" s.path
 
-        # generate_static_export(path, s.run.original_state, jl_contents;
-        #     settings,
-        #     output_dir,
-        # )
-
-        NotebookSession(;
+        result = process(NotebookSession(;
             path=s.path,
-            current_hash=new_hash,
+            current_hash=nothing,
             desired_hash=s.desired_hash,
-            run=s.run,
+            run=nothing,
+        );
+            server_session,
+            settings,
+            output_dir,
+            start_dir,
+            shutdown_after_completed,
         )
+        @info "process relay done" s.path
+
+        result
     else
         s
     end
@@ -325,4 +341,30 @@ function generate_static_export(path, original_state, jl_contents; settings, out
     end
 
     @info "Written to $(export_html_path)"
+end
+
+tryrm(x) = isfile(x) && rm(x)
+
+function remove_static_export(path; settings, output_dir)
+    export_jl_path = let
+        relative_to_notebooks_dir = path
+        joinpath(output_dir, relative_to_notebooks_dir)
+    end
+    export_html_path = let
+        relative_to_notebooks_dir = without_pluto_file_extension(path) * ".html"
+        joinpath(output_dir, relative_to_notebooks_dir)
+    end
+    export_statefile_path = let
+        relative_to_notebooks_dir = without_pluto_file_extension(path) * ".plutostate"
+        joinpath(output_dir, relative_to_notebooks_dir)
+    end
+
+
+    if !settings.Export.baked_state
+        tryrm(export_statefile_path)
+    end
+    tryrm(export_html_path)
+    if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
+        tryrm(export_jl_path)
+    end
 end

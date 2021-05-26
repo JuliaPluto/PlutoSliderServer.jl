@@ -1,4 +1,5 @@
 just_run_test_server = false
+ENV["JULIA_DEBUG"] = PlutoSliderServer
 
 if just_run_test_server
     include("./runtestserver.jl")

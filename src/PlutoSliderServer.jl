@@ -197,25 +197,35 @@ function run_directory(
 
 
     function refresh_until_synced(check_dir_on_every_step::Bool)
-        check_dir_on_every_step && update_sessions!(notebook_sessions, getpaths(); start_dir)
+        should_continue = withlock(notebook_sessions) do
+            
+            check_dir_on_every_step && update_sessions!(notebook_sessions, @show(getpaths()); start_dir)
 
-        should_continue = 
-        withlock(notebook_sessions) do
             # todo: try catch to release lock?
             to_shutdown = select(should_shutdown, notebook_sessions)
             to_update = select(should_update, notebook_sessions)
             to_launch = select(should_launch, notebook_sessions)
     
             s = something(to_shutdown, to_update, to_launch, "not found")
+
+            @show s === to_update
     
             if s != "not found"
-                replace!(notebook_sessions, s => process(s;
+                new = process(s;
                     server_session,
                     settings,
                     output_dir,
                     start_dir,
                     shutdown_after_completed=!run_server,
-                ))
+                )
+                if new !== s
+                    if new isa NotebookSession{Nothing,Nothing,<:Any}
+                        # remove it
+                        filter!(!isequal(s), notebook_sessions)
+                    elseif s !== new
+                        replace!(notebook_sessions, s => new)
+                    end
+                end
 
                 true
             else
@@ -232,13 +242,13 @@ function run_directory(
     refresh_until_synced(false)
 
     watch_dir_task = Pluto.@asynclog if settings.SliderServer.watch_dir
-        while true
-            watch_folder(start_dir)
+        debounced = kind_of_debounced() do _
             @info "File change detected!"
             sleep(.5)
             refresh_until_synced(true)
             @info "File changes handled"
         end
+        watch_folder(debounced, start_dir)
     end
 
     if settings.SliderServer.watch_dir
@@ -260,6 +270,28 @@ function run_directory(
         e isa InterruptException || rethrow(e)
     end
 end
+
+function kind_of_debounced(f)
+    update_waiting = Ref(true)
+    running = Ref(false)
+
+    function go(args...)
+        # @info "trigger" update_waiting[] running[]
+        update_waiting[] = true
+        if !running[]
+            running[] = true
+            update_waiting[] = false
+
+            f(args...)
+            running[] = false
+        end
+        update_waiting[] && go(args...)
+    end
+
+    return go
+end
+
+
 
 
 end

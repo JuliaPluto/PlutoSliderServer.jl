@@ -6,10 +6,16 @@ using FromFile
 import Pluto: without_pluto_file_extension
 
 function d3join(notebook_sessions, new_paths; start_dir::AbstractString)
-    old_paths = map(s -> s.path, notebook_sessions)
-    old_hashes = map(s -> s.current_hash, notebook_sessions)
+    
+    desired_notebook_sessions = filter(s -> s.desired_hash !== nothing, notebook_sessions)
 
-    new_hashes = path_hash.(joinpath.([start_dir], new_paths))
+    old_paths = map(s -> s.path, desired_notebook_sessions)
+    old_hashes = map(s -> s.current_hash, desired_notebook_sessions)
+
+    new_hashes = map(old_paths) do path
+        abs_path = joinpath(start_dir, path)
+        isfile(abs_path) ? path_hash(abs_path) : nothing
+    end
 
     (
         enter = setdiff(new_paths, old_paths),
@@ -36,28 +42,27 @@ function update_sessions!(notebook_sessions, new_paths;
         start_dir
     )
 
-    withlock(notebook_sessions) do
-        @info "d3 join result" enter update exit
+    @info "d3 join result" enter update exit
 
-        for path in enter
-            push!(notebook_sessions, NotebookSession(;
-                path=path,
-                current_hash=nothing,
-                desired_hash=path_hash(joinpath(start_dir, path)),
-                run=nothing,
-            ))
-        end
+    for path in enter
+        push!(notebook_sessions, NotebookSession(;
+            path=path,
+            current_hash=nothing,
+            desired_hash=path_hash(joinpath(start_dir, path)),
+            run=nothing,
+        ))
+    end
 
-        for path in update ∪ exit
-            old = select(s -> s.path != path, notebook_sessions)
-            new = NotebookSession(;
-                path=path,
-                current_hash=old.current_hash,
-                desired_hash=(path ∈ exit ? nothing : path_hash(joinpath(start_dir, path))),
-                run=old.run,
-            )
-            replace!(notebook_sessions, old => new)
-        end
+    for path in update ∪ exit
+        old = select(s -> s.path == path, notebook_sessions)
+        @assert old !== nothing
+        new = NotebookSession(;
+            path=path,
+            current_hash=old.current_hash,
+            desired_hash=(path ∈ exit ? nothing : path_hash(joinpath(start_dir, path))),
+            run=old.run,
+        )
+        replace!(notebook_sessions, old => new)
     end
 
     notebook_sessions
