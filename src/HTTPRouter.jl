@@ -10,8 +10,10 @@ using Sockets
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
 
-@from "./Types.jl" using Types: Types, NotebookSession, NotebookSession, RunningNotebookSession, FinishedNotebookSession, QueuedNotebookSession, PlutoDeploySettings, get_configuration
+@from "./Types.jl" import Types: NotebookSession, RunningNotebook, PlutoDeploySettings, get_configuration
 
+const RunningNotebookSession = NotebookSession{String,String,RunningNotebook}
+const QueuedNotebookSession = NotebookSession{Nothing,<:Any,<:Any}
 
 function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, server_session::ServerSession; 
     settings::PlutoDeploySettings,
@@ -27,7 +29,7 @@ function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, serve
         notebook_hash = parts[2] |> HTTP.unescapeuri
 
         i = findfirst(notebook_sessions) do sesh
-            sesh.hash == notebook_hash
+            sesh.current_hash == notebook_hash
         end
         
         if i === nothing
@@ -70,7 +72,7 @@ function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, serve
         sesh = get_sesh(request)        
         
         response = if sesh isa RunningNotebookSession
-            notebook = sesh.notebook
+            notebook = sesh.run.notebook
             
             bonds = try
                 get_bonds(request)
@@ -85,7 +87,7 @@ function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, serve
                 lag > 0 && sleep(lag)
             end
 
-            topological_order, new_state = withtoken(sesh.token) do
+            topological_order, new_state = withtoken(sesh.run.token) do
                 try
                     notebook.bonds = bonds
 
@@ -126,7 +128,7 @@ function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, serve
                 new
             end
 
-            patches = Firebasey.diff(only_relevant(sesh.original_state), only_relevant(new_state))
+            patches = Firebasey.diff(only_relevant(sesh.run.original_state), only_relevant(new_state))
             patches_as_dicts::Array{Dict} = patches
 
             HTTP.Response(200, Pluto.pack(Dict{String,Any}(
@@ -144,7 +146,7 @@ function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, serve
         sesh = get_sesh(request)
         
         response = if sesh isa RunningNotebookSession
-            HTTP.Response(200, Pluto.pack(sesh.bond_connections)) |> with_cors! |> with_cachable! |> with_msgpack!
+            HTTP.Response(200, Pluto.pack(sesh.run.bond_connections)) |> with_cors! |> with_cachable! |> with_msgpack!
         elseif sesh isa QueuedNotebookSession
             HTTP.Response(503, "Still loading the notebooks... check back later!") |> with_cors! |> with_not_cachable!
         else
@@ -235,6 +237,6 @@ end
 function temp_index(s::QueuedNotebookSession)
     without_pluto_file_extension(s.path) => nothing
 end
-function temp_index(s::Union{FinishedNotebookSession,RunningNotebookSession})
+function temp_index(s::NotebookSession{String,<:Any,<:Any})
     without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path)*".html"
 end

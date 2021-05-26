@@ -6,10 +6,10 @@ using FromFile
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
 @from "./Actions.jl" import process
-@from "./Types.jl" using Types: Types, NotebookSession, get_configuration
-# @from "./Webhook.jl" import register_webhook!
+@from "./Types.jl" using Types: Types, NotebookSession, get_configuration, withlock
+@from "./Webhook.jl" import register_webhook!
 @from "./ReloadFolder.jl" import update_sessions!
-# @from "./HTTPRouter.jl" import make_router
+@from "./HTTPRouter.jl" import make_router
 
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
@@ -89,11 +89,11 @@ function run_directory(
     mkpath(output_dir)
 
     function getpaths()
-        notebook_paths = find_notebook_files_recursive(start_dir)
+        all_nbs = notebook_paths !== nothing ? notebook_paths : find_notebook_files_recursive(start_dir)
         if static_export
-            setdiff(notebook_paths, settings.SliderServer.exclude ∩ settings.Export.exclude)
+            setdiff(all_nbs, settings.SliderServer.exclude ∩ settings.Export.exclude)
         else
-            s = setdiff(notebook_paths, settings.SliderServer.exclude)
+            s = setdiff(all_nbs, settings.SliderServer.exclude)
             filter(s) do f
                 occursin("@bind", read(joinpath(start_dir, f), String))
             end
@@ -106,9 +106,9 @@ function run_directory(
 
     run_server && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
 
-    if to_run != notebook_paths
-        @info "Excluded notebooks:" showall(setdiff(notebook_paths, to_run))
-    end
+    # if to_run != notebook_paths
+    #     @info "Excluded notebooks:" showall(setdiff(notebook_paths, to_run))
+    # end
 
     @info "Pluto notebooks to run:" showall(to_run)
 
@@ -124,7 +124,15 @@ function run_directory(
             static_export && settings.SliderServer.serve_static_export_folder
         ) ? output_dir : nothing
         router = make_router(notebook_sessions, server_session; settings, static_dir )
-        register_webhook!(router, notebook_sessions, server_session; settings)
+        register_webhook!(router) do
+            config_toml_path = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
+            new_settings = get_configuration(config_toml_path)
+            @info new_settings
+            @info new_settings == settings
+            # TODO: Restart if settings changed
+            
+            reload(notebook_sessions, server_session; settings)
+        end
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port
@@ -190,41 +198,18 @@ function run_directory(
 
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
-    @warn "Updating sessions"
     update_sessions!(notebook_sessions, getpaths(); settings)
-    @warn "Processing sessions"
-    process.(notebook_sessions;
-        server_session,
-        settings,
-        output_dir,
-        start_dir,
-        shutdown_after_completed=!run_server,
-    )
-
-    # false && for (i, path) in enumerate(to_run)
-        
-    #     @info "[$(i)/$(length(to_run))] Opening $(path)"
-
-    #     local session, jl_contents, original_state
-    #     # That's because you can't continue in a loop
-    #     # try
-    #         session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path;
-    #             settings, 
-    #             shutdown_after_completed=!run_server, 
-    #             start_dir
-    #             )
-    #     # catch e
-    #         # @error "asdfadf" ex=(e,catch_backtrace())
-    #         # rethrow(e)
-    #         # continue
-    #     # end
-    
-    #     if static_export
-    #         generate_static_export(path, settings, original_state, output_dir, jl_contents)
-    #     end
-
-    #     # @info "[$(i)/$(length(to_run))] Ready $(path)" hash
-    # end
+    withlock(notebook_sessions) do
+        for i in eachindex(notebook_sessions)
+            notebook_sessions[i] = process(notebook_sessions[i];
+                server_session,
+                settings,
+                output_dir,
+                start_dir,
+                shutdown_after_completed=!run_server,
+            )
+        end
+    end
     @info "-- ALL NOTEBOOKS READY --"
 
     on_ready((;
