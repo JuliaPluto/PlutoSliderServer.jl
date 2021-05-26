@@ -25,7 +25,7 @@ using Base64
         still_booting[] = false
     end
 
-    t = Pluto.@async begin
+    t = Pluto.@asynclog begin
         try
             PlutoSliderServer.run_directory(test_dir;
             static_export=false,
@@ -46,14 +46,16 @@ using Base64
 
     notebook_sessions = ready_result[].notebook_sessions
 
+    @show notebook_paths [(s.path, typeof(s.run), s.current_hash) for s in notebook_sessions]
+
     @testset "Bond connections - $(name)" for (i, name) in enumerate(notebook_paths)
         s = notebook_sessions[i]
 
-        response = HTTP.get("http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(s.hash))/")
+        response = HTTP.get("http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(s.current_hash))/")
 
         result = Pluto.unpack(response.body)
 
-        @test result == Dict(String(k) => String.(v) for (k,v) in s.bond_connections)
+        @test result == Dict(String(k) => String.(v) for (k,v) in s.run.bond_connections)
     end
 
 
@@ -70,7 +72,7 @@ using Base64
                 "y" => v(42),
             )
 
-            state = Pluto.unpack(Pluto.pack(s.original_state))
+            state = Pluto.unpack(Pluto.pack(s.run.original_state))
 
             sum_cell_id = "26025270-9b5e-4841-b295-0c47437bc7db"
 
@@ -79,9 +81,9 @@ using Base64
                     base64encode |>
                     HTTP.URIs.escapeuri
                 
-                HTTP.request(method, "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.hash))/$(arg)")
+                HTTP.request(method, "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.current_hash))/$(arg)")
             else
-                HTTP.request(method, "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.hash))/", [], Pluto.pack(bonds))
+                HTTP.request(method, "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.current_hash))/", [], Pluto.pack(bonds))
             end
 
             result = Pluto.unpack(response.body)

@@ -2,32 +2,33 @@ module Types
     using Configurations
     import TOML
     import Pluto: Pluto, Token, Notebook
-    export NotebookSession, RunningNotebookSession, QueuedNotebookSession, FinishedNotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration, withlock
+    export NotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration, withlock
+
     ###
     # SESSION DEFINITION
-    
-    abstract type NotebookSession end
-    
-    Base.@kwdef struct RunningNotebookSession <: NotebookSession
+
+    abstract type RunResult end
+
+    Base.@kwdef struct RunningNotebook <: RunResult
         path::String
-        hash::String
         notebook::Pluto.Notebook
         original_state
         token::Token=Token()
         bond_connections::Dict{Symbol,Vector{Symbol}}
     end
-    
-    Base.@kwdef struct QueuedNotebookSession <: NotebookSession
+    Base.@kwdef struct FinishedNotebook <: RunResult
         path::String
-        hash::String
-    end
-    
-    Base.@kwdef struct FinishedNotebookSession <: NotebookSession
-        path::String
-        hash::String
         original_state
     end
 
+    Base.@kwdef struct NotebookSession{C<:Union{Nothing,String}, D<:Union{Nothing,String}, R<:Union{Nothing,RunResult}}
+        path::String
+        current_hash::C
+        desired_hash::D
+        run::R
+    end
+
+    
     ###
     # CONFIGURATION
 
@@ -38,6 +39,7 @@ module Types
         simulated_lag::Real=0
         serve_static_export_folder::Bool=true
         start_dir="." # Relative to julia that is running
+        watch_dir::Bool=false
         repository::Union{Nothing,String}=nothing
     end
     

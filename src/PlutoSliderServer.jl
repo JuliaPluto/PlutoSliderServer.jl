@@ -5,10 +5,10 @@ using FromFile
 @from "./MoreAnalysis.jl" import MoreAnalysis
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
-@from "./Actions.jl" import Actions: add_to_session!, generate_static_export, myhash, showall
-@from "./Types.jl" using Types: Types, NotebookSession, QueuedNotebookSession, RunningNotebookSession, FinishedNotebookSession, get_configuration
+@from "./Actions.jl" import process, should_shutdown, should_update, should_launch
+@from "./Types.jl" using Types: Types, NotebookSession, get_configuration, withlock
 @from "./Webhook.jl" import register_webhook!
-@from "./ReloadFolder.jl" import reload, reloadonce
+@from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router
 
 import Pluto
@@ -17,6 +17,7 @@ using HTTP
 using Base64
 using SHA
 using Sockets
+import BetterFileWatching: watch_folder
 
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
@@ -26,6 +27,7 @@ end
 
 export export_directory, run_directory, github_action
 
+showall(xs) = Text(join(string.(xs),"\n"))
 
 """
     export_directory(start_dir::String="."; kwargs...)
@@ -69,40 +71,44 @@ Run the Pluto bind server for all Pluto notebooks in the given directory (recurs
 - `SliderServer_port::Integer=2345`: Port to run the HTTP server on.
 - `SliderServer_host="127.0.0.1"`: Often set to `"0.0.0.0"` on a server.
 - `static_export::Bool=false`: Also export static files?
-- `notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir)`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
+- `notebook_paths::Union{Nothing,Vector{String}}=nothing`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
 
 If `static_export` is `true`, then additional `Export_` keywords can be given, see [`export_directory`](@ref).
 """
 function run_directory(
         start_dir::String="."; 
-        notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir),
+        notebook_paths::Union{Nothing,Vector{String}}=nothing,
         static_export::Bool=false, run_server::Bool=true, 
         on_ready::Function=((args...)->()),
         config_toml_path::Union{String,Nothing}=joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml"),
         kwargs...
     )
 
-    pluto_version = Export.try_get_exact_pluto_version()
     settings = get_configuration(config_toml_path;kwargs...)
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
 
-    to_run = if static_export
-        setdiff(notebook_paths, settings.SliderServer.exclude ∩ settings.Export.exclude)
-    else
-        s = setdiff(notebook_paths, settings.SliderServer.exclude)
-        filter(s) do f
-            occursin("@bind", read(joinpath(start_dir, f), String))
+    function getpaths()
+        all_nbs = notebook_paths !== nothing ? notebook_paths : find_notebook_files_recursive(start_dir)
+        if static_export
+            setdiff(all_nbs, settings.SliderServer.exclude ∩ settings.Export.exclude)
+        else
+            s = setdiff(all_nbs, settings.SliderServer.exclude)
+            filter(s) do f
+                occursin("@bind", read(joinpath(start_dir, f), String))
+            end
         end
     end
+
+    to_run = getpaths()
     
     @info "Settings" Text(settings)
 
     run_server && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
 
-    if to_run != notebook_paths
-        @info "Excluded notebooks:" showall(setdiff(notebook_paths, to_run))
-    end
+    # if to_run != notebook_paths
+    #     @info "Excluded notebooks:" showall(setdiff(notebook_paths, to_run))
+    # end
 
     @info "Pluto notebooks to run:" showall(to_run)
 
@@ -110,14 +116,23 @@ function run_directory(
     settings.Pluto.evaluation.lazy_workspace_creation = true
     server_session = Pluto.ServerSession(;options=settings.Pluto)
 
-    notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
+    notebook_sessions = NotebookSession[]
+    # notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if run_server
         static_dir = (
             static_export && settings.SliderServer.serve_static_export_folder
         ) ? output_dir : nothing
         router = make_router(notebook_sessions, server_session; settings, static_dir )
-        register_webhook!(router, notebook_sessions, server_session; settings)
+        register_webhook!(router) do
+            config_toml_path = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
+            new_settings = get_configuration(config_toml_path)
+            @info new_settings
+            @info new_settings == settings
+            # TODO: Restart if settings changed
+            
+            # reload(notebook_sessions, server_session; settings)
+        end
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port
@@ -181,34 +196,56 @@ function run_directory(
     end
 
 
+    function refresh_until_synced(check_dir_on_every_step::Bool)
+        check_dir_on_every_step && update_sessions!(notebook_sessions, getpaths(); start_dir)
 
-    # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
-    while reload(notebook_sessions, server_session)
-    for (i, path) in enumerate(to_run)
-        
-        @info "[$(i)/$(length(to_run))] Opening $(path)"
-
-        local session, jl_contents, original_state
-        # That's because you can't continue in a loop
-        # try
-            session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path;
-                settings, 
-                shutdown_after_completed=!run_server, 
-                start_dir
-                )
-        # catch e
-            # @error "asdfadf" ex=(e,catch_backtrace())
-            # rethrow(e)
-            # continue
-        # end
+        should_continue = 
+        withlock(notebook_sessions) do
+            # todo: try catch to release lock?
+            to_shutdown = select(should_shutdown, notebook_sessions)
+            to_update = select(should_update, notebook_sessions)
+            to_launch = select(should_launch, notebook_sessions)
     
-        if static_export
-            generate_static_export(path, settings, original_state, output_dir, jl_contents)
+            s = something(to_shutdown, to_update, to_launch, "not found")
+    
+            if s != "not found"
+                replace!(notebook_sessions, s => process(s;
+                    server_session,
+                    settings,
+                    output_dir,
+                    start_dir,
+                    shutdown_after_completed=!run_server,
+                ))
+
+                true
+            else
+                @info "-- ALL NOTEBOOKS READY --"
+                false
+            end
         end
 
-        # @info "[$(i)/$(length(to_run))] Ready $(path)" hash
+        should_continue && refresh_until_synced(check_dir_on_every_step)
     end
-    @info "-- ALL NOTEBOOKS READY --"
+
+    # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
+    update_sessions!(notebook_sessions, getpaths(); start_dir)
+    refresh_until_synced(false)
+
+    watch_dir_task = Pluto.@asynclog if settings.SliderServer.watch_dir
+        while true
+            watch_folder(start_dir)
+            @info "File change detected!"
+            sleep(.5)
+            refresh_until_synced(true)
+            @info "File changes handled"
+        end
+    end
+
+    if settings.SliderServer.watch_dir
+        # todo: skip first watch_folder so that we dont need this sleepo
+        sleep(2)
+    end
+
 
     on_ready((;
         serversocket,
@@ -216,7 +253,12 @@ function run_directory(
         notebook_sessions,
     ))
 
-    wait(http_server_task)
+    try
+        wait(http_server_task)
+    catch e
+        schedule(watch_dir_task, e; error=true)
+        e isa InterruptException || rethrow(e)
+    end
 end
 
 
