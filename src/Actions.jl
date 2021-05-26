@@ -49,13 +49,14 @@ function process(s::NotebookSession{Nothing,String,<:Any};
         start_dir::AbstractString,
         shutdown_after_completed::Bool=false,
     )::NotebookSession
+
     path = s.path
     new_hash = path_hash(path)
     if new_hash != s.desired_hash
         @error "Hashfk ajhsdf kha sdkfjh "
     end
 
-    @info "TODO: launch the notebook"
+    @info "Launching the notebook"
 
     # TODO: Take these from Settings
     jl_contents = read(joinpath(start_dir, path), String)

@@ -36,9 +36,7 @@ function update_sessions!(notebook_sessions, new_paths;
     )
 
     withlock(notebook_sessions) do
-        @info "to start" enter
-        @info "to re-run" update
-        @info "to stop" exit
+        @info "d3 join result" enter update exit
 
         for path in enter
             push!(notebook_sessions, NotebookSession(;
