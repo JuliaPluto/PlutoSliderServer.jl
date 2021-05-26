@@ -5,11 +5,11 @@ using FromFile
 @from "./MoreAnalysis.jl" import MoreAnalysis
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
-@from "./Actions.jl" import Actions: add_to_session!, generate_static_export, myhash, showall
-@from "./Types.jl" using Types: Types, NotebookSession, QueuedNotebookSession, RunningNotebookSession, FinishedNotebookSession, get_configuration
-@from "./Webhook.jl" import register_webhook!
-@from "./ReloadFolder.jl" import reload, reloadonce
-@from "./HTTPRouter.jl" import make_router
+@from "./Actions.jl" import process
+@from "./Types.jl" using Types: Types, NotebookSession, get_configuration
+# @from "./Webhook.jl" import register_webhook!
+@from "./ReloadFolder.jl" import update_sessions!
+# @from "./HTTPRouter.jl" import make_router
 
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
@@ -26,6 +26,7 @@ end
 
 export export_directory, run_directory, github_action
 
+showall(xs) = Text(join(string.(xs),"\n"))
 
 """
     export_directory(start_dir::String="."; kwargs...)
@@ -69,13 +70,13 @@ Run the Pluto bind server for all Pluto notebooks in the given directory (recurs
 - `SliderServer_port::Integer=2345`: Port to run the HTTP server on.
 - `SliderServer_host="127.0.0.1"`: Often set to `"0.0.0.0"` on a server.
 - `static_export::Bool=false`: Also export static files?
-- `notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir)`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
+- `notebook_paths::Union{Nothing,Vector{String}}=nothing`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
 
 If `static_export` is `true`, then additional `Export_` keywords can be given, see [`export_directory`](@ref).
 """
 function run_directory(
         start_dir::String="."; 
-        notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir),
+        notebook_paths::Union{Nothing,Vector{String}}=nothing,
         static_export::Bool=false, run_server::Bool=true, 
         on_ready::Function=((args...)->()),
         config_toml_path::Union{String,Nothing}=joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml"),
@@ -87,14 +88,19 @@ function run_directory(
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
 
-    to_run = if static_export
-        setdiff(notebook_paths, settings.SliderServer.exclude ∩ settings.Export.exclude)
-    else
-        s = setdiff(notebook_paths, settings.SliderServer.exclude)
-        filter(s) do f
-            occursin("@bind", read(joinpath(start_dir, f), String))
+    function getpaths()
+        notebook_paths = find_notebook_files_recursive(start_dir)
+        if static_export
+            setdiff(notebook_paths, settings.SliderServer.exclude ∩ settings.Export.exclude)
+        else
+            s = setdiff(notebook_paths, settings.SliderServer.exclude)
+            filter(s) do f
+                occursin("@bind", read(joinpath(start_dir, f), String))
+            end
         end
     end
+
+    to_run = getpaths()
     
     @info "Settings" Text(settings)
 
@@ -110,7 +116,8 @@ function run_directory(
     settings.Pluto.evaluation.lazy_workspace_creation = true
     server_session = Pluto.ServerSession(;options=settings.Pluto)
 
-    notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
+    notebook_sessions = NotebookSession[]
+    # notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if run_server
         static_dir = (
@@ -183,31 +190,41 @@ function run_directory(
 
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
-    while reload(notebook_sessions, server_session)
-    for (i, path) in enumerate(to_run)
+    @warn "Updating sessions"
+    update_sessions!(notebook_sessions, getpaths(); settings)
+    @warn "Processing sessions"
+    process.(notebook_sessions;
+        server_session,
+        settings,
+        output_dir,
+        start_dir,
+        shutdown_after_completed=!run_server,
+    )
+
+    # false && for (i, path) in enumerate(to_run)
         
-        @info "[$(i)/$(length(to_run))] Opening $(path)"
+    #     @info "[$(i)/$(length(to_run))] Opening $(path)"
 
-        local session, jl_contents, original_state
-        # That's because you can't continue in a loop
-        # try
-            session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path;
-                settings, 
-                shutdown_after_completed=!run_server, 
-                start_dir
-                )
-        # catch e
-            # @error "asdfadf" ex=(e,catch_backtrace())
-            # rethrow(e)
-            # continue
-        # end
+    #     local session, jl_contents, original_state
+    #     # That's because you can't continue in a loop
+    #     # try
+    #         session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path;
+    #             settings, 
+    #             shutdown_after_completed=!run_server, 
+    #             start_dir
+    #             )
+    #     # catch e
+    #         # @error "asdfadf" ex=(e,catch_backtrace())
+    #         # rethrow(e)
+    #         # continue
+    #     # end
     
-        if static_export
-            generate_static_export(path, settings, original_state, output_dir, jl_contents)
-        end
+    #     if static_export
+    #         generate_static_export(path, settings, original_state, output_dir, jl_contents)
+    #     end
 
-        # @info "[$(i)/$(length(to_run))] Ready $(path)" hash
-    end
+    #     # @info "[$(i)/$(length(to_run))] Ready $(path)" hash
+    # end
     @info "-- ALL NOTEBOOKS READY --"
 
     on_ready((;

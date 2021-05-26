@@ -2,31 +2,69 @@ module Types
     using Configurations
     import TOML
     import Pluto: Pluto, Token, Notebook
-    export NotebookSession, RunningNotebookSession, QueuedNotebookSession, FinishedNotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration, withlock
+    export NotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration, withlock
     ###
     # SESSION DEFINITION
-    
-    abstract type NotebookSession end
-    
-    Base.@kwdef struct RunningNotebookSession <: NotebookSession
+
+    abstract type RunResult end
+
+    Base.@kwdef struct RunningNotebook <: RunResult
         path::String
-        hash::String
         notebook::Pluto.Notebook
         original_state
         token::Token=Token()
         bond_connections::Dict{Symbol,Vector{Symbol}}
     end
-    
-    Base.@kwdef struct QueuedNotebookSession <: NotebookSession
+    Base.@kwdef struct FinishedNotebook <: RunResult
         path::String
-        hash::String
-    end
-    
-    Base.@kwdef struct FinishedNotebookSession <: NotebookSession
-        path::String
-        hash::String
         original_state
     end
+
+    Base.@kwdef struct NotebookSession{C<:Union{Nothing,String}, D<:Union{Nothing,String}, R<:Union{Nothing,RunResult}}
+        path::String
+        current_hash::C
+        desired_hash::D
+        run::R
+    end
+
+    
+    # abstract type NotebookSession end
+    
+    # Base.@kwdef struct RunningNotebookSession <: NotebookSession
+    #     path::String
+    #     hash::String
+    #     notebook::Pluto.Notebook
+    #     original_state
+    #     token::Token=Token()
+    #     bond_connections::Dict{Symbol,Vector{Symbol}}
+    # end
+
+    # # OutdatedRunningNotebookSession(s::RunningNotebookSession) = OutdatedRunningNotebookSession(
+    # #     (getfield(s, n) for n in fieldnames(RunningNotebookSession))...
+    # # )
+    
+    # Base.@kwdef struct QueuedNotebookSession <: NotebookSession
+    #     path::String
+    #     hash::String
+    # end
+    
+    # Base.@kwdef struct FinishedNotebookSession <: NotebookSession
+    #     path::String
+    #     hash::String
+    #     original_state
+    # end
+
+    # Base.@kwdef struct OutdatedRunningNotebookSession{T<:NotebookSession} <: NotebookSession
+    #     path::String
+    #     hash::String
+    #     should_shutdown::Bool
+    #     original::T
+    # end
+
+    # OutdatedRunningNotebookSession(s::NotebookSession; kwargs...) = OutdatedRunningNotebookSession(; original=original(s), kwargs...)
+
+    # original(o::OutdatedRunningNotebookSession) = original(o.original)
+    # original(s::NotebookSession) = s
 
     ###
     # CONFIGURATION
