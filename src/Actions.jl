@@ -248,21 +248,6 @@ will_process(s) = should_update(s) || should_launch(s) || should_shutdown(s)
 #         )
 #         notebook_sessions[i], jl_contents, original_state
 # end
-# """
-# Core Action. Stop notebook from running in PlutoSliderServer.
-
-# Works like [`Base.filter!`](@ref).
-# """
-# function filter_sessions!(f::Function, notebook_sessions, server_session)
-#     for sesh in enumerate(notebook_sessions)
-#         if f(sesh) === false
-#             if sesh isa RunningNotebookSession
-#                 Pluto.SessionActions.shutdown(server_session, sesh.notebook)
-#             end
-#             filter!(s -> s !== sesh, notebook_sessions)
-#         end
-#     end
-# end
 
 """
 Core Action: Generate static export for a Pluto Notebook
