@@ -35,36 +35,40 @@ end
 
 function update_sessions!(notebook_sessions, new_paths;
         start_dir::AbstractString
-    )
-    enter, update, exit = d3join(
+    )::Bool
+    added, updated, removed = d3join(
         notebook_sessions,
         new_paths;
         start_dir
     )
 
-    @info "d3 join result" enter update exit
+    if any(!isempty, [added, updated, removed])
+        @info "Notebook list updated" added updated removed
 
-    for path in enter
-        push!(notebook_sessions, NotebookSession(;
-            path=path,
-            current_hash=nothing,
-            desired_hash=path_hash(joinpath(start_dir, path)),
-            run=nothing,
-        ))
+        for path in added
+            push!(notebook_sessions, NotebookSession(;
+                path=path,
+                current_hash=nothing,
+                desired_hash=path_hash(joinpath(start_dir, path)),
+                run=nothing,
+            ))
+        end
+
+        for path in updated ∪ removed
+            old = select(s -> s.path == path, notebook_sessions)
+            @assert old !== nothing
+            new = NotebookSession(;
+                path=path,
+                current_hash=old.current_hash,
+                desired_hash=(path ∈ removed ? nothing : path_hash(joinpath(start_dir, path))),
+                run=old.run,
+            )
+            replace!(notebook_sessions, old => new)
+        end
+
+        false
+    else
+        true
     end
-
-    for path in update ∪ exit
-        old = select(s -> s.path == path, notebook_sessions)
-        @assert old !== nothing
-        new = NotebookSession(;
-            path=path,
-            current_hash=old.current_hash,
-            desired_hash=(path ∈ exit ? nothing : path_hash(joinpath(start_dir, path))),
-            run=old.run,
-        )
-        replace!(notebook_sessions, old => new)
-    end
-
-    notebook_sessions
 end
 

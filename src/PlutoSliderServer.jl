@@ -5,7 +5,7 @@ using FromFile
 @from "./MoreAnalysis.jl" import MoreAnalysis
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
-@from "./Actions.jl" import process, should_shutdown, should_update, should_launch
+@from "./Actions.jl" import process, should_shutdown, should_update, should_launch, will_process
 @from "./Types.jl" using Types: Types, NotebookSession, get_configuration, withlock
 @from "./Webhook.jl" import register_webhook!
 @from "./ReloadFolder.jl" import update_sessions!, select
@@ -22,8 +22,17 @@ import BetterFileWatching: watch_folder
 
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
+using TerminalLoggers: TerminalLogger
 function __init__()
-    get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
+    if get(ENV, "GITHUB_ACTIONS", "false") == "true"
+        global_logger(GitHubActionsLogger())
+    else
+        global_logger(try
+            TerminalLogger(; margin=1)
+        catch
+            TerminalLogger()
+        end)
+    end
 end
 
 export export_directory, run_directory, github_action
@@ -127,8 +136,6 @@ function run_directory(
     #     @info "Excluded notebooks:" showall(setdiff(notebook_paths, to_run))
     # end
 
-    @info "Pluto notebooks to run:" showall(to_run)
-
     settings.Pluto.server.disable_writing_notebook_files = true
     settings.Pluto.evaluation.lazy_workspace_creation = true
     server_session = Pluto.ServerSession(;options=settings.Pluto)
@@ -212,10 +219,10 @@ function run_directory(
     end
 
 
-    function refresh_until_synced(check_dir_on_every_step::Bool)
+    function refresh_until_synced(check_dir_on_every_step::Bool, did_something::Bool=false)
         should_continue = withlock(notebook_sessions) do
             
-            check_dir_on_every_step && update_sessions!(notebook_sessions, @show(getpaths()); start_dir)
+            check_dir_on_every_step && update_sessions!(notebook_sessions, getpaths(); start_dir)
 
             # todo: try catch to release lock?
             to_shutdown = select(should_shutdown, notebook_sessions)
@@ -225,11 +232,17 @@ function run_directory(
             s = something(to_shutdown, to_update, to_launch, "not found")
     
             if s != "not found"
+
+                progress = "[$(
+                    count(!will_process, notebook_sessions) + 1
+                )/$(length(notebook_sessions))]"
+
                 new = process(s;
                     server_session,
                     settings,
                     output_dir,
                     start_dir,
+                    progress
                 )
                 if new !== s
                     if new isa NotebookSession{Nothing,Nothing,<:Any}
@@ -242,12 +255,12 @@ function run_directory(
 
                 true
             else
-                @info "-- ALL NOTEBOOKS READY --"
+                did_something && @info "~~ ALL NOTEBOOKS READY ~~"
                 false
             end
         end
 
-        should_continue && refresh_until_synced(check_dir_on_every_step)
+        should_continue && refresh_until_synced(check_dir_on_every_step, true)
     end
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING

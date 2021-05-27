@@ -23,6 +23,7 @@ function process(s::NotebookSession{String,Nothing,<:Any};
         settings::PlutoDeploySettings,
         output_dir::AbstractString,
         start_dir::AbstractString,
+        progress,
     )::NotebookSession
 
     
@@ -39,7 +40,7 @@ function process(s::NotebookSession{String,Nothing,<:Any};
         @warn "Failed to remove static export files" s.path exception=(e,catch_backtrace())
     end
     
-    @info "Shut down" s.path
+    @info "### ✓ $(progress) Shutdown complete" s.path
 
     NotebookSession(;
         path=s.path,
@@ -56,28 +57,28 @@ function process(s::NotebookSession{Nothing,String,<:Any};
         settings::PlutoDeploySettings,
         output_dir::AbstractString,
         start_dir::AbstractString,
+        progress,
     )::NotebookSession
 
     path = s.path
     abs_path = joinpath(start_dir, path)
-    new_hash = path_hash(abs_path)
-    if new_hash != s.desired_hash
-        @error "Hashfk ajhsdf kha sdkfjh "
-    end
 
-    @info "Launching the notebook"
+    @info "###### ◐ $(progress) Launching..." s.path
 
     # TODO: Take these from Settings
     jl_contents = read(abs_path, String)
-    hash = myhash(jl_contents)
+    new_hash = myhash(jl_contents)
+    if new_hash != s.desired_hash
+        @warn "Notebook file does not have desired hash. This probably means that the file changed too quickly. Continuing and hoping for the best!" s.path new_hash s.desired_hash
+    end
     
     keep_running = settings.SliderServer.enabled
     skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
-    cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, hash)
+    cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
 
     run = if cached_state !== nothing
-        @info "Loaded from cache, skipping notebook run" hash
+        @info "Loaded from cache, skipping notebook run" s.path new_hash
         original_state = cached_state
         FinishedNotebook(;
             path,
@@ -91,13 +92,13 @@ function process(s::NotebookSession{Nothing,String,<:Any};
             original_state = Pluto.notebook_to_js(notebook)
             # shut down the notebook
             if !keep_running
-                @info "Shutting down notebook process"
+                @info "Shutting down notebook process" s.path
                 Pluto.SessionActions.shutdown(server_session, notebook)
             end
-            try_tocache(settings.Export.cache_dir, hash, original_state)
+            try_tocache(settings.Export.cache_dir, new_hash, original_state)
             if keep_running
                 bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
-                @info "Bond connections" showall(collect(bond_connections))
+                @info "Bond connections" s.path showall(collect(bond_connections))
 
                 RunningNotebook(;
                     path,
@@ -113,7 +114,7 @@ function process(s::NotebookSession{Nothing,String,<:Any};
             end
         catch e
             (e isa InterruptException) || rethrow(e)
-            @error "Failed to run notebook!" path exception=(e,catch_backtrace())
+            @error "$(progress) Failed to run notebook!" path exception=(e,catch_backtrace())
             # continue
             nothing
         end
@@ -124,6 +125,8 @@ function process(s::NotebookSession{Nothing,String,<:Any};
         start_dir,
         output_dir,
     )
+
+    @info "### ✓ $(progress) Ready" s.path
 
     NotebookSession(;
         path=s.path,
@@ -140,19 +143,18 @@ function process(s::NotebookSession{String,String,<:Any};
         settings::PlutoDeploySettings,
         output_dir::AbstractString,
         start_dir::AbstractString,
+        progress,
     )::NotebookSession
 
-    @info "Update method called" s.path s.current_hash s.desired_hash
-
     if s.current_hash != s.desired_hash
-        @info "Updating notebook..." s.path
+        @info "Updating notebook... will shut down and relaunch" s.path
         
         # Simple way to update: shut down notebook and start new one
         if s.run isa RunningNotebook
             Pluto.SessionActions.shutdown(server_session, s.run.notebook)
         end
 
-        @info "Shutdown done" s.path
+        @info "Shutdown complete" s.path
 
         result = process(NotebookSession(;
             path=s.path,
@@ -164,8 +166,8 @@ function process(s::NotebookSession{String,String,<:Any};
             settings,
             output_dir,
             start_dir,
+            progress,
         )
-        @info "process relay done" s.path
 
         result
     else
@@ -187,83 +189,6 @@ should_launch(::NotebookSession) = false
 
 will_process(s) = should_update(s) || should_launch(s) || should_shutdown(s)
 
-
-
-# """
-# Wait for notebook to have 0 running or queued cells
-# Poll in intervals of 5 seconds
-# """
-# function waitnotebookready(notebook::Pluto.Notebook)
-#     i = 0
-#     sleep(3)  # "Make sure" pluto picked up the change in notebook 
-#     println("Waiting for notebook to get ready")
-#     while (i < 360)
-#         isrunning = length(filter(cell -> (cell.queued || cell.running), notebook.cells)) > 0
-#         if (!isrunning)
-#             println("")
-#             return
-#         end
-#         print("\r\nWaiting for notebook to be ready [$(5*i)s]")
-#         sleep(5)
-#         i += 1
-#     end
-#     @error "Couldn't get the notebook status after 30 minutes."
-# end
-
-# """
-# Core Action. Renew a session without restarting it!
-
-# This function renews the RunningNotebookSession that the PlutoSliderServer
-# tracks with
-# 1. updated hash (serve correct GET requests)
-# 2. updated bond_connections
-# 3. update original_state (will be used in export, if that is set)
-# This implementation assumes Pluto will watch file updates
-# There is a race condition there:
-#     Webhook
-#         -> pull
-#         -> file changes
-#             -> pluto picksup the change [is the file ready?]
-#         -> renew_session [is pluto running? has pluto picked up file change?]
-# """
-# function renew_session!(notebook_sessions, server_session, outdated_sesh; 
-#     settings::PlutoDeploySettings)
-#     path = outdated_sesh.path
-#     sesh = outdated_sesh.original
-
-#     @info "Renewing " path
-#     i = findfirst(s -> s.path == path, notebook_sessions)
-#     if isnothing(i)
-#         @warn "Can't find session to renew"
-#         return (nothing, nothing, nothing)
-#     end
-#     jl_contents = try
-#         read(joinpath(settings.SliderServer.start_dir, path), String)
-#     catch e
-#         @warn "notebook deleted; removing"
-#         filter_sessions!(s -> s -> s.path != path, notebook_sessions, server_session)
-#         return
-#     end
-#     new_hash = path_hash(abs_path)
-#     session = notebook_sessions[i]
-#     if new_hash == session.current_hash
-#         println("Renewing unnecessary; returning!") 
-#     end
-#     # filewatching
-#     # update_from_file(server_session, session.notebook)
-#     # If pluto implements the filewatching itself, switch to the line below:
-#     # waitnotebookready(session.notebook)
-#     bond_connections = MoreAnalysis.bound_variable_connections_graph(session.notebook)
-#     original_state = Pluto.notebook_to_js(session.notebook)
-#     notebook_sessions[i] = RunningNotebookSession(;
-#             path,
-#             hash=new_hash,
-#             notebook=session.notebook,
-#             original_state,
-#             bond_connections,
-#         )
-#         notebook_sessions[i], jl_contents, original_state
-# end
 
 """
 Core Action: Generate static export for a Pluto Notebook
@@ -348,7 +273,7 @@ function generate_static_export(path, original_state, jl_contents; settings, out
         write(export_jl_path, jl_contents)
     end
 
-    @info "Written to $(export_html_path)"
+    @debug "Written to $(export_html_path)"
 end
 
 tryrm(x) = isfile(x) && rm(x)
