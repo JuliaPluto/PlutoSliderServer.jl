@@ -89,7 +89,7 @@ module Actions
 
 
         notebookfile_js = if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
-            if settings.Export.baked_state
+            if settings.Export.baked_notebookfile
                 "\"data:text/julia;charset=utf-8;base64,$(base64encode(jl_contents))\""
             else
                 repr(basename(export_jl_path))
