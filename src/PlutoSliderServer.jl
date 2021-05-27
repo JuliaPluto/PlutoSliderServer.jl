@@ -84,7 +84,7 @@ Run the Pluto bind server for all Pluto notebooks in the given directory (recurs
 - `SliderServer_exclude::Vector{String}=[]`: list of notebook files to skip. Provide paths relative to `start_dir`. _If `static_export` is `true`, then only paths in `SliderServer_exclude ∩ Export_exclude` will be skipped, paths in `setdiff(SliderServer_exclude, Export_exclude)` will be shut down after exporting._
 - `SliderServer_port::Integer=2345`: Port to run the HTTP server on.
 - `SliderServer_host="127.0.0.1"`: Often set to `"0.0.0.0"` on a server.
-- `static_export::Bool=false`: Also export static files?
+- `static_export::Bool=true`: Also export static files?
 - `notebook_paths::Union{Nothing,Vector{String}}=nothing`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
 
 If `static_export` is `true`, then additional `Export_` keywords can be given, see [`export_directory`](@ref).
