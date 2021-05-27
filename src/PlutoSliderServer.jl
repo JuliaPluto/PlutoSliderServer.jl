@@ -10,6 +10,7 @@ using FromFile
 @from "./Webhook.jl" import register_webhook!
 @from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router
+@from "./gitpull.jl" import fetch_pull
 
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
@@ -28,6 +29,8 @@ end
 export export_directory, run_directory, github_action
 
 showall(xs) = Text(join(string.(xs),"\n"))
+
+default_config_path() = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
 
 """
     export_directory(start_dir::String="."; kwargs...)
@@ -80,11 +83,11 @@ function run_directory(
         notebook_paths::Union{Nothing,Vector{String}}=nothing,
         static_export::Bool=false, run_server::Bool=true, 
         on_ready::Function=((args...)->()),
-        config_toml_path::Union{String,Nothing}=joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml"),
+        config_toml_path::Union{String,Nothing}=default_config_path(),
         kwargs...
     )
 
-    settings = get_configuration(config_toml_path;kwargs...)
+    settings = get_configuration(config_toml_path; kwargs...)
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
 
@@ -124,15 +127,14 @@ function run_directory(
             static_export && settings.SliderServer.serve_static_export_folder
         ) ? output_dir : nothing
         router = make_router(notebook_sessions, server_session; settings, static_dir )
-        register_webhook!(router) do
-            config_toml_path = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
-            new_settings = get_configuration(config_toml_path)
-            @info new_settings
-            @info new_settings == settings
-            # TODO: Restart if settings changed
+        # register_webhook!(router) do
+        #     new_settings = get_configuration(config_toml_path)
+        #     @info new_settings
+        #     @info new_settings == settings
+        #     # TODO: Restart if settings changed
             
-            # reload(notebook_sessions, server_session; settings)
-        end
+        #     # reload(notebook_sessions, server_session; settings)
+        # end
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port
@@ -240,6 +242,7 @@ function run_directory(
     refresh_until_synced(false)
 
     watch_dir_task = Pluto.@asynclog if settings.SliderServer.watch_dir
+        @info "Watching directory for changes..."
         debounced = kind_of_debounced() do _
             @info "File change detected!"
             sleep(.5)
@@ -266,6 +269,61 @@ function run_directory(
     catch e
         schedule(watch_dir_task, e; error=true)
         e isa InterruptException || rethrow(e)
+    end
+end
+
+
+function run_git_directory(
+    start_dir::String="."; 
+    notebook_paths::Union{Nothing,Vector{String}}=nothing,
+    static_export::Bool=false, run_server::Bool=true, 
+    on_ready::Function=((args...)->()),
+    config_toml_path::Union{String,Nothing}=default_config_path(),
+    kwargs...
+    )
+
+    run_dir_task = Ref{Any}()
+
+    get_settings() = get_configuration(config_toml_path; SliderServer_watch_dir=true, kwargs...)
+    old_settings = Ref{Any}(get_settings())
+
+
+    function startserver(settings)
+        old_settings[] = settings
+        run_dir_task[] = @async run_directory(start_dir; notebook_paths, static_export, run_server, on_ready, config_toml_path, SliderServer_watch_dir=true, kwargs...)
+    end
+
+    startserver(old_settings[])
+
+    Pluto.@asynclog while true
+        new_settings = get_settings()
+
+        if old_settings[] != new_settings
+            @warn "Configuration changed. Restarting server!"
+            try
+                schedule(run_dir_task[], InterruptException(); error=true)
+            catch e
+                showerror(stderr, e, catch_backtrace())
+            end
+            sleep(1)
+            startserver()
+            sleep(10)
+        end
+
+        sleep(5)
+        fetch_pull(start_dir)
+    end
+
+    while true
+        try
+            wait(run_dir_task[])
+        catch e
+            if e isa InterruptException
+                sleep(2)
+            else
+                showerror(stderr, e, catch_backtrace())
+            end
+        end
     end
 end
 

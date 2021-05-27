@@ -10,6 +10,7 @@ using Sockets
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
 
+@from "./Export.jl" import Export:  default_index
 @from "./Types.jl" import Types: NotebookSession, RunningNotebook, PlutoDeploySettings, get_configuration
 
 const RunningNotebookSession = NotebookSession{String,String,RunningNotebook}
