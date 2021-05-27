@@ -84,7 +84,7 @@ end
         @test !isnothing(newsesh())
         @test newsesh().current_hash != newsesh().desired_hash
 
-        @test poll(30, 1/20) do
+        @test poll(60, 1/20) do
             newsesh().current_hash == newsesh().desired_hash
         end
 
@@ -110,7 +110,7 @@ end
 
         cp(joinpath(test_dir, "basic2.jl"), joinpath(test_dir, "cool.jl"))
         coolsesh = () -> select(s -> s.path == "cool.jl", notebook_sessions)
-        @test poll(10, 1/20) do
+        @test poll(60, 1/20) do
             isfile(joinpath(test_dir, "cool.html"))
         end
         @test poll(5, 1/20) do
@@ -139,7 +139,7 @@ end
             coolsesh().current_hash != coolsesh().desired_hash
         end
         @test isfile(joinpath(test_dir, "cool.html"))
-        @test poll(30, 1/20) do
+        @test poll(60, 1/20) do
             coolsesh().current_hash == coolsesh().desired_hash
         end
         @test isfile(joinpath(test_dir, "cool.html"))
