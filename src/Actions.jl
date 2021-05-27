@@ -89,7 +89,11 @@ module Actions
 
 
         notebookfile_js = if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
-            repr(basename(export_jl_path))
+            if settings.Export.baked_state
+                "\"data:text/julia;charset=utf-8;base64,$(base64encode(jl_contents))\""
+            else
+                repr(basename(export_jl_path))
+            end
         else
             "undefined"
         end
@@ -99,7 +103,7 @@ module Actions
             "undefined"
         end
         binder_url_js = if settings.Export.offer_binder
-            repr(something(settings.Export.binder_url, "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(Pluto.PLUTO_VERSION))"))
+            repr(something(settings.Export.binder_url, Pluto.default_binder_url))
             # not string(pluto_version) because it has to be an `x.y.z` version number, not a commit hash
         else
             "undefined"
@@ -126,7 +130,7 @@ module Actions
         )
         write(export_html_path, html_contents)
 
-        if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
+        if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing) && !settings.Export.baked_state
             write(export_jl_path, jl_contents)
         end
 
