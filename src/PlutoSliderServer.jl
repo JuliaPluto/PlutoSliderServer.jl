@@ -207,8 +207,6 @@ function run_directory(
             to_launch = select(should_launch, notebook_sessions)
     
             s = something(to_shutdown, to_update, to_launch, "not found")
-
-            @show s === to_update
     
             if s != "not found"
                 new = process(s;
