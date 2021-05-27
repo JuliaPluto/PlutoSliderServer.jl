@@ -296,7 +296,11 @@ function generate_static_export(path, original_state, jl_contents; settings, out
 
 
     notebookfile_js = if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
-        repr(basename(export_jl_path))
+        if settings.Export.baked_state
+            "\"data:text/julia;charset=utf-8;base64,$(base64encode(jl_contents))\""
+        else
+            repr(basename(export_jl_path))
+        end
     else
         "undefined"
     end
@@ -306,7 +310,7 @@ function generate_static_export(path, original_state, jl_contents; settings, out
         "undefined"
     end
     binder_url_js = if settings.Export.offer_binder
-        repr(something(settings.Export.binder_url, "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(pluto_version))"))
+        repr(something(settings.Export.binder_url, Pluto.default_binder_url))
     else
         "undefined"
     end
@@ -332,7 +336,7 @@ function generate_static_export(path, original_state, jl_contents; settings, out
     )
     write(export_html_path, html_contents)
 
-    if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
+    if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing) && !settings.Export.baked_state
         write(export_jl_path, jl_contents)
     end
 
@@ -360,7 +364,7 @@ function remove_static_export(path; settings, output_dir)
         tryrm(export_statefile_path)
     end
     tryrm(export_html_path)
-    if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
+    if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing) && !settings.Export.baked_state
         tryrm(export_jl_path)
     end
 end

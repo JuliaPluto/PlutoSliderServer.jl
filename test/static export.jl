@@ -61,7 +61,7 @@ end
 end
 
 
-@testset "Separate state files" begin
+@testset "Separate state & notebook files" begin
     test_dir = make_test_dir()
     @show test_dir
     cd(test_dir)
@@ -75,6 +75,7 @@ end
     config_contents = """
     [Export]
     baked_state = false
+    baked_notebookfile = false
     binder_url = "pannenkoek"
     """
 

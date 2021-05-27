@@ -14,6 +14,11 @@ on:
 jobs:
     test:
         runs-on: ${{ matrix.os }}
+        
+        # https://github.com/JuliaRegistries/General/issues/16777
+        env:
+            JULIA_PKG_SERVER: ""
+        
         # Uncomment if you want to see all results for all OSses. Otherwise, the first failed test cancels all others
         # continue-on-error: true
         strategy:
