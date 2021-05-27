@@ -130,7 +130,7 @@ module Actions
         )
         write(export_html_path, html_contents)
 
-        if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing) && !settings.Export.baked_state
+        if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing) && !settings.Export.baked_notebookfile
             write(export_jl_path, jl_contents)
         end
 
