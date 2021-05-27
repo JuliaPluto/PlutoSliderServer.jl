@@ -336,7 +336,7 @@ function generate_static_export(path, original_state, jl_contents; settings, out
     )
     write(export_html_path, html_contents)
 
-    if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing) && !settings.Export.baked_state
+    if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing) && !settings.Export.baked_notebookfile
         write(export_jl_path, jl_contents)
     end
 
@@ -364,7 +364,7 @@ function remove_static_export(path; settings, output_dir)
         tryrm(export_statefile_path)
     end
     tryrm(export_html_path)
-    if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing) && !settings.Export.baked_state
+    if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing) && !settings.Export.baked_notebookfile
         tryrm(export_jl_path)
     end
 end
