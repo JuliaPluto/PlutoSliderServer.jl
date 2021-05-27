@@ -32,6 +32,17 @@ showall(xs) = Text(join(string.(xs),"\n"))
 
 default_config_path() = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
 
+
+macro ignorefailure(x)
+    quote
+        try
+            $(esc(x))
+        catch e
+            showerror(stderr, e, catch_backtrace())
+        end
+    end
+end
+
 """
     export_directory(start_dir::String="."; kwargs...)
 
@@ -81,7 +92,7 @@ If `static_export` is `true`, then additional `Export_` keywords can be given, s
 function run_directory(
         start_dir::String="."; 
         notebook_paths::Union{Nothing,Vector{String}}=nothing,
-        static_export::Bool=false, run_server::Bool=true, 
+        static_export::Bool=true, run_server::Bool=true, 
         on_ready::Function=((args...)->()),
         config_toml_path::Union{String,Nothing}=default_config_path(),
         kwargs...
@@ -267,7 +278,8 @@ function run_directory(
     try
         wait(http_server_task)
     catch e
-        schedule(watch_dir_task, e; error=true)
+        @ignorefailure close(serversocket)
+        @ignorefailure schedule(watch_dir_task, e; error=true)
         e isa InterruptException || rethrow(e)
     end
 end
@@ -276,7 +288,7 @@ end
 function run_git_directory(
     start_dir::String="."; 
     notebook_paths::Union{Nothing,Vector{String}}=nothing,
-    static_export::Bool=false, run_server::Bool=true, 
+    static_export::Bool=true, run_server::Bool=true, 
     on_ready::Function=((args...)->()),
     config_toml_path::Union{String,Nothing}=default_config_path(),
     kwargs...
@@ -285,29 +297,23 @@ function run_git_directory(
     run_dir_task = Ref{Any}()
 
     get_settings() = get_configuration(config_toml_path; SliderServer_watch_dir=true, kwargs...)
-    old_settings = Ref{Any}(get_settings())
+    old_settings = get_settings()
 
-
-    function startserver(settings)
-        old_settings[] = settings
-        run_dir_task[] = @async run_directory(start_dir; notebook_paths, static_export, run_server, on_ready, config_toml_path, SliderServer_watch_dir=true, kwargs...)
+    run_dir_task[] = Pluto.@asynclog begin
+        run_directory(start_dir; notebook_paths, static_export, run_server, on_ready, config_toml_path, SliderServer_watch_dir=true, kwargs...)
     end
-
-    startserver(old_settings[])
 
     Pluto.@asynclog while true
         new_settings = get_settings()
 
-        if old_settings[] != new_settings
-            @warn "Configuration changed. Restarting server!"
-            try
-                schedule(run_dir_task[], InterruptException(); error=true)
-            catch e
-                showerror(stderr, e, catch_backtrace())
-            end
+        if old_settings != new_settings
+            @error "Configuration changed. Shutting down!"
+
+            @ignorefailure schedule(run_dir_task[], InterruptException(); error=true)
+            @warn "asdfasdf"
             sleep(1)
-            startserver()
-            sleep(10)
+
+            exit()
         end
 
         sleep(5)
@@ -319,10 +325,13 @@ function run_git_directory(
             wait(run_dir_task[])
         catch e
             if e isa InterruptException
+                yield()
                 sleep(2)
             else
                 showerror(stderr, e, catch_backtrace())
             end
+            yield()
+            sleep(2)
         end
     end
 end
@@ -346,8 +355,6 @@ function kind_of_debounced(f)
 
     return go
 end
-
-
 
 
 end
