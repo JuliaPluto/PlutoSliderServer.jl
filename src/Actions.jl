@@ -121,6 +121,7 @@ function process(s::NotebookSession{Nothing,String,<:Any};
 
     generate_static_export(path, run.original_state, jl_contents;
         settings,
+        start_dir,
         output_dir,
     )
 
@@ -274,7 +275,7 @@ Core Action: Generate static export for a Pluto Notebook
 4. baked_state: Whether to export pluto state within the html or in a separate file.
 5. pluto_cdn_root: URL where pluto will go to find the static frontend assets 
 """
-function generate_static_export(path, original_state, jl_contents; settings, output_dir)
+function generate_static_export(path, original_state, jl_contents; settings, output_dir, start_dir)
     pluto_version = Export.try_get_exact_pluto_version()
     export_jl_path = let
         relative_to_notebooks_dir = path
@@ -295,7 +296,9 @@ function generate_static_export(path, original_state, jl_contents; settings, out
     mkpath(dirname(export_statefile_path))
 
 
-    notebookfile_js = if (settings.Export.offer_binder || settings.Export.slider_server_url !== nothing)
+    running_slider_server = settings.Export.slider_server_url !== nothing || (settings.SliderServer.serve_static_export_folder && settings.SliderServer.enabled)
+
+    notebookfile_js = if settings.Export.offer_binder || running_slider_server
         if settings.Export.baked_notebookfile
             "\"data:text/julia;charset=utf-8;base64,$(base64encode(jl_contents))\""
         else
@@ -304,8 +307,13 @@ function generate_static_export(path, original_state, jl_contents; settings, out
     else
         "undefined"
     end
-    slider_server_url_js = if settings.Export.slider_server_url !== nothing
-        repr(settings.Export.slider_server_url)
+    slider_server_url_js = if running_slider_server
+        abs_path = joinpath(start_dir, path)
+        url_of_root = relpath(start_dir, dirname(abs_path)) # e.g. "." or "../../.." 
+        repr(something(
+            settings.Export.slider_server_url,
+            url_of_root
+        ))
     else
         "undefined"
     end

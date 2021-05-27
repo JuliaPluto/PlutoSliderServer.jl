@@ -81,6 +81,7 @@ end
         end
         
         newsesh = () -> select(s -> s.path == "basic2 copy.jl", notebook_sessions)
+
         @test !isnothing(newsesh())
         @test newsesh().current_hash != newsesh().desired_hash
 
@@ -89,6 +90,9 @@ end
         end
 
         @test isfile(joinpath(test_dir, "basic2 copy.html"))
+
+        @test !occursin("slider_server_url = undefined", read(joinpath(test_dir, "basic2 copy.html"), String))
+        @test occursin("slider_server_url = \".\"", read(joinpath(test_dir, "basic2 copy.html"), String))
     end
 
 
@@ -106,21 +110,28 @@ end
 
     end
 
+    coolsesh = () -> select(s -> s.path == "subdir/cool.jl", notebook_sessions)
+    coolcontents() = read(joinpath(test_dir, "subdir", "cool.html"), String)
+
     @testset "ADDING A FILE (AGAIN)" begin
 
-        cp(joinpath(test_dir, "basic2.jl"), joinpath(test_dir, "cool.jl"))
-        coolsesh = () -> select(s -> s.path == "cool.jl", notebook_sessions)
+        mkdir(joinpath(test_dir, "subdir"))
+
+        cp(joinpath(test_dir, "basic2.jl"), joinpath(test_dir, "subdir", "cool.jl"))
+
         @test poll(60, 1/20) do
-            isfile(joinpath(test_dir, "cool.html"))
+            isfile(joinpath(test_dir, "subdir", "cool.html"))
         end
         @test poll(5, 1/20) do
             coolsesh().current_hash == coolsesh().desired_hash
         end
+
+        @test !occursin("slider_server_url = undefined", coolcontents())
+        @test occursin("slider_server_url = \"..\"", coolcontents())
     end
 
 
     @testset "UPDATING AN EXISTING FILE" begin
-        coolsesh = () -> select(s -> s.path == "cool.jl", notebook_sessions)
 
         function coolconnectionkeys()
             response = HTTP.get("http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(coolsesh().current_hash))/")
@@ -130,19 +141,18 @@ end
 
         @test coolconnectionkeys() == sort(["x", "y", "s", "s2"])
 
-        coolcontents() = read(joinpath(test_dir, "cool.html"), String)
         old_html_contents = coolcontents()
 
-        Pluto.readwrite(joinpath(@__DIR__, "parallelpaths4.jl"), joinpath(test_dir, "cool.jl"))
+        Pluto.readwrite(joinpath(@__DIR__, "parallelpaths4.jl"), joinpath(test_dir, "subdir", "cool.jl"))
 
         @test poll(5, 1/20) do
             coolsesh().current_hash != coolsesh().desired_hash
         end
-        @test isfile(joinpath(test_dir, "cool.html"))
+        @test isfile(joinpath(test_dir, "subdir", "cool.html"))
         @test poll(60, 1/20) do
             coolsesh().current_hash == coolsesh().desired_hash
         end
-        @test isfile(joinpath(test_dir, "cool.html"))
+        @test isfile(joinpath(test_dir, "subdir", "cool.html"))
         @test coolcontents() != old_html_contents
 
         @test coolconnectionkeys() == sort(["x", "y", "show_dogs", "b", "c", "five1", "five2", "six1", "six2", "six3", "cool1", "cool2", "world", "boring"])

@@ -100,6 +100,11 @@ function run_directory(
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
 
+    if joinpath("a","b") != "a/b"
+        @error "PlutoSliderServer.jl is only designed to work on unix systems."
+        exit()
+    end
+
     function getpaths()
         all_nbs = notebook_paths !== nothing ? notebook_paths : find_notebook_files_recursive(start_dir)
         if settings.Export.enabled
@@ -252,10 +257,9 @@ function run_directory(
     watch_dir_task = Pluto.@asynclog if settings.SliderServer.watch_dir
         @info "Watching directory for changes..."
         debounced = kind_of_debounced() do _
-            @info "File change detected!"
+            @debug "File change detected!"
             sleep(.5)
             refresh_until_synced(true)
-            @info "File changes handled"
         end
         watch_folder(debounced, start_dir)
     end

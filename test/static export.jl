@@ -58,6 +58,8 @@ end
     end
     @show second_runtime
     @test second_runtime < 1.0
+
+    @test occursin("slider_server_url = undefined", read("a.html", String))
 end
 
 
