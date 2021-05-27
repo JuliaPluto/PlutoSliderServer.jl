@@ -33,6 +33,7 @@ module Types
     # CONFIGURATION
 
     @option struct SliderServerSettings
+        enabled::Bool=true
         exclude::Vector=String[]
         port::Integer=2345
         host="127.0.0.1"
@@ -44,6 +45,7 @@ module Types
     end
     
     @option struct ExportSettings
+        enabled::Bool=true
         output_dir::Union{Nothing,String}=nothing
         exclude::Vector=String[]
         ignore_cache::Vector=String[]

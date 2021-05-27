@@ -53,7 +53,7 @@ end
     t = Pluto.@asynclog begin
         try
             PlutoSliderServer.run_directory(test_dir;
-            static_export=false,
+            Export_enabled=false,
             SliderServer_port=port,
             SliderServer_watch_dir=true,
             on_ready)

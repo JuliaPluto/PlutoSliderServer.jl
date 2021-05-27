@@ -28,7 +28,7 @@ using Base64
     t = Pluto.@asynclog begin
         try
             PlutoSliderServer.run_directory(test_dir;
-            static_export=false,
+            Export_enabled=false,
             SliderServer_port=port,
             notebook_paths, on_ready)
         catch e

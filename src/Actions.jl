@@ -23,7 +23,6 @@ function process(s::NotebookSession{String,Nothing,<:Any};
         settings::PlutoDeploySettings,
         output_dir::AbstractString,
         start_dir::AbstractString,
-        shutdown_after_completed::Bool=false,
     )::NotebookSession
 
     
@@ -57,7 +56,6 @@ function process(s::NotebookSession{Nothing,String,<:Any};
         settings::PlutoDeploySettings,
         output_dir::AbstractString,
         start_dir::AbstractString,
-        shutdown_after_completed::Bool=false,
     )::NotebookSession
 
     path = s.path
@@ -73,7 +71,7 @@ function process(s::NotebookSession{Nothing,String,<:Any};
     jl_contents = read(abs_path, String)
     hash = myhash(jl_contents)
     
-    keep_running = !shutdown_after_completed
+    keep_running = settings.SliderServer.enabled
     skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, hash)
@@ -141,7 +139,6 @@ function process(s::NotebookSession{String,String,<:Any};
         settings::PlutoDeploySettings,
         output_dir::AbstractString,
         start_dir::AbstractString,
-        shutdown_after_completed::Bool=false,
     )::NotebookSession
 
     @info "Update method called" s.path s.current_hash s.desired_hash
@@ -166,7 +163,6 @@ function process(s::NotebookSession{String,String,<:Any};
             settings,
             output_dir,
             start_dir,
-            shutdown_after_completed,
         )
         @info "process relay done" s.path
 

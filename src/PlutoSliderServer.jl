@@ -66,9 +66,9 @@ Search recursively for all Pluto notebooks in the current folder, and for each n
 - `notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir)`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
 """
 function export_directory(args...; kwargs...)
-    run_directory(args...; static_export=true, run_server=false, kwargs...)
+    run_directory(args...; Export_enabled=true, SliderServer_enabled=false, kwargs...)
 end
-export_notebook(p; kwargs...) = run_notebook(p; static_export=true, run_server=false, kwargs...)
+export_notebook(p; kwargs...) = run_notebook(p; Export_enabled=true, SliderServer_enabled=false, kwargs...)
 github_action = export_directory
 
 function run_notebook(path::String; kwargs...)
@@ -81,18 +81,16 @@ end
 Run the Pluto bind server for all Pluto notebooks in the given directory (recursive search). 
 
 # Keyword arguments
-- `SliderServer_exclude::Vector{String}=[]`: list of notebook files to skip. Provide paths relative to `start_dir`. _If `static_export` is `true`, then only paths in `SliderServer_exclude ∩ Export_exclude` will be skipped, paths in `setdiff(SliderServer_exclude, Export_exclude)` will be shut down after exporting._
+- `SliderServer_exclude::Vector{String}=[]`: list of notebook files to skip. Provide paths relative to `start_dir`. _If `Export.enabled` is `true` (default), then only paths in `SliderServer_exclude ∩ Export_exclude` will be skipped, paths in `setdiff(SliderServer_exclude, Export_exclude)` will be shut down after exporting._
 - `SliderServer_port::Integer=2345`: Port to run the HTTP server on.
 - `SliderServer_host="127.0.0.1"`: Often set to `"0.0.0.0"` on a server.
-- `static_export::Bool=true`: Also export static files?
 - `notebook_paths::Union{Nothing,Vector{String}}=nothing`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
 
-If `static_export` is `true`, then additional `Export_` keywords can be given, see [`export_directory`](@ref).
+If `Export.enabled` is `true` (default), then additional `Export_` keywords can be given, see [`export_directory`](@ref).
 """
 function run_directory(
         start_dir::String="."; 
         notebook_paths::Union{Nothing,Vector{String}}=nothing,
-        static_export::Bool=true, run_server::Bool=true, 
         on_ready::Function=((args...)->()),
         config_toml_path::Union{String,Nothing}=default_config_path(),
         kwargs...
@@ -104,7 +102,7 @@ function run_directory(
 
     function getpaths()
         all_nbs = notebook_paths !== nothing ? notebook_paths : find_notebook_files_recursive(start_dir)
-        if static_export
+        if settings.Export.enabled
             setdiff(all_nbs, settings.SliderServer.exclude ∩ settings.Export.exclude)
         else
             s = setdiff(all_nbs, settings.SliderServer.exclude)
@@ -118,7 +116,7 @@ function run_directory(
     
     @info "Settings" Text(settings)
 
-    run_server && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
+    settings.SliderServer.enabled && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
 
     # if to_run != notebook_paths
     #     @info "Excluded notebooks:" showall(setdiff(notebook_paths, to_run))
@@ -133,9 +131,9 @@ function run_directory(
     notebook_sessions = NotebookSession[]
     # notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
-    if run_server
+    if settings.SliderServer.enabled
         static_dir = (
-            static_export && settings.SliderServer.serve_static_export_folder
+            settings.Export.enabled && settings.SliderServer.serve_static_export_folder
         ) ? output_dir : nothing
         router = make_router(notebook_sessions, server_session; settings, static_dir )
         # register_webhook!(router) do
@@ -196,7 +194,7 @@ function run_directory(
         serversocket = nothing
     end
 
-    if static_export && settings.Export.create_index
+    if settings.Export.enabled && settings.Export.create_index
         exists = any(["index.html", "index.md", ("index"*e for e in pluto_file_extensions)...]) do f
             joinpath(output_dir, f) |> isfile
         end
@@ -227,7 +225,6 @@ function run_directory(
                     settings,
                     output_dir,
                     start_dir,
-                    shutdown_after_completed=!run_server,
                 )
                 if new !== s
                     if new isa NotebookSession{Nothing,Nothing,<:Any}
@@ -288,7 +285,6 @@ end
 function run_git_directory(
     start_dir::String="."; 
     notebook_paths::Union{Nothing,Vector{String}}=nothing,
-    static_export::Bool=true, run_server::Bool=true, 
     on_ready::Function=((args...)->()),
     config_toml_path::Union{String,Nothing}=default_config_path(),
     kwargs...
@@ -300,7 +296,7 @@ function run_git_directory(
     old_settings = get_settings()
 
     run_dir_task[] = Pluto.@asynclog begin
-        run_directory(start_dir; notebook_paths, static_export, run_server, on_ready, config_toml_path, SliderServer_watch_dir=true, kwargs...)
+        run_directory(start_dir; notebook_paths, on_ready, config_toml_path, SliderServer_watch_dir=true, kwargs...)
     end
 
     Pluto.@asynclog while true

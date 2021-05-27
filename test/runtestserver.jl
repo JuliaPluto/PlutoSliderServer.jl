@@ -17,5 +17,4 @@ port = 2341
 cdn = "http://127.0.0.1:$(port)/pluto_asset/"
 
 PlutoSliderServer.run_directory(test_dir; 
-    static_export=true, run_server=true,
-    SliderServer_serve_static_export_folder=true, SliderServer_port=port, SliderServer_host="127.0.0.1", SliderServer_watch_dir=true, Export_baked_state=false, Export_slider_server_url="http://127.0.0.1:$(port)/", Export_pluto_cdn_root=cdn)
+    SliderServer_port=port, SliderServer_host="127.0.0.1", SliderServer_watch_dir=true, Export_baked_state=false, Export_slider_server_url="http://127.0.0.1:$(port)/", Export_pluto_cdn_root=cdn)
