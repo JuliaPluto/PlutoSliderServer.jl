@@ -82,7 +82,6 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
                         session=server_session,
                         notebook=notebook,
                         bound_sym_names=names,
-                        is_first_value=false,
                         run_async=false,
                     )::Pluto.TopologicalOrder
 
