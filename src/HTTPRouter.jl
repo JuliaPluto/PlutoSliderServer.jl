@@ -159,7 +159,7 @@ function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, serve
         done = count(x -> !(x isa QueuedNotebookSession), notebook_sessions)
         if static_dir !== nothing
             path = joinpath(static_dir, "index.html")
-            if !isfile(path) || done < length(notebook_sessions)
+            if !isfile(path)
                 path = tempname() * ".html"
                 write(path, temp_index(notebook_sessions))
             end

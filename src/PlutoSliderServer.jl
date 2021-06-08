@@ -224,7 +224,7 @@ function run_directory(
         serversocket = nothing
     end
 
-    if settings.Export.enabled && settings.Export.create_index
+    if settings.Export.enabled && settings.Export.create_index && !settings.SliderServer.serve_static_export_folder
         exists = any(["index.html", "index.md", ("index"*e for e in pluto_file_extensions)...]) do f
             joinpath(output_dir, f) |> isfile
         end
