@@ -173,7 +173,25 @@ function run_directory(
             end
         end
 
-        @info "Starting server..." host Int(port)
+        address = let
+            host_str = string(hostIP)
+            host_pretty = if isa(hostIP, Sockets.IPv6)
+                if host_str == "::1"
+                    "localhost"
+                else
+                    "[$(host_str)]"
+                end
+            elseif host_str == "127.0.0.1" # Assuming the other alternative is IPv4
+                "localhost"
+            else
+                host_str
+            end
+            port_pretty = Int(port)
+            "http://$(host_pretty):$(port_pretty)/"
+        end
+
+
+        @info "# Starting server..." address
 
         # This is boilerplate HTTP code, don't read it
         # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
@@ -255,7 +273,7 @@ function run_directory(
 
                 true
             else
-                did_something && @info "~~ ALL NOTEBOOKS READY ~~"
+                did_something && @info "# ALL NOTEBOOKS READY"
                 false
             end
         end
@@ -322,10 +340,7 @@ function run_git_directory(
         if old_settings != new_settings
             @error "Configuration changed. Shutting down!"
 
-            @ignorefailure schedule(run_dir_task[], InterruptException(); error=true)
-            @warn "asdfasdf"
-            sleep(1)
-
+            # @ignorefailure schedule(run_dir_task[], InterruptException(); error=true)
             exit()
         end
 
