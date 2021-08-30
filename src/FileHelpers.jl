@@ -16,7 +16,9 @@ Search recursively for Pluto notebook files.
 Return paths relative to the search directory.
 """
 function find_notebook_files_recursive(start_dir)
-    notebook_files = filter(is_pluto_notebook, list_files_recursive(start_dir))
+    notebook_files = filter(list_files_recursive(start_dir)) do path
+        is_pluto_notebook(joinpath(start_dir, path))
+    end
     
     not_interal_notebook_files = filter(notebook_files) do f
         !occursin(".julia", f) || occursin(".julia", start_dir)

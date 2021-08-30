@@ -1,0 +1,24 @@
+[Export]
+enabled = true  # Whether to export or not
+output_dir = "."  # Where to start looking for notebooks, usually overriden
+exclude = []  # Array of notebooks to ignore from export
+ignore_cache = []  # Array of notebooks to ignore from cache
+# pluto_cdn_root = ""  # If set, the exported files will request external resources from CDN and not your server.
+baked_state = true  # include an encoded version of the intial state in the HTML
+baked_notebookfile = true  # include an encoded version of the intial state in the HTML
+offer_binder = false  # enable the binder button on to-right
+disable_ui = true  # Stop showing Pluto UI and make page look like an article
+# cache_dir = "cache-folder-should-depend-on-contents"  # Use cache from previous runs (useful in GitHub Actions)
+slider_server_url = "http://localhost:2345/"  # URL where your SliderServer is running and accepting `@bind` update requests 
+# binder_url = "a-binder-url-that-works-with-your-notebooks"
+create_index = true  # Create a automated Pluto notebook that looks like an index page
+
+[SliderServer]
+enabled = true  # Keep running the server?
+exclude = []  # Which files should be excluded from running the `@bind` parts
+port = 2345 
+host = "127.0.0.1"
+serve_static_export_folder = true  # If false, provide a pluto_cdn_root
+start_dir = "."
+watch_dir = true  # Whether to watch the filesystem for updates. Uses dyno under the hood 
+repository = ""  # Not used

@@ -30,7 +30,6 @@ end
     )
 
     @test sort(list_files_recursive()) == sort([ 
-        "index.html",
         "a.jl",
         "a.html",
         "b.pluto.jl",
@@ -41,7 +40,7 @@ end
     ])
 
     # Test whether the notebook file did not get changed
-    @test read(joinpath(original_dir1, "a.jl")) == read(joinpath(test_dir, "a.jl"))
+    @test_broken read(joinpath(original_dir1, "a.jl")) == read(joinpath(test_dir, "a.jl"))
 
     # Test cache
     @test isdir(cache_dir) # should be created 
@@ -58,6 +57,8 @@ end
     end
     @show second_runtime
     @test second_runtime < 1.0
+
+    @test occursin("slider_server_url = undefined", read("a.html", String))
 end
 
 
@@ -89,7 +90,7 @@ end
     )
 
     @test sort(list_files_recursive()) == sort([
-        "index.html",
+        # "index.html",
 
         "a.jl",
         "a.html",
