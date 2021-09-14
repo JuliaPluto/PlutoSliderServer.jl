@@ -41,7 +41,7 @@ end
     ])
 
     # Test whether the notebook file did not get changed
-    @test read(joinpath(original_dir1, "a.jl")) == read(joinpath(test_dir, "a.jl"))
+    @test read(joinpath(original_dir1, "a.jl"), String) == read(joinpath(test_dir, "a.jl"), String)
 
     # Test cache
     @test isdir(cache_dir) # should be created 
