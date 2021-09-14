@@ -23,7 +23,7 @@ Configurations = "0.15"
 FromFile = "0.1"
 GitHubActions = "0.1"
 HTTP = "^0.9.3"
-Pluto = "^0.14.7, 0.15"
+Pluto = "^0.14.7, 0.15, 0.16"
 julia = "1.5"
 
 [extras]
