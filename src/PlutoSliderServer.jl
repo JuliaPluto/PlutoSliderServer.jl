@@ -23,7 +23,7 @@ function __init__()
     get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
 end
 
-function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)
+function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)::PlutoDeploySettings
     if !isnothing(toml_path) && isfile(toml_path)
         toml_d = TOML.parsefile(toml_path)
         
@@ -61,7 +61,7 @@ Search recursively for all Pluto notebooks in the current folder, and for each n
 - `Export_baked_state::Bool=true`: base64-encode the state object and write it inside the .html file. If `false`, a separate `.plutostate` file is generated.
 - `Export_offer_binder::Bool=true`: show a "Run on Binder" button on the notebooks.
 - `Export_binder_url::Union{Nothing,String}=nothing`: e.g. `https://mybinder.org/v2/gh/mitmath/18S191/e2dec90`. Defaults to a binder repo that runs the correct version of Pluto -- https://github.com/fonsp/pluto-on-binder. TODO docs
-- `Export_slider_server_url::Union{Nothing,String}=nothing`: e.g. `https://bindserver.mycoolproject.org/` TODO docs
+- `Export_slider_server_url::Union{Nothing,String}=nothing`: e.g. `https://sliderserver.mycoolproject.org/` TODO docs
 - `Export_cache_dir::Union{Nothing,String}=nothing`: if provided, use this directory to read and write cached notebook states. Caches will be indexed by notebook hash, but you need to take care to invalidate the cache when Pluto or this export script updates. Useful in combination with https://github.com/actions/cache.
 - `Export_output_dir::String="."`: folder to write generated HTML files to (will create directories to preserve the input folder structure). Leave at the default to generate each HTML file in the same folder as the notebook file.
 - `notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir)`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
@@ -111,6 +111,11 @@ function run_directory(
         filter(s) do f
             occursin("@bind", read(joinpath(start_dir, f), String))
         end
+    end
+    
+    if static_export && run_server
+        # The user wants to run a slider server, with static export and static notebook serving, so they very probably want to set `slider_server_url` to "./". 
+        settings.Export.slider_server_url = something(settings.Export.slider_server_url, "./")
     end
     
     @info "Settings" Text(settings)

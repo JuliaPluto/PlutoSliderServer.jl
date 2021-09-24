@@ -77,7 +77,6 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
 
                     names::Vector{Symbol} = Symbol.(keys(bonds))
 
-                    # TODO: is_first_value should be determined by the client
                     topological_order = Pluto.set_bond_values_reactive(
                         session=server_session,
                         notebook=notebook,
