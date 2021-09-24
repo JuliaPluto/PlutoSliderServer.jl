@@ -25,10 +25,7 @@ end
 
 function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)::PlutoDeploySettings
     if !isnothing(toml_path) && isfile(toml_path)
-        toml_d = TOML.parsefile(toml_path)
-        
-        kwargs_dict = Configurations.to_dict(Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
-        Configurations.from_dict(PlutoDeploySettings, merge_recursive(toml_d, kwargs_dict))
+        Configurations.from_toml(PlutoDeploySettings, toml_path; kwargs...)
     else
         Configurations.from_kwargs(PlutoDeploySettings; kwargs...)
     end
@@ -36,6 +33,12 @@ end
 
 merge_recursive(a::AbstractDict, b::AbstractDict) = mergewith(merge_recursive, a, b)
 merge_recursive(a, b) = b
+
+merge_recursive(a::PlutoDeploySettings, b::PlutoDeploySettings) = 
+    Configurations.from_dict(PlutoDeploySettings, 
+        merge_recursive(Configurations.to_dict(a), Configurations.to_dict(b)))
+        
+with_kwargs(original::PlutoDeploySettings; kwargs...) = merge_recursive(original, Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
 
 include("./HTTPRouter.jl")
 
@@ -115,7 +118,7 @@ function run_directory(
     
     if static_export && run_server
         # The user wants to run a slider server, with static export and static notebook serving, so they very probably want to set `slider_server_url` to "./". 
-        settings.Export.slider_server_url = something(settings.Export.slider_server_url, "./")
+        settings = with_kwargs(settings; Export_slider_server_url = "./")
     end
     
     @info "Settings" Text(settings)
