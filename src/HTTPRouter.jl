@@ -94,12 +94,10 @@ function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, serve
 
                     names::Vector{Symbol} = Symbol.(keys(bonds))
 
-                    # TODO: is_first_value should be determined by the client
                     topological_order = Pluto.set_bond_values_reactive(
                         session=server_session,
                         notebook=notebook,
                         bound_sym_names=names,
-                        is_first_value=false,
                         run_async=false,
                     )::Pluto.TopologicalOrder
 
