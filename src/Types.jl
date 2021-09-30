@@ -3,6 +3,8 @@ module Types
     import TOML
     import Pluto: Pluto, Token, Notebook
     export NotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration, withlock
+    using TerminalLoggers: TerminalLogger
+    using Logging: global_logger
 
     ###
     # SESSION DEFINITION
@@ -65,14 +67,16 @@ module Types
         Export::ExportSettings=ExportSettings()
         Pluto::Pluto.Configuration.Options=Pluto.Configuration.Options()
     end
-    
-    function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)
+
+    function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)::PlutoDeploySettings
         if !isnothing(toml_path) && isfile(toml_path)
-            toml_d = TOML.parsefile(toml_path)
-            
-            kwargs_dict = Configurations.to_dict(Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
-            Configurations.from_dict(PlutoDeploySettings, merge_recursive(toml_d, kwargs_dict))
+            Configurations.from_toml(PlutoDeploySettings, toml_path; kwargs...)
         else
+            global_logger(try
+                TerminalLogger(; margin=1)
+            catch
+                TerminalLogger()
+            end)
             Configurations.from_kwargs(PlutoDeploySettings; kwargs...)
         end
     end

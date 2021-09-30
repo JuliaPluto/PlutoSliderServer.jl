@@ -6,7 +6,7 @@ using FromFile
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
 @from "./Actions.jl" import process, should_shutdown, should_update, should_launch, will_process
-@from "./Types.jl" using Types: Types, NotebookSession, get_configuration, withlock
+@from "./Types.jl" using Types: Types, NotebookSession, get_configuration, withlock, PlutoDeploySettings
 @from "./Webhook.jl" import register_webhook!
 @from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router
@@ -19,17 +19,13 @@ using Base64
 using SHA
 using Sockets
 import BetterFileWatching: watch_folder
-
+using TerminalLoggers: TerminalLogger
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
-using TerminalLoggers: TerminalLogger
-function __init__()
-    get(ENV, "GITHUB_ACTIONS", "false") == "true" && global_logger(GitHubActionsLogger())
-end
 
-function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)::PlutoDeploySettings
-    if !isnothing(toml_path) && isfile(toml_path)
-        Configurations.from_toml(PlutoDeploySettings, toml_path; kwargs...)
+function __init__()
+    if get(ENV, "GITHUB_ACTIONS", "false") == "true"
+        global_logger(GitHubActionsLogger())
     else
         global_logger(try
             TerminalLogger(; margin=1)
@@ -141,11 +137,12 @@ function run_directory(
     end
 
     to_run = getpaths()
-    
-    if static_export && run_server
-        # The user wants to run a slider server, with static export and static notebook serving, so they very probably want to set `slider_server_url` to "./". 
-        settings = with_kwargs(settings; Export_slider_server_url = "./")
-    end
+
+    # TODO: Clean this up
+    # if static_export && run_server
+    #     # The user wants to run a slider server, with static export and static notebook serving, so they very probably want to set `slider_server_url` to "./". 
+    #     settings = with_kwargs(settings; Export_slider_server_url = "./")
+    # end
     
     @info "Settings" Text(settings)
 
