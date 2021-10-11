@@ -222,7 +222,7 @@ function run_directory(
             generate_static_export(path, settings, original_state, output_dir, jl_contents)
         end
 
-        @info "[$(i)/$(length(to_run))] Ready $(path)" hash
+        @info "[$(i)/$(length(to_run))] Ready $(path)" session.hash
     end
     @info "-- ALL NOTEBOOKS READY --"
 
