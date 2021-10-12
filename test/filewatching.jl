@@ -23,7 +23,7 @@ select(f::Function, xs) = for x in xs
     end
 end
 
-@testset "HTTP requests" begin
+@testset "Folder watching" begin
     test_dir = tempname(cleanup=false)
     mkdir(test_dir)
 
@@ -72,7 +72,7 @@ end
 
     notebook_sessions = ready_result[].notebook_sessions
 
-    @testset "ADDING A FILE" begin
+    @testset "Adding a file" begin
 
         cp(joinpath(test_dir, "basic2.jl"), joinpath(test_dir, "basic2 copy.jl"))
 
@@ -97,7 +97,7 @@ end
 
 
 
-    @testset "REMOVING A FILE" begin
+    @testset "Removing a file" begin
 
         rm(joinpath(test_dir, "basic2 copy.jl"))
 
@@ -113,7 +113,7 @@ end
     coolsesh = () -> select(s -> s.path == "subdir/cool.jl", notebook_sessions)
     coolcontents() = read(joinpath(test_dir, "subdir", "cool.html"), String)
 
-    @testset "ADDING A FILE (AGAIN)" begin
+    @testset "Adding a file (again)" begin
 
         mkdir(joinpath(test_dir, "subdir"))
 
@@ -131,7 +131,7 @@ end
     end
 
 
-    @testset "UPDATING AN EXISTING FILE" begin
+    @testset "Update an existing file" begin
 
         function coolconnectionkeys()
             response = HTTP.get("http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(coolsesh().current_hash))/")
