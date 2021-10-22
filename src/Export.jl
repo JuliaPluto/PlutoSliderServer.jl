@@ -14,32 +14,32 @@ import Pkg
 
 export try_fromcache, try_tocache
 
-cache_filename(cache_dir::String, hash::String) = joinpath(cache_dir, HTTP.URIs.escapeuri(string(try_get_exact_pluto_version(), hash)) * ".plutostate")
+cache_filename(cache_dir::String, current_hash::String) = joinpath(cache_dir, HTTP.URIs.escapeuri(string(try_get_exact_pluto_version(), current_hash)) * ".plutostate")
 
-function try_fromcache(cache_dir::String, hash::String)
-    p = cache_filename(cache_dir, hash)
+function try_fromcache(cache_dir::String, current_hash::String)
+    p = cache_filename(cache_dir, current_hash)
     if isfile(p)
         try
             open(Pluto.unpack, p, "r")
         catch e
-            @warn "Failed to load statefile from cache" hash exception=(e,catch_backtrace())
+            @warn "Failed to load statefile from cache" current_hash exception=(e,catch_backtrace())
         end
     end
 end
-try_fromcache(cache_dir::Nothing, hash) = nothing
+try_fromcache(cache_dir::Nothing, current_hash) = nothing
 
 
-function try_tocache(cache_dir::String, hash::String, state)
+function try_tocache(cache_dir::String, current_hash::String, state)
     mkpath(cache_dir)
     try
-        open(cache_filename(cache_dir, hash), "w") do io
+        open(cache_filename(cache_dir, current_hash), "w") do io
             Pluto.pack(io, state)
         end
     catch e
-        @warn "Failed to write to cache file" hash exception=(e,catch_backtrace())
+        @warn "Failed to write to cache file" current_hash exception=(e,catch_backtrace())
     end
 end
-try_tocache(cache_dir::Nothing, hash, state) = nothing
+try_tocache(cache_dir::Nothing, current_hash, state) = nothing
 
 
 

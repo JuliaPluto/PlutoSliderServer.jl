@@ -157,7 +157,7 @@ function run_directory(
     server_session = Pluto.ServerSession(;options=settings.Pluto)
 
     notebook_sessions = NotebookSession[]
-    # notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
+    # notebook_sessions = NotebookSession[QueuedNotebookSession(;path, current_hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if settings.SliderServer.enabled
         static_dir = (
