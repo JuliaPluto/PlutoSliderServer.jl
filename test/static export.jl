@@ -87,6 +87,10 @@ end
         Export_slider_server_url="appelsap",
         config_toml_path=config_path,
     )
+    
+    c = PlutoSliderServer.get_configuration(config_path; Export_slider_server_url="appelsap")
+    
+    @test c.Export.slider_server_url == "appelsap"
 
     @test sort(list_files_recursive()) == sort([
         "index.html",

@@ -13,7 +13,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
         notebook_hash = parts[2] |> HTTP.unescapeuri
 
         i = findfirst(notebook_sessions) do sesh
-            sesh.hash == notebook_hash
+            sesh.current_hash == notebook_hash
         end
         
         if i === nothing

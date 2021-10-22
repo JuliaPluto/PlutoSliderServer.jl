@@ -9,7 +9,7 @@ module Types
     
     Base.@kwdef struct RunningNotebookSession <: NotebookSession
         path::String
-        hash::String
+        current_hash::String
         notebook::Pluto.Notebook
         original_state
         token::Token=Token()
@@ -18,12 +18,12 @@ module Types
     
     Base.@kwdef struct QueuedNotebookSession <: NotebookSession
         path::String
-        hash::String
+        current_hash::String
     end
     
     Base.@kwdef struct FinishedNotebookSession <: NotebookSession
         path::String
-        hash::String
+        current_hash::String
         original_state
     end
     

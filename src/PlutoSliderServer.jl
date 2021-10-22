@@ -135,7 +135,7 @@ function run_directory(
     settings.Pluto.evaluation.lazy_workspace_creation = true
     server_session = Pluto.ServerSession(;options=settings.Pluto)
 
-    notebook_sessions = NotebookSession[QueuedNotebookSession(;path, hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
+    notebook_sessions = NotebookSession[QueuedNotebookSession(;path, current_hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if run_server
         static_dir = (
@@ -222,7 +222,7 @@ function run_directory(
             generate_static_export(path, settings, original_state, output_dir, jl_contents)
         end
 
-        @info "[$(i)/$(length(to_run))] Ready $(path)" session.hash
+        @info "[$(i)/$(length(to_run))] Ready $(path)" session.current_hash
     end
     @info "-- ALL NOTEBOOKS READY --"
 

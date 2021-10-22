@@ -11,11 +11,11 @@ module Actions
 
     function add_to_session!(notebook_sessions, server_session, path, settings, run_server=true, start_dir=".")
         jl_contents = read(joinpath(start_dir, path), String)
-        hash = myhash(jl_contents)
+        current_hash = myhash(jl_contents)
         # The 5 lines below are needed if the code is not invoked within PlutoSliderServer.run_directory
-        i = findfirst(s -> s.hash == hash, notebook_sessions)
+        i = findfirst(s -> s.current_hash == current_hash, notebook_sessions)
         if isnothing(i)
-            push!(notebook_sessions, QueuedNotebookSession(;path, hash=hash))
+            push!(notebook_sessions, QueuedNotebookSession(;path, current_hash=current_hash))
             i = length(notebook_sessions)
         end
         keep_running = run_server && path ∉ settings.SliderServer.exclude
@@ -23,9 +23,9 @@ module Actions
 
         local notebook, original_state
 
-        cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, hash)
+        cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, current_hash)
         if cached_state !== nothing
-            @info "Loaded from cache, skipping notebook run" hash
+            @info "Loaded from cache, skipping notebook run" current_hash
             original_state = cached_state
         else
             try
@@ -45,7 +45,7 @@ module Actions
                     # By setting notebook_sessions[i] to a running session, (modifying the array), the HTTP router will now start serving requests for this notebook.
                     notebook_sessions[i] = RunningNotebookSession(;
                         path,
-                        hash,
+                        current_hash,
                         notebook,
                         original_state,
                         bond_connections,
@@ -53,11 +53,11 @@ module Actions
                 else
                     notebook_sessions[i] = FinishedNotebookSession(;
                         path,
-                        hash,
+                        current_hash,
                         original_state,
                     )
                 end
-                try_tocache(settings.Export.cache_dir, hash, original_state)
+                try_tocache(settings.Export.cache_dir, current_hash, original_state)
             catch e
                 (e isa InterruptException) || rethrow(e)
                 @error "Failed to run notebook!" path exception=(e,catch_backtrace())

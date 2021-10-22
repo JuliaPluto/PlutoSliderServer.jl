@@ -49,7 +49,7 @@ using Base64
     @testset "Bond connections - $(name)" for (i, name) in enumerate(notebook_paths)
         s = notebook_sessions[i]
 
-        response = HTTP.get("http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(s.hash))/")
+        response = HTTP.get("http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(s.current_hash))/")
 
         result = Pluto.unpack(response.body)
 
@@ -79,9 +79,9 @@ using Base64
                     base64encode |>
                     HTTP.URIs.escapeuri
                 
-                HTTP.request(method, "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.hash))/$(arg)")
+                HTTP.request(method, "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.current_hash))/$(arg)")
             else
-                HTTP.request(method, "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.hash))/", [], Pluto.pack(bonds))
+                HTTP.request(method, "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.current_hash))/", [], Pluto.pack(bonds))
             end
 
             result = Pluto.unpack(response.body)
