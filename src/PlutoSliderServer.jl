@@ -116,11 +116,6 @@ function run_directory(
         end
     end
     
-    if static_export && run_server
-        # The user wants to run a slider server, with static export and static notebook serving, so they very probably want to set `slider_server_url` to "./". 
-        settings = with_kwargs(settings; Export_slider_server_url = "./")
-    end
-    
     @info "Settings" Text(settings)
 
     run_server && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
