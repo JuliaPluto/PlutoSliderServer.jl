@@ -49,11 +49,13 @@ using Base64
     @testset "Bond connections - $(name)" for (i, name) in enumerate(notebook_paths)
         s = notebook_sessions[i]
 
-        response = HTTP.get("http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(s.current_hash))/")
+        for ending in ["", "/"]
+            response = HTTP.get("http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(s.current_hash))" * ending)
 
-        result = Pluto.unpack(response.body)
+            result = Pluto.unpack(response.body)
 
-        @test result == Dict(String(k) => String.(v) for (k,v) in s.bond_connections)
+            @test result == Dict(String(k) => String.(v) for (k,v) in s.bond_connections)
+        end
     end
 
 

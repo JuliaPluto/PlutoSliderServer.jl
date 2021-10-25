@@ -2,10 +2,13 @@
 ###
 # HTTP ROUTER
 
+using FromFile
+@from "./Actions.jl" import Actions: run_bonds_get_patch_info
+
 function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
     router = HTTP.Router()
 
-    function get_sesh(request::HTTP.Request)
+    function get_sesh(request::HTTP.Request)::Union{Nothing,NotebookSession}
         uri = HTTP.URI(request.target)
     
         parts = HTTP.URIs.splitpath(uri.path)
@@ -32,7 +35,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
         end
     end
 
-    function get_bonds(request::HTTP.Request)
+    function get_bonds(request::HTTP.Request)::Dict{Symbol,Any}
         request_body = if request.method == "POST"
             IOBuffer(HTTP.payload(request))
         elseif request.method == "GET"
@@ -70,53 +73,16 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
             let lag = settings.SliderServer.simulated_lag
                 lag > 0 && sleep(lag)
             end
-
-            topological_order, new_state = withtoken(sesh.token) do
-                try
-                    notebook.bonds = bonds
-
-                    names::Vector{Symbol} = Symbol.(keys(bonds))
-
-                    topological_order = Pluto.set_bond_values_reactive(
-                        session=server_session,
-                        notebook=notebook,
-                        bound_sym_names=names,
-                        run_async=false,
-                    )::Pluto.TopologicalOrder
-
-                    new_state = Pluto.notebook_to_js(notebook)
-
-                    topological_order, new_state
-                catch e
-                    @error "Failed to set bond values" exception=(e, catch_backtrace())
-                    nothing, nothing
-                end
+            
+            ##
+            result = run_bonds_get_patch_info(server_session, sesh, bonds)
+            ##
+                        
+            if result === nothing
+                HTTP.Response(500, "Failed to set bond values") |> with_cors! |> with_not_cachable!
+            else
+                HTTP.Response(200, Pluto.pack(result)) |> with_cachable! |> with_cors! |> with_msgpack!
             end
-            topological_order === nothing && return (HTTP.Response(500, "Failed to set bond values") |> with_cors! |> with_not_cachable!)
-
-            ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
-
-            @debug "Finished running!" length(ids_of_cells_that_ran)
-
-            # We only want to send state updates about...
-            function only_relevant(state)
-                new = copy(state)
-                # ... the cells that just ran and ...
-                new["cell_results"] = filter(state["cell_results"]) do (id, cell_state)
-                    id ∈ ids_of_cells_that_ran
-                end
-                # ... nothing about bond values, because we don't want to synchronize among clients.
-                new["bonds"] = Dict{String,Dict{String,Any}}()
-                new
-            end
-
-            patches = Firebasey.diff(only_relevant(sesh.original_state), only_relevant(new_state))
-            patches_as_dicts::Array{Dict} = patches
-
-            HTTP.Response(200, Pluto.pack(Dict{String,Any}(
-                "patches" => patches_as_dicts,
-                "ids_of_cells_that_ran" => ids_of_cells_that_ran,
-            ))) |> with_cachable! |> with_cors! |> with_msgpack!
         elseif sesh isa QueuedNotebookSession
             HTTP.Response(503, "Still loading the notebooks... check back later!") |> with_cors! |> with_not_cachable!
         else

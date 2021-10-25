@@ -5,7 +5,7 @@ using FromFile
 @from "./MoreAnalysis.jl" import MoreAnalysis
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
-@from "./Actions.jl" import Actions: add_to_session!, generate_static_export, myhash, showall
+@from "./Actions.jl" import Actions: add_to_session!, generate_static_export, generate_static_staterequests, myhash, showall
 @from "./Types.jl" using Types
 
 import Pluto
@@ -96,7 +96,7 @@ If `static_export` is `true`, then additional `Export_` keywords can be given, s
 function run_directory(
         start_dir::String="."; 
         notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir),
-        static_export::Bool=false, run_server::Bool=true, 
+        static_export::Bool=false, static_export_state::Bool=false, run_server::Bool=true, 
         on_ready::Function=((args...)->()),
         config_toml_path::Union{String,Nothing}=joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml"),
         kwargs...
@@ -212,7 +212,7 @@ function run_directory(
         local session, jl_contents, original_state
         # That's because you can't continue in a loop
         try
-            session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, run_server, start_dir)
+            session, jl_contents, original_state = add_to_session!(notebook_sessions, server_session, path, settings, run_server || static_export_state, start_dir)
         catch e
             rethrow(e)
             continue
@@ -220,6 +220,9 @@ function run_directory(
     
         if static_export
             generate_static_export(path, settings, original_state, output_dir, jl_contents)
+            if static_export_state
+                generate_static_staterequests(path, settings, server_session, session, output_dir)
+            end
         end
 
         @info "[$(i)/$(length(to_run))] Ready $(path)" session.current_hash

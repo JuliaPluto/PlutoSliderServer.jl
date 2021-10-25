@@ -1,7 +1,9 @@
 module Actions
-    import Pluto: Pluto, without_pluto_file_extension
+    import Pluto: Pluto, ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
     using Base64
     using SHA
+    using OrderedCollections
+    import HTTP
     using FromFile
     @from "./MoreAnalysis.jl" import MoreAnalysis 
     @from "./Export.jl" using Export
@@ -135,5 +137,124 @@ module Actions
         end
 
         @info "Written to $(export_html_path)"
+    end
+    
+        
+    function run_bonds_get_patch_info(server_session, notebook_session::NotebookSession, bonds::AbstractDict{Symbol,<:Any})::Union{AbstractDict{String,Any},Nothing}
+        sesh = notebook_session
+        
+        notebook = sesh.notebook
+        
+        topological_order, new_state = withtoken(sesh.token) do
+            try
+                notebook.bonds = bonds
+
+                names::Vector{Symbol} = Symbol.(keys(bonds))
+
+                topological_order = Pluto.set_bond_values_reactive(
+                    session=server_session,
+                    notebook=notebook,
+                    bound_sym_names=names,
+                    run_async=false,
+                )::Pluto.TopologicalOrder
+
+                new_state = Pluto.notebook_to_js(notebook)
+
+                topological_order, new_state
+            catch e
+                @error "Failed to set bond values" exception=(e, catch_backtrace())
+                nothing, nothing
+            end
+        end
+        if topological_order === nothing
+            return nothing
+        end
+
+        ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
+
+        @debug "Finished running!" length(ids_of_cells_that_ran)
+
+        # We only want to send state updates about...
+        function only_relevant(state)
+            new = copy(state)
+            # ... the cells that just ran and ...
+            new["cell_results"] = filter(state["cell_results"]) do (id, cell_state)
+                id ∈ ids_of_cells_that_ran
+            end
+            # ... nothing about bond values, because we don't want to synchronize among clients.
+            new["bonds"] = Dict{String,Dict{String,Any}}()
+            new
+        end
+
+        patches = Firebasey.diff(only_relevant(sesh.original_state), only_relevant(new_state))
+        patches_as_dicts::Array{Dict} = patches
+
+        Dict{String,Any}(
+            "patches" => patches_as_dicts,
+            "ids_of_cells_that_ran" => ids_of_cells_that_ran,
+        )
+    end
+    
+    function generate_static_staterequests(path, settings::PlutoDeploySettings, pluto_session::Pluto.ServerSession, notebook_session::NotebookSession, output_dir=".")
+        sesh = notebook_session
+        connections = sesh.bond_connections
+        
+        mkpath(
+            joinpath(
+            output_dir,
+            "bondconnections",
+        )
+        )
+        
+        mkpath(joinpath(
+            output_dir,
+            "staterequest",
+            HTTP.URIs.escapeuri(sesh.current_hash),
+        ))
+        
+        write_path = joinpath(
+            output_dir,
+            "bondconnections",
+            HTTP.URIs.escapeuri(sesh.current_hash)
+        )
+        
+        write(write_path, Pluto.pack(sesh.bond_connections))
+        
+        @info "Written bond connections to " write_path
+        
+        for variable_group in Set(values(connections))
+            
+            names = sort(variable_group)
+            
+            possible_values = [Pluto.possible_bond_values(pluto_session::Pluto.ServerSession, sesh.notebook::Pluto.Notebook, n::Symbol) for n in names]
+            
+            for combination in Iterators.product(possible_values...)
+                bonds = OrderedDict{Symbol,Any}(
+                    n => OrderedDict{String,Any}("value" => v, "is_first_value" => true)
+                    for (n,v) in zip(names, combination)                    
+                )
+                
+                result = run_bonds_get_patch_info(pluto_session, sesh, bonds)
+                
+                if result !== nothing                 
+                    write_path = joinpath(
+                        output_dir,
+                        "staterequest",
+                        HTTP.URIs.escapeuri(sesh.current_hash),
+                        Pluto.pack(bonds) |>
+                            base64encode |>
+                            HTTP.URIs.escapeuri
+                    )
+                    
+                    write(write_path, Pluto.pack(result))
+                    
+                    @info "Written state request to " write_path
+                    
+                end
+            end
+            
+        end
+        
+        
     end
 end
