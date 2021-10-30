@@ -1,8 +1,8 @@
-# using LibGit2
+import Git: git
 
 function current_branch_name(dir=".")
     cd(dir) do
-        read(`git rev-parse --abbrev-ref HEAD`, String) |> strip
+        read(`$(git()) rev-parse --abbrev-ref HEAD`, String) |> strip
     end
 end
 
@@ -13,10 +13,10 @@ function fetch(dir=".")::Bool
     
     
     cd(dir) do
-        run(`git fetch origin $(branch_name) --quiet`)
+        run(`$(git()) fetch origin $(branch_name) --quiet`)
         
-        local_hash = read(`git rev-parse HEAD`, String)
-        remote_hash = read(`git rev-parse \@\{u\}`, String)
+        local_hash = read(`$(git()) rev-parse HEAD`, String)
+        remote_hash = read(`$(git()) rev-parse \@\{u\}`, String)
 
         return local_hash == remote_hash
     end
@@ -29,7 +29,7 @@ function pullhard(dir=".")
     branch_name = current_branch_name(dir)
 
     cd(dir) do
-        run(`git reset --hard origin/$(branch_name)`)
+        run(`$(git()) reset --hard origin/$(branch_name)`)
     end
 
 end

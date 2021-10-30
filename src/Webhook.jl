@@ -2,6 +2,7 @@ using FromFile
 
 using HTTP
 using SHA
+import Git: git
 
 # This function wraps our functions with PlutoSliderServer context. run_server & start_dir are set by the webhook options.
 function register_webhook!(hook::Function, router)
@@ -30,8 +31,8 @@ function register_webhook!(hook::Function, router)
         end
 
         @async try
-            run(`git pull`)
-            # run(`git checkout`)
+            run(`$(git()) pull`)
+            # run(`$(git()) checkout`)
             
             hook()
         catch e
