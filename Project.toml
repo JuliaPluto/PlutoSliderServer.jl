@@ -28,7 +28,7 @@ FromFile = "0.1"
 Git = "1"
 GitHubActions = "0.1"
 HTTP = "^0.9.3"
-Pluto = "^0.14.7, 0.15, 0.16"
+Pluto = "^0.14.7, 0.15, 0.16, 0.17"
 julia = "1.6"
 
 [extras]
