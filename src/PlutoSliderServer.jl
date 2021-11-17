@@ -34,12 +34,6 @@ end
 merge_recursive(a::AbstractDict, b::AbstractDict) = mergewith(merge_recursive, a, b)
 merge_recursive(a, b) = b
 
-merge_recursive(a::PlutoDeploySettings, b::PlutoDeploySettings) = 
-    Configurations.from_dict(PlutoDeploySettings, 
-        merge_recursive(Configurations.to_dict(a), Configurations.to_dict(b)))
-        
-with_kwargs(original::PlutoDeploySettings; kwargs...) = merge_recursive(original, Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
-
 include("./HTTPRouter.jl")
 
 
@@ -103,7 +97,10 @@ function run_directory(
     )
 
     pluto_version = Export.try_get_exact_pluto_version()
-    settings = get_configuration(config_toml_path;kwargs...)
+    # The user wants to run a slider server, with static export and static notebook serving, so they very probably want to set `slider_server_url` to "./".
+    settings = get_configuration(config_toml_path;
+                                 Export_slider_server_url = static_export && run_server ? "./" : nothing,
+                                 kwargs...)
     output_dir = something(settings.Export.output_dir, start_dir)
     mkpath(output_dir)
 
@@ -115,12 +112,6 @@ function run_directory(
             occursin("@bind", read(joinpath(start_dir, f), String))
         end
     end
-    
-    if static_export && run_server
-        # The user wants to run a slider server, with static export and static notebook serving, so they very probably want to set `slider_server_url` to "./". 
-        settings = with_kwargs(settings; Export_slider_server_url = "./")
-    end
-    
     @info "Settings" Text(settings)
 
     run_server && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
