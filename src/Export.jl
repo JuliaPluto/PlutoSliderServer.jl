@@ -45,9 +45,13 @@ try_tocache(cache_dir::Nothing, current_hash, state) = nothing
 
 ## FINDING THE PLUTO VERSION
 
+const found_pluto_version = Ref{Any}(nothing)
 
 function try_get_exact_pluto_version()
-    try
+    if found_pluto_version[] !== nothing
+        return found_pluto_version[]
+    end
+    found_pluto_version[] = try
         deps = Pkg.API.dependencies()
 
         p_index = findfirst(p -> p.name == "Pluto", deps)
@@ -67,7 +71,9 @@ function try_get_exact_pluto_version()
             p.git_revision
         end
     catch e
-        @error "Failed to get exact Pluto version from dependency. Your website is not guaranteed to work forever." exception=(e, catch_backtrace())
+        if get(ENV, "HIDE_PLUTO_EXACT_VERSION_WARNING", "false") == "false"
+            @error "Failed to get exact Pluto version from dependency. Your website is not guaranteed to work forever." exception=(e, catch_backtrace())
+        end
         Pluto.PLUTO_VERSION
     end
 end
