@@ -193,12 +193,14 @@ You can also combine the two configuration methods: keyword options and toml opt
 
 # Sample setup: Given a repository, start a PlutoSliderServer to serve static exports with live preview
 
+These instructions set up a slider server on a dedicated server, which automatically synchronises with a git repository, containing the notebook files. Make sure to create one before we start.
+
 > _Disclaimer: This is work in progress, there might be holes!_
 
 ### 1. Initialize
-Create a folder called `pluto-slider-server-environment` with the `Project.toml` and `Manifest.toml` for the `PlutoSliderServer` (NOT the notebooks - the notebooks dependencies should be on each notebook!)
+Create a folder called `pluto-slider-server-environment` with the `Project.toml` and `Manifest.toml` for the `PlutoSliderServer`: (Not the notebooks - the notebooks should contain their own package environment.)
 ```shell
-$ cd <your-repo>
+$ cd <your-repository-with-notebooks>
 $ mkdir pluto-slider-server-environment
 $ julia --project=pluto-slider-server-environment
 julia> ]
@@ -207,38 +209,40 @@ pkg> add Pluto PlutoSliderServer
 
 ### 2. Configuration file
 Optionally, create a configuration file in the same folder as `Project.toml`, see the section about `PlutoDeployment.toml` above.
-
-### 3. Run it 
-
 ```shell
-julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_directory(\".\")"
+touch pluto-slider-server-environment/PlutoDeployment.toml
+# edit the file...
 ```
 
-If the project directory is also a git repository (public or keys exist in `~/.ssh`) you can alternatively use `run_git_directory`, to pull changes periodically:
+### 3. Run it 
+Let's try running it locally before setting up our server:
 ```shell
 julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 ```
 
-That also requires the `start_dir` to be a repository in which you can `git pull` without password (which means it's either public, or you have the required keys in `~/.ssh/` and your git's provider security page! 
+`run_git_directory` will periodically call `git pull`, which requires the `start_dir` to be a repository in which you can `git pull` without password (which means it's either public, or you have the required keys in `~/.ssh/` and your git's provider security page!) 
 
-4. Start PlutoSliderServer on restart
+### 4. Start PlutoSliderServer on restart
 For this step, we'll assume a very specific but also common setup:
 
-    1. Ubuntu-based machine with `apt-get`, `git`, `vim` and internet
-    2. root access
-
+- Ubuntu-based machine with `apt-get`, `git`, `vim` and internet
+- root access
     
-    1. Install Julia (run as root) ```shell
+#### 1. Install Julia (run as root) 
+```shell
 wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.4-linux-x86_64.tar.gz
 tar zxvf julia-1.6.4-linux-x86_64.tar.gz
 rm julia-1.6.4-linux-x86_64.tar.gz
 ln -s `pwd`/julia-1.6.4/bin/julia /usr/local/bin/julia
 ```
-    2. get your repository
-    ```shell
-    git clone https://github.com/<user>/<repo-with-notebooks>
-    ```
-    3. Create a service
+
+#### 2. get your repository
+```shell
+git clone https://github.com/<user>/<repo-with-notebooks>
+git pull
+```
+
+#### 3. Create a service
 ```shell
 sudo cat > /etc/systemd/system/pluto-server.service << __EOF__
 [Unit]
@@ -257,7 +261,7 @@ __EOF__
 ```shell
 sudo cat > /usr/local/bin/pluto-slider-server.sh << __EOF__
 cd ~/<your-repo>  # Make sure to change folder to your repository
-julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
+julia --project="pluto-slider-server-environment" -e "import Pkg; Pkg.instantiate(); import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 __EOF__
 ```
 
@@ -267,14 +271,17 @@ sudo chmod 744 /usr/local/bin/pluto-slider-server.sh
 sudo chmod 664 /etc/systemd/system/pluto-server.service
 ```
 
-### 6. Enable
+### 6. Start & enable
 ```shell
 sudo systemctl daemon-reload
-sudo systemctl enable disk-space-check.service
+sudo systemctl start pluto-server
+sudo systemctl enable pluto-server
 ```
 
-### 7. Adjust settings
-If/When you change your configurations (host, IP, domain name etc), change the files in the repository and restart the server. It should reload 'automatically.
+### 7. Live updates
+When you change the notebooks in the git repository, your server will automatically update (it keeps calling `git pull`)! Awesome!
+
+If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer will detect a change in configuration and shut down. Because we set up our service using `systemctl`, the server will automatically restart! (With the new settings)
 
 --- 
 

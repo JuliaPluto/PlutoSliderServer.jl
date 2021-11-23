@@ -66,7 +66,6 @@ function process(s::NotebookSession{Nothing,String,<:Any};
 
     @info "###### ◐ $(progress) Launching..." s.path
 
-    # TODO: Take these from Settings
     jl_contents = read(abs_path, String)
     new_hash = myhash(jl_contents)
     if new_hash != s.desired_hash
@@ -87,7 +86,7 @@ function process(s::NotebookSession{Nothing,String,<:Any};
         )
     else
         try
-            # open and run the notebook (TODO: tell pluto not to write to the notebook file)
+            # open and run the notebook
             notebook = Pluto.SessionActions.open(server_session, abs_path; run_async=false)
             # get the state object
             original_state = Pluto.notebook_to_js(notebook)
