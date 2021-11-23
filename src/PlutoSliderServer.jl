@@ -387,20 +387,24 @@ function run_git_directory(
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
 
-    run_dir_task = Ref{Any}()
-
+    
     get_settings() = get_configuration(config_toml_path; SliderServer_watch_dir=true, kwargs...)
     old_settings = get_settings()
 
-    run_dir_task[] = Pluto.@asynclog begin
+    run_dir_task = Pluto.@asynclog begin
         run_directory(start_dir; notebook_paths, on_ready, config_toml_path, SliderServer_watch_dir=true, kwargs...)
     end
-
-    Pluto.@asynclog while true
+    pull_loop_task = Pluto.@asynclog while true
         new_settings = get_settings()
 
         if old_settings != new_settings
             @error "Configuration changed. Shutting down!"
+            
+            println(stderr, "Old settings:")
+            println(stderr, repr(old_settings))
+            println(stderr, "")
+            println(stderr, "New settings:")
+            println(stderr, repr(new_settings))
 
             # @ignorefailure schedule(run_dir_task[], InterruptException(); error=true)
             exit()
@@ -409,19 +413,25 @@ function run_git_directory(
         sleep(5)
         fetch_pull(start_dir)
     end
+    
+    waitall([run_dir_task, pull_loop_task])
+end
 
-    while true
+function waitall(tasks)
+    killing = Ref(false)
+    @sync for t in tasks
         try
-            wait(run_dir_task[])
+            wait(t)
         catch e
-            if e isa InterruptException
-                yield()
-                sleep(2)
-            else
+            if !(e isa InterruptException)
                 showerror(stderr, e, catch_backtrace())
             end
-            yield()
-            sleep(2)
+            if !killing[]
+                killing[] = true
+                for t2 in tasks
+                    try schedule(t2, e; error=true); catch e; end
+                end
+            end
         end
     end
 end
