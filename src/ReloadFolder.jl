@@ -1,6 +1,7 @@
 using FromFile
 @from "./Actions.jl" import path_hash
-@from "./Types.jl" using Types: Types, PlutoDeploySettings, withlock, get_configuration, NotebookSession
+@from "./Types.jl" import Types: NotebookSession
+@from "./Configuration.jl" import Configuration: PlutoDeploySettings, get_configuration
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
 @from "./Export.jl" import Export: default_index
 import Pluto: without_pluto_file_extension
