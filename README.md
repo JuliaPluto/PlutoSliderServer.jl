@@ -142,8 +142,8 @@ In our example notebook, there are `10 (x) * 5 (y)  +  100 (z) = 150` combinatio
 As PlutoSliderServer embeds so much functionality, it may be confusing to figure out how to approach your setting. That's why we're going to see how to approach some different use cases:
 
 - `export_directory` will find all notebooks in a directory, run them, and generate HTML files. One example use case is https://github.com/JuliaPluto/static-export-template
-- `run_directory` does the same as `export_directory`, but it **keeps the notebooks running** and runs the slider server! With keyword argument `SliderServer_watch_dir=true`, it will watch the given directory for changes to notebook files, and automatically update the slider server.
-- `run_git_directory` does the same as `run_directory`, but it will keep running `git pull` in the given directory, and `SliderServer_watch_dir` is set to `true`.
+- `run_directory` does the same as `export_directory`, but it **keeps the notebooks running** and runs the slider server! It will also watch the given directory for changes to notebook files, and automatically update the slider server.
+- `run_git_directory` does the same as `run_directory`, but it will keep running `git pull` in the given directory. Any changes will get picked up by our directory watching!
 
 ## Configuration
 
