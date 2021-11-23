@@ -10,7 +10,6 @@ module Configuration
     
     
     @extract_docs @option struct SliderServerSettings
-        "Run the slider server?"
         enabled::Bool=true
         "List of notebook files to skip. Provide paths relative to `start_dir`. *If `Export.enabled` is `true` (default), then only paths in `SliderServer_exclude ∩ Export_exclude` will be skipped, paths in `setdiff(SliderServer_exclude, Export_exclude)` will be shut down after exporting.*"
         exclude::Vector=String[]
@@ -30,7 +29,7 @@ module Configuration
     # println(list_options_md(SliderServerSettings))
     
     @extract_docs @option struct ExportSettings
-        "Generate static HTML files?"
+        "Generate static HTML files? This setting can only be `false` if you are also running a slider server."
         enabled::Bool=true
         "Folder to write generated HTML files to (will create directories to preserve the input folder structure). Leave at the default to generate each HTML file in the same folder as the notebook file."
         output_dir::Union{Nothing,String}=nothing
