@@ -7,7 +7,6 @@ using FromFile
 @from "./Export.jl" using Export
 @from "./Actions.jl" import process, should_shutdown, should_update, should_launch, will_process
 @from "./Types.jl" using Types: Types, NotebookSession, get_configuration, withlock, PlutoDeploySettings
-@from "./Webhook.jl" import register_webhook!
 @from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router
 @from "./gitpull.jl" import fetch_pull
@@ -164,14 +163,7 @@ function run_directory(
             settings.Export.enabled && settings.SliderServer.serve_static_export_folder
         ) ? output_dir : nothing
         router = make_router(notebook_sessions, server_session; settings, static_dir )
-        # register_webhook!(router) do
-        #     new_settings = get_configuration(config_toml_path)
-        #     @info new_settings
-        #     @info new_settings == settings
-        #     # TODO: Restart if settings changed
-            
-        #     # reload(notebook_sessions, server_session; settings)
-        # end
+        
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port
