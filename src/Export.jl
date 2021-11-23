@@ -1,9 +1,8 @@
 module Export
 
-export generate_html, generate_index_html
+export generate_index_html
 
-import Pluto
-import Pluto: ServerSession, generate_html
+import Pluto: Pluto, ServerSession
 using HTTP
 using Base64
 using SHA

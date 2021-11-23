@@ -25,6 +25,11 @@ using TerminalLoggers: TerminalLogger
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
 
+export export_directory, run_directory, run_git_directory, github_action
+export export_notebook, run_notebook
+
+export show_sample_config_toml_file
+
 function __init__()
     if get(ENV, "GITHUB_ACTIONS", "false") == "true"
         global_logger(GitHubActionsLogger())
@@ -36,8 +41,6 @@ function __init__()
         end)
     end
 end
-
-export show_sample_config_toml_file
 
 const sample_config_toml_file = """
 # WARNING: this sample configuration file contains settings for **all options**, to demonstrate what is possible. For most users, we recommend keeping the configuration file small, and letting PlutoSliderServer choose the default settings automatically. 
@@ -60,7 +63,6 @@ function show_sample_config_toml_file()
     Text(sample_config_toml_file)
 end
 
-export export_directory, run_directory, github_action
 merge_recursive(a::AbstractDict, b::AbstractDict) = mergewith(merge_recursive, a, b)
 merge_recursive(a, b) = b
 

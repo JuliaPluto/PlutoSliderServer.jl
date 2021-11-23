@@ -1,11 +1,11 @@
 
-import Pluto: Pluto, without_pluto_file_extension, @asynclog
+import Pluto: Pluto, without_pluto_file_extension, generate_html, @asynclog
 using Base64
 using SHA
 using FromFile
 
 @from "./MoreAnalysis.jl" import MoreAnalysis 
-@from "./Export.jl" import Export: Export, generate_html, try_fromcache, try_tocache
+@from "./Export.jl" import Export: Export, try_fromcache, try_tocache
 @from "./Types.jl" import Types: NotebookSession, RunningNotebook, FinishedNotebook
 @from "./Configuration.jl" import Configuration: PlutoDeploySettings
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
