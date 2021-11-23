@@ -7,6 +7,7 @@ using FromFile
 @from "./Export.jl" using Export
 @from "./Actions.jl" import Actions: add_to_session!, generate_static_export, myhash, showall
 @from "./Types.jl" using Types
+@from "./Configuration.jl" using Configuration
 
 import Pluto
 import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension

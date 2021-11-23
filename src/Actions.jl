@@ -6,6 +6,7 @@ module Actions
     @from "./MoreAnalysis.jl" import MoreAnalysis 
     @from "./Export.jl" using Export
     @from "./Types.jl" using Types
+    @from "./Configuration.jl" using Configuration
     myhash = base64encode ∘ sha256
     showall(xs) = Text(join(string.(xs),"\n"))
 
