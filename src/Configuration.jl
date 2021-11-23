@@ -23,7 +23,6 @@ module Configuration
         serve_static_export_folder::Bool=true
         "Watch the input directory for file changes, and update the slider server sessions automatically. More info in the README."
         watch_dir::Bool=false
-        repository::Union{Nothing,String}=nothing
     end
     
     # @info "Wowww" get_kwdocs(SliderServerSettings)
