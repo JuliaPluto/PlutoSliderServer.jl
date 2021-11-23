@@ -54,6 +54,7 @@ end
         try
             PlutoSliderServer.run_directory(test_dir;
             Export_enabled=false,
+            Export_output_dir=test_dir,
             SliderServer_port=port,
             SliderServer_watch_dir=true,
             on_ready)
