@@ -63,7 +63,7 @@ After scanning a directory for notebook files, you can ask Pluto to continue wat
 
 This works especially well when this directory is a git-tracked directory. When running in a git directory, PlutoSliderServer can keep `git pull`ing the directory, updating from the repository automatically. 
 
-> Watching a directory is still work-in-progress: https://github.com/JuliaPluto/PlutoSliderServer.jl/pull/31
+See the `SliderServer_watch_dir` option and `PlutoSliderServer.run_git_directory`.
 
 #### Continuous Deployment
 
@@ -71,7 +71,7 @@ The result is a *Continuous Deployment* setup: you can set up your PlutoSliderSe
 
 The alternative is to redeploy the entire server every time a notebook changes. We found that this setup works fairly well, but causes long downtimes whenever a notebook changes, because all notebooks need to re-run. This can be a problem if your project consists of many notebooks, and they change frequently.
 
-> Watching a directory is still work-in-progress: https://github.com/JuliaPluto/PlutoSliderServer.jl/pull/31
+See `PlutoSliderServer.run_git_directory`.
 
 # How does it work?
 
