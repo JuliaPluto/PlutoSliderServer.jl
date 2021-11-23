@@ -27,7 +27,7 @@ module Configuration
     @extract_docs @option struct ExportSettings
         "Generate static HTML files? This setting can only be `false` if you are also running a slider server."
         enabled::Bool=true
-        "Folder to write generated HTML files to (will create directories to preserve the input folder structure). Leave at the default to generate each HTML file in the same folder as the notebook file."
+        "Folder to write generated HTML files to (will create directories to preserve the input folder structure). The behaviour of the default value depends on whether you are running the slider server, or just exporting. If running the slider server, we use a temporary directory; otherwise, we use `start_dir` (i.e. we generate each HTML file in the same folder as the notebook file)."
         output_dir::Union{Nothing,String}=nothing
         "List of notebook files to skip. Provide paths relative to `start_dir`."
         exclude::Vector=String[]

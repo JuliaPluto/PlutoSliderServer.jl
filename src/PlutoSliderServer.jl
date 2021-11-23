@@ -151,7 +151,10 @@ function run_directory(
     )
 
     settings = get_configuration(config_toml_path; kwargs...)
-    output_dir = something(settings.Export.output_dir, start_dir)
+    output_dir = something(
+        settings.Export.output_dir, 
+        settings.SliderServer.enabled ? mktempdir() : start_dir
+    )
     mkpath(output_dir)
 
     if joinpath("a","b") != "a/b"
