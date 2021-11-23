@@ -30,7 +30,6 @@ end
     )
 
     @test sort(list_files_recursive()) == sort([ 
-        "index.html",
         "a.jl",
         "a.html",
         "b.pluto.jl",
@@ -58,6 +57,8 @@ end
     end
     @show second_runtime
     @test second_runtime < 1.0
+
+    @test occursin("slider_server_url = undefined", read("a.html", String))
 end
 
 
@@ -93,7 +94,7 @@ end
     @test c.Export.slider_server_url == "appelsap"
 
     @test sort(list_files_recursive()) == sort([
-        "index.html",
+        # "index.html",
 
         "a.jl",
         "a.html",

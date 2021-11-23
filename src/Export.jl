@@ -1,9 +1,8 @@
 module Export
 
-export generate_html, default_index
+export generate_index_html
 
-import Pluto
-import Pluto: ServerSession, generate_html
+import Pluto: Pluto, ServerSession
 using HTTP
 using Base64
 using SHA
@@ -79,7 +78,7 @@ function try_get_exact_pluto_version()
 end
 
 
-function default_index(paths)
+function generate_index_html(paths#=::Vector{Pair}=#)
     """
     <!DOCTYPE html>
     <html lang="en">

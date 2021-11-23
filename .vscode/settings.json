@@ -6,5 +6,6 @@
     "julia.format.indents": false,
     "julia.format.ops": false,
     "julia.format.iterOps": false,
-    "julia.format.tuples": false
+    "julia.format.tuples": false,
+    "editor.formatOnSave": false
 }

@@ -1,8 +1,26 @@
+using FromFile
 
-###
-# HTTP ROUTER
+import Pluto
+import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
+using HTTP
+using Base64
+using SHA
+using Sockets
 
-function make_router(settings::PlutoDeploySettings, server_session::ServerSession, notebook_sessions::AbstractVector{<:NotebookSession}; static_dir::Union{String,Nothing}=nothing)
+using Logging: global_logger
+using GitHubActions: GitHubActionsLogger
+
+@from "./Export.jl" import Export:  generate_index_html
+@from "./Types.jl" import Types: NotebookSession, RunningNotebook
+@from "./Configuration.jl" import Configuration: PlutoDeploySettings, get_configuration
+
+const RunningNotebookSession = NotebookSession{String,String,RunningNotebook}
+const QueuedNotebookSession = NotebookSession{Nothing,<:Any,<:Any}
+
+function make_router(notebook_sessions::AbstractVector{<:NotebookSession}, server_session::ServerSession; 
+    settings::PlutoDeploySettings,
+    static_dir::Union{String,Nothing}=nothing,
+    )
     router = HTTP.Router()
 
     function get_sesh(request::HTTP.Request)
@@ -56,7 +74,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
         sesh = get_sesh(request)        
         
         response = if sesh isa RunningNotebookSession
-            notebook = sesh.notebook
+            notebook = sesh.run.notebook
             
             bonds = try
                 get_bonds(request)
@@ -71,7 +89,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
                 lag > 0 && sleep(lag)
             end
 
-            topological_order, new_state = withtoken(sesh.token) do
+            topological_order, new_state = withtoken(sesh.run.token) do
                 try
                     notebook.bonds = bonds
 
@@ -110,7 +128,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
                 new
             end
 
-            patches = Firebasey.diff(only_relevant(sesh.original_state), only_relevant(new_state))
+            patches = Firebasey.diff(only_relevant(sesh.run.original_state), only_relevant(new_state))
             patches_as_dicts::Array{Dict} = patches
 
             HTTP.Response(200, Pluto.pack(Dict{String,Any}(
@@ -128,7 +146,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
         sesh = get_sesh(request)
         
         response = if sesh isa RunningNotebookSession
-            HTTP.Response(200, Pluto.pack(sesh.bond_connections)) |> with_cors! |> with_cachable! |> with_msgpack!
+            HTTP.Response(200, Pluto.pack(sesh.run.bond_connections)) |> with_cors! |> with_cachable! |> with_msgpack!
         elseif sesh isa QueuedNotebookSession
             HTTP.Response(503, "Still loading the notebooks... check back later!") |> with_cors! |> with_not_cachable!
         else
@@ -140,7 +158,7 @@ function make_router(settings::PlutoDeploySettings, server_session::ServerSessio
         done = count(x -> !(x isa QueuedNotebookSession), notebook_sessions)
         if static_dir !== nothing
             path = joinpath(static_dir, "index.html")
-            if !isfile(path) || done < length(notebook_sessions)
+            if !isfile(path)
                 path = tempname() * ".html"
                 write(path, temp_index(notebook_sessions))
             end
@@ -214,11 +232,11 @@ end
 
 
 function temp_index(notebook_sessions::Vector{NotebookSession})
-    default_index(temp_index.(notebook_sessions))
+    generate_index_html(temp_index_item.(notebook_sessions))
 end
-function temp_index(s::QueuedNotebookSession)
+function temp_index_item(s::QueuedNotebookSession)
     without_pluto_file_extension(s.path) => nothing
 end
-function temp_index(s::Union{FinishedNotebookSession,RunningNotebookSession})
+function temp_index_item(s::NotebookSession{String,<:Any,<:Any})
     without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path)*".html"
 end
