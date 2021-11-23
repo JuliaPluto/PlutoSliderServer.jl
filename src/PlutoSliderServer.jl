@@ -8,7 +8,8 @@ using FromFile
 @from "./Actions.jl" import process, should_shutdown, should_update, should_launch, will_process
 @from "./Types.jl" using Types: Types, NotebookSession
 @from "./Lock.jl" import withlock
-@from "./Configuration.jl" using Configuration: Configuration, PlutoDeploySettings, get_configuration
+@from "./Configuration.jl" using Configuration: Configuration, PlutoDeploySettings, ExportSettings, SliderServerSettings, get_configuration
+@from "./ConfigurationDocs.jl" import @extract_docs, get_kwdocs, list_options_md, list_options_toml
 @from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router
 @from "./gitpull.jl" import fetch_pull
@@ -34,6 +35,29 @@ function __init__()
             TerminalLogger()
         end)
     end
+end
+
+export show_sample_config_toml_file
+
+const sample_config_toml_file = """
+# WARNING: this sample configuration file contains settings for **all options**, to demonstrate what is possible. For most users, we recommend keeping the configuration file small, and letting PlutoSliderServer choose the default settings automatically. 
+
+# This means: DO NOT use this file in your setup, instead, create an empty toml file and **add only the settings that you want to change**. 
+
+[Export]
+$(list_options_toml(ExportSettings))
+
+[SliderServer]
+$(list_options_toml(SliderServerSettings))
+
+[Pluto]
+threads = 2
+# See documentation for `Pluto.Configuration` for the full list of options.
+
+"""
+
+function show_sample_config_toml_file()
+    Text(sample_config_toml_file)
 end
 
 export export_directory, run_directory, github_action
@@ -75,22 +99,26 @@ Search recursively for all Pluto notebooks in the current folder, and for each n
   - Extra functionality enabled, such as hidden UI, binder button, and a live bind server
 
 # Keyword rguments
-- `Export_exclude::Vector{String}=[]`: list of notebook files to skip. Provide paths relative to `start_dir`.
-- `Export_disable_ui::Bool=true`: hide all buttons and toolbars to make it look like an article.
-- `Export_baked_state::Bool=true`: base64-encode the state object and write it inside the .html file. If `false`, a separate `.plutostate` file is generated.
-- `Export_offer_binder::Bool=true`: show a "Run on Binder" button on the notebooks.
-- `Export_binder_url::Union{Nothing,String}=nothing`: e.g. `https://mybinder.org/v2/gh/mitmath/18S191/e2dec90`. Defaults to a binder repo that runs the correct version of Pluto -- https://github.com/fonsp/pluto-on-binder. TODO docs
-- `Export_slider_server_url::Union{Nothing,String}=nothing`: e.g. `https://sliderserver.mycoolproject.org/` TODO docs
-- `Export_cache_dir::Union{Nothing,String}=nothing`: if provided, use this directory to read and write cached notebook states. Caches will be indexed by notebook hash, but you need to take care to invalidate the cache when Pluto or this export script updates. Useful in combination with https://github.com/actions/cache.
-- `Export_output_dir::String="."`: folder to write generated HTML files to (will create directories to preserve the input folder structure). Leave at the default to generate each HTML file in the same folder as the notebook file.
+$(list_options_md(ExportSettings; prefix="Export"))
 - `notebook_paths::Vector{String}=find_notebook_files_recursive(start_dir)`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
 """
 function export_directory(args...; kwargs...)
     run_directory(args...; Export_enabled=true, SliderServer_enabled=false, kwargs...)
 end
+"""
+    export_notebook(notebook_filename::String; kwargs...)
+
+A single-file version of [`export_directory`](@ref).
+"""
 export_notebook(p; kwargs...) = run_notebook(p; Export_enabled=true, SliderServer_enabled=false, kwargs...)
 github_action = export_directory
 
+
+"""
+    run_notebook(notebook_filename::String; kwargs...)
+
+A single-file version of [`run_directory`](@ref).
+"""
 function run_notebook(path::String; kwargs...)
     run_directory(dirname(path); notebook_paths=[basename(path)], kwargs...)
 end
@@ -101,12 +129,16 @@ end
 Run the Pluto bind server for all Pluto notebooks in the given directory (recursive search). 
 
 # Keyword arguments
-- `SliderServer_exclude::Vector{String}=[]`: list of notebook files to skip. Provide paths relative to `start_dir`. _If `Export.enabled` is `true` (default), then only paths in `SliderServer_exclude ∩ Export_exclude` will be skipped, paths in `setdiff(SliderServer_exclude, Export_exclude)` will be shut down after exporting._
-- `SliderServer_port::Integer=2345`: Port to run the HTTP server on.
-- `SliderServer_host="127.0.0.1"`: Often set to `"0.0.0.0"` on a server.
+$(list_options_md(SliderServerSettings; prefix="SliderServer"))
 - `notebook_paths::Union{Nothing,Vector{String}}=nothing`: If you do not want the recursive save behaviour, then you can set this to a vector of absolute paths. In that case, `start_dir` is ignored, and you should set `Export_output_dir`.
+- `Export_enabled::Bool=true`: Also export HTML files?
 
-If `Export.enabled` is `true` (default), then additional `Export_` keywords can be given, see [`export_directory`](@ref).
+---
+
+## Export keyword arguments
+
+If `Export_enabled` is `true`, then additional `Export_` keywords can be given:
+$(list_options_md(ExportSettings; prefix="Export"))
 """
 function run_directory(
         start_dir::String="."; 

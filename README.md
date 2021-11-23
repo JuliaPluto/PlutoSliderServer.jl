@@ -133,70 +133,81 @@ In our example notebook, there are `10 (x) * 5 (y)  +  100 (z) = 150` combinatio
 
 As PlutoSliderServer embeds so much functionality, it may be confusing to figure out how to approach your setting. That's why we're going to see how to approach some different use cases:
 
-## What PlutoSliderServer provides
+- `export_directory` will find all notebooks in a directory, run them, and generate HTML files. One example use case is https://github.com/JuliaPluto/static-export-template
+- `run_directory` does the same as `export_directory`, but it **keeps the notebooks running** and runs the slider server! With keyword argument `SliderServer_watch_dir=true`, it will watch the given directory for changes to notebook files, and automatically update the slider server.
+- `run_git_directory` does the same as `run_directory`, but it will keep running `git pull` in the given directory, and `SliderServer_watch_dir` is set to `true`.
 
-- A very rich configuration — see the `src/Types.jl` for all available options and see below some sensible options for each use-case
-- `run_directory` function - starts from a directory, finds all pluto notebooks and runs them, according to settings
-- `github_action` function - (aka `export_directory`) - bundles some presets to be run into a GitHub Action. See MIT course for usage.
-- `run_git_directory` function - runs `run_directory` *and* a git-pull loop, also forces watching the directory.
+## Configuration
 
-## Usecase: Given a repository, start a PlutoSliderServer to serve static exports with live preview
+PlutoSliderServer is very configurable, and we use [Configurations.jl](https://github.com/Roger-luo/Configurations.jl) to configure the server. We try our best to smart about the default settings, and we hope that most users do not need to configure anything.
+
+There are two ways to change configurations: using keywords arguments, and using a `PlutoDeployment.toml` file.
+
+### 1. Keyword arguments
+
+Our functions can take keyword arguments, for example:
+
+```julia
+run_directory("my_notebooks"; 
+    SliderServer_port=8080, 
+    SliderServer_host="0.0.0.0", 
+    Export_baked_notebookfile=false,
+)
+```
+
+> 🌟 For the full list of options, see the documentation for the function you are using. For example, in the Julia REPL, run `?run_directory`.
+
+### 2. `PlutoDeployment.toml`
+
+If you are using a package environment for your slider server (if you are deploying it on a server, you probably should), then you can also use a TOML file to configure PlutoSliderServer.
+
+In the same folder where you have your `Project.toml` and `Manifest.toml` files, create a third file, called `PlutoDeployment.toml`. Its contents should look something like:
+```toml
+[Export]
+baked_notebookfile = true
+
+[SliderServer]
+port = 8080
+host = 0.0.0.0
+
+# You can also set Pluto's configuration here:
+[Pluto]
+threads = 2
+# See documentation for `Pluto.Configuration` for the full list of options.
+```
+
+> 🌟 For the full list of options, run `PlutoSliderServer.show_sample_config_toml_file()`.
+
+Our functions will look for the existance of a file called `PlutoDeployment.toml` in the active package environment, and use it automatically.
+
+You can also combine the two configuration methods: keyword options and toml options will be merged, the former taking precedence.
+
+# Sample setup: Given a repository, start a PlutoSliderServer to serve static exports with live preview
 
 > _Disclaimer: This is work in progress, there might be holes!_
 
-1. Create a folder with the `Project.toml` and `Manifest.toml` for the `PlutoSliderServer` (NOT the notebooks - the notebooks dependencies should be on each notebook!)
+### 1. Initialize
+Create a folder called `pluto-slider-server-environment` with the `Project.toml` and `Manifest.toml` for the `PlutoSliderServer` (NOT the notebooks - the notebooks dependencies should be on each notebook!)
 ```shell
-cd <your-repo>
-mkdir pluto-slider-server-environment
-julia --project=pluto-slider-server-environment
-    ]
-    add Pluto
-    add PlutoSliderServer#webhook-v1.5
+$ cd <your-repo>
+$ mkdir pluto-slider-server-environment
+$ julia --project=pluto-slider-server-environment
+julia> ]
+pkg> add Pluto PlutoSliderServer
 ```
 
-> Note: You can find the resulting Project.toml, Manifest.toml in `pluto-slider-server-environment`. It's there for your convenience, copy it to your repository or recreate it as above.
+### 2. Configuration file
+Optionally, create a configuration file in the same folder as `Project.toml`, see the section about `PlutoDeployment.toml` above.
 
-2. Create a configuration file
-(See pluto-slider-server-environment/PlutoDeployment.toml for this example, and 📝📝)
-```toml
-[Export]
-enabled = true  # Whether to export or not
-output_dir = "."  # Where to start looking for notebooks, usually overriden
-exclude = []  # Array of notebooks to ignore from export
-ignore_cache = []  # Array of notebooks to ignore from cache
-# pluto_cdn_root = ""  # If set, the exported files will request external resources from CDN and not your server.
-baked_state = true  # include an encoded version of the intial state in the HTML
-baked_notebookfile = true  # include an encoded version of the intial state in the HTML
-offer_binder = false  # enable the binder button on to-right
-disable_ui = true  # Stop showing Pluto UI and make page look like an article
-# cache_dir = "cache-folder-should-depend-on-contents"  # Use cache from previous runs (useful in GitHub Actions)
-slider_server_url = "http://localhost:2345/"  # URL where your SliderServer is running and accepting `@bind` update requests 
-# binder_url = "a-binder-url-that-works-with-your-notebooks"
-create_index = true  # Create a automated Pluto notebook that looks like an index page
-
-[SliderServer]
-enabled = true  # Keep running the server?
-exclude = []  # Which files should be excluded from running the `@bind` parts
-port = 2345 
-host = "127.0.0.1"
-serve_static_export_folder = true  # If false, provide a pluto_cdn_root
-start_dir = "."
-watch_dir = true  # Whether to watch the filesystem for updates. Uses dyno under the hood 
-repository = ""  # Not used
-```
-
-3. Run it 
-The snippet below assumes you run julia while 
-- you have changed into the project directory and
-- you have added a `pluto-slider-server-environment` folder with `Project.toml`, `Manifest.toml` and `PlutoDeployment.toml`.
+### 3. Run it 
 
 ```shell
-julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_directory(\".\", config_toml_path=\"pluto-slider-server-environment/PlutoDeployment.toml\")"
+julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_directory(\".\")"
 ```
 
 If the project directory is also a git repository (public or keys exist in `~/.ssh`) you can alternatively use `run_git_directory`, to pull changes periodically:
 ```shell
-julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\", config_toml_path=\"pluto-slider-server-environment/PlutoDeployment.toml\")"
+julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 ```
 
 That also requires the `start_dir` to be a repository in which you can `git pull` without password (which means it's either public, or you have the required keys in `~/.ssh/` and your git's provider security page! 
@@ -209,10 +220,10 @@ For this step, we'll assume a very specific but also common setup:
 
     
     1. Install Julia (run as root) ```shell
-wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.1-linux-x86_64.tar.gz
-tar zxvf julia-1.6.1-linux-x86_64.tar.gz
-rm julia-1.6.1-linux-x86_64.tar.gz
-ln -s `pwd`/julia-1.6.1/bin/julia /usr/local/bin/julia
+wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.4-linux-x86_64.tar.gz
+tar zxvf julia-1.6.4-linux-x86_64.tar.gz
+rm julia-1.6.4-linux-x86_64.tar.gz
+ln -s `pwd`/julia-1.6.4/bin/julia /usr/local/bin/julia
 ```
     2. get your repository
     ```shell
@@ -232,28 +243,29 @@ WantedBy=default.target
 
 __EOF__
 ```
-    4. Create the startup script
+
+### 4. Create the startup script
 ```shell
 sudo cat > /usr/local/bin/pluto-slider-server.sh << __EOF__
 cd ~/<your-repo>  # Make sure to change folder to your repository
-julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\", config_toml_path=\"pluto-slider-server-environment/PlutoDeployment.toml\")"
+julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 __EOF__
 ```
 
-    5. Permissions stuff
+### 5. Permissions stuff
 ```shell
-    sudo chmod 744 /usr/local/bin/pluto-slider-server.sh
-    sudo chmod 664 /etc/systemd/system/pluto-server.service
+sudo chmod 744 /usr/local/bin/pluto-slider-server.sh
+sudo chmod 664 /etc/systemd/system/pluto-server.service
 ```
 
-    6. Enable
+### 6. Enable
 ```shell
 sudo systemctl daemon-reload
 sudo systemctl enable disk-space-check.service
 ```
 
-    7. Adjust settings
-    If/When you change your configurations (host, IP, domain name etc), change the files in the repository and restart the server. It should reload 'automatically.
+### 7. Adjust settings
+If/When you change your configurations (host, IP, domain name etc), change the files in the repository and restart the server. It should reload 'automatically.
 
 --- 
 
