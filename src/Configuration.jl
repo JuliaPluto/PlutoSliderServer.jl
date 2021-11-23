@@ -58,10 +58,11 @@ module Configuration
     end
 
     function get_configuration(toml_path::Union{Nothing,String}=nothing; kwargs...)::PlutoDeploySettings
+        # we set `Pluto_server_notebook_path_suggestion=joinpath(homedir(),"")` to because the default value for this setting changes when the pwd changes. This causes our run_git_directory to exit... Not necessary for Pluto 0.17.3 and up.
         if !isnothing(toml_path) && isfile(toml_path)
-            Configurations.from_toml(PlutoDeploySettings, toml_path; kwargs...)
+            Configurations.from_toml(PlutoDeploySettings, toml_path; Pluto_server_notebook_path_suggestion=joinpath(homedir(),""), kwargs...)
         else
-            Configurations.from_kwargs(PlutoDeploySettings; kwargs...)
+            Configurations.from_kwargs(PlutoDeploySettings; Pluto_server_notebook_path_suggestion=joinpath(homedir(),""), kwargs...)
         end
     end
     
