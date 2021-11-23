@@ -123,6 +123,8 @@ github_action = export_directory
 A single-file version of [`run_directory`](@ref).
 """
 function run_notebook(path::String; kwargs...)
+    path = Pluto.tamepath(path)
+    @assert isfile(path)
     run_directory(dirname(path); notebook_paths=[basename(path)], kwargs...)
 end
 
@@ -150,6 +152,9 @@ function run_directory(
         config_toml_path::Union{String,Nothing}=default_config_path(),
         kwargs...
     )
+    
+    start_dir = Pluto.tamepath(start_dir)
+    @assert isdir(start_dir)
 
     settings = get_configuration(config_toml_path; kwargs...)
     output_dir = something(
@@ -210,7 +215,7 @@ function run_directory(
             serversocket = try
                 Sockets.listen(hostIP, UInt16(port))
             catch e
-                @error "Port with number $port is already in use. Use Pluto.run() to automatically select an available port."
+                @error "Port with number $port is already in use."
                 return
             end
         end
@@ -378,6 +383,9 @@ function run_git_directory(
     config_toml_path::Union{String,Nothing}=default_config_path(),
     kwargs...
     )
+    
+    start_dir = Pluto.tamepath(start_dir)
+    @assert isdir(start_dir)
 
     run_dir_task = Ref{Any}()
 
