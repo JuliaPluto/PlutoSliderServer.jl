@@ -6,7 +6,8 @@ using FromFile
 
 @from "./MoreAnalysis.jl" import MoreAnalysis 
 @from "./Export.jl" import Export: Export, generate_html, try_fromcache, try_tocache
-@from "./Types.jl" import Types: PlutoDeploySettings, NotebookSession, RunningNotebook, FinishedNotebook
+@from "./Types.jl" import Types: NotebookSession, RunningNotebook, FinishedNotebook
+@from "./Configuration.jl" import Configuration: PlutoDeploySettings
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
 myhash = base64encode ∘ sha256
 function path_hash(path)

@@ -6,7 +6,9 @@ using FromFile
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" using Export
 @from "./Actions.jl" import process, should_shutdown, should_update, should_launch, will_process
-@from "./Types.jl" using Types: Types, NotebookSession, get_configuration, withlock, PlutoDeploySettings
+@from "./Types.jl" using Types: Types, NotebookSession
+@from "./Lock.jl" import withlock
+@from "./Configuration.jl" using Configuration: Configuration, PlutoDeploySettings, get_configuration
 @from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router
 @from "./gitpull.jl" import fetch_pull
