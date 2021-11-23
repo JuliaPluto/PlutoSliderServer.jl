@@ -15,8 +15,11 @@ import Pkg
 Pkg.add("PlutoSliderServer")
 
 using PlutoSliderServer
-PlutoSliderServer.run_notebook("~/Documents/My cool notebook.jl")
+path_to_notebook = download("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.17.2/sample/Interactivity.jl") # fill in your own notebook path here!
+PlutoSliderServer.run_notebook(path_to_notebook)
 ```
+
+Now open a browser, and go to the address printed in your terminal!
 
 # What can it do?
 
