@@ -20,8 +20,8 @@ module Configuration
         simulated_lag::Real=0
         "Besides handling slider server request, should we also run a static file server of the export output folder? Set to `false` if you are serving the HTML files in another way, e.g. using GitHub Pages, and, for some reason, you do not want to *also* serve the HTML files using this serve."
         serve_static_export_folder::Bool=true
-        "Watch the input directory for file changes, and update the slider server sessions automatically. More info in the README."
-        watch_dir::Bool=false
+        "Watch the input directory for file changes, and update the slider server sessions automatically. Only takes effect when running the slider server. More info in the README."
+        watch_dir::Bool=true
     end
     
     @extract_docs @option struct ExportSettings

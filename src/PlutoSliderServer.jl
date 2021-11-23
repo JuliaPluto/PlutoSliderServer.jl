@@ -151,6 +151,8 @@ function run_directory(
         kwargs...
     )
     
+    @assert joinpath("a","b") == "a/b" "PlutoSliderServer does not work on Windows yet!"
+    
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
 
@@ -337,7 +339,9 @@ function run_directory(
     update_sessions!(notebook_sessions, getpaths(); start_dir)
     refresh_until_synced(false)
 
-    watch_dir_task = Pluto.@asynclog if settings.SliderServer.watch_dir
+    should_watch = settings.SliderServer.enabled && settings.SliderServer.watch_dir
+    
+    watch_dir_task = Pluto.@asynclog if should_watch
         @info "Watching directory for changes..."
         debounced = kind_of_debounced() do _
             @debug "File change detected!"
@@ -347,7 +351,7 @@ function run_directory(
         watch_folder(debounced, start_dir)
     end
 
-    if settings.SliderServer.watch_dir
+    if should_watch
         # todo: skip first watch_folder so that we dont need this sleepo
         sleep(2)
     end
