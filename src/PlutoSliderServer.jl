@@ -54,9 +54,10 @@ $(list_options_toml(ExportSettings))
 $(list_options_toml(SliderServerSettings))
 
 [Pluto]
-threads = 2
-# See documentation for `Pluto.Configuration` for the full list of options.
+[Pluto.compiler]
+threads = 1
 
+# See documentation for `Pluto.Configuration` for the full list of options. You need specify the categories within `Pluto.Configuration.Options` (`compiler`, `evaluation`, etc).
 """
 
 function show_sample_config_toml_file()

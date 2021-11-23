@@ -177,8 +177,9 @@ host = 0.0.0.0
 
 # You can also set Pluto's configuration here:
 [Pluto]
+[Pluto.compiler]
 threads = 2
-# See documentation for `Pluto.Configuration` for the full list of options.
+# See documentation for `Pluto.Configuration` for the full list of options. You need specify the categories within `Pluto.Configuration.Options` (`compiler`, `evaluation`, etc).
 ```
 
 > 🌟 For the full list of options, run `PlutoSliderServer.show_sample_config_toml_file()`.

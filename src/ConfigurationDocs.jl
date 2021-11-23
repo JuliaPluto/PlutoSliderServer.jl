@@ -70,9 +70,12 @@ function list_options_toml(t::Type;
 
     lines = map(fields) do field
         "$(
+            # TOML has no `nothing`-like value, so we comment out the line:
+            field.default === nothing || something(field.default) === :nothing ? "# " : ""
+        )$(
             field.name
         )$(
-            field.default === nothing ? "" : " = $(something(field.default))"
+            field.default === nothing ? "" : " = $(show_value(something(field.default)))"
         ) # $(
             field.typename === nothing ? "" : "($(something(field.typename))) "
         )$(
@@ -80,6 +83,16 @@ function list_options_toml(t::Type;
         )"
     end
     join(lines, "\n") 
+end
+
+function show_value(e)
+    if Meta.isexpr(e, :ref)
+        "[]"
+    elseif e isa String
+        repr(e)
+    else
+        string(e)
+    end
 end
 
 this_mod = @__MODULE__

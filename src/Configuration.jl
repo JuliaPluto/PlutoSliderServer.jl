@@ -30,7 +30,7 @@ module Configuration
         "Folder to write generated HTML files to (will create directories to preserve the input folder structure). The behaviour of the default value depends on whether you are running the slider server, or just exporting. If running the slider server, we use a temporary directory; otherwise, we use `start_dir` (i.e. we generate each HTML file in the same folder as the notebook file)."
         output_dir::Union{Nothing,String}=nothing
         "List of notebook files to skip. Provide paths relative to `start_dir`."
-        exclude::Vector=String[]
+        exclude::Vector{String}=String[]
         "List of notebook files that should always re-run, skipping the `cache_dir` system. Provide paths relative to `start_dir`."
         ignore_cache::Vector=String[]
         pluto_cdn_root::Union{Nothing,String}=nothing
@@ -61,11 +61,6 @@ module Configuration
         if !isnothing(toml_path) && isfile(toml_path)
             Configurations.from_toml(PlutoDeploySettings, toml_path; kwargs...)
         else
-            global_logger(try
-                TerminalLogger(; margin=1)
-            catch
-                TerminalLogger()
-            end)
             Configurations.from_kwargs(PlutoDeploySettings; kwargs...)
         end
     end

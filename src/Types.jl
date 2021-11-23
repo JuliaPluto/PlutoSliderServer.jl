@@ -4,7 +4,6 @@ module Types
     import Pluto: Pluto, Token, Notebook
     export NotebookSession, SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration
     using TerminalLoggers: TerminalLogger
-    using Logging: global_logger
 
     ###
     # SESSION DEFINITION
