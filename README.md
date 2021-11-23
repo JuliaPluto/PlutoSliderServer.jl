@@ -128,7 +128,6 @@ Like the regular slider server, we use the *bond connections graph*, which tells
 
 In our example notebook, there are `10 (x) * 5 (y)  +  100 (z) = 150` combinations to precompute. Without considering the connections graph, there would be `10 (x) * 5 (y) * 100 (z) = 5000` possible combinations.
 
-
 # How to use this package
 
 As PlutoSliderServer embeds so much functionality, it may be confusing to figure out how to approach your setting. That's why we're going to see how to approach some different use cases:

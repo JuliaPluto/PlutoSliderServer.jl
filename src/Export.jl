@@ -1,6 +1,6 @@
 module Export
 
-export generate_html, default_index
+export generate_html, generate_index_html
 
 import Pluto
 import Pluto: ServerSession, generate_html
@@ -79,7 +79,7 @@ function try_get_exact_pluto_version()
 end
 
 
-function default_index(paths)
+function generate_index_html(paths#=::Vector{Pair}=#)
     """
     <!DOCTYPE html>
     <html lang="en">

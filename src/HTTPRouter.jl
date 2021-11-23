@@ -10,7 +10,7 @@ using Sockets
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
 
-@from "./Export.jl" import Export:  default_index
+@from "./Export.jl" import Export:  generate_index_html
 @from "./Types.jl" import Types: NotebookSession, RunningNotebook
 @from "./Configuration.jl" import Configuration: PlutoDeploySettings, get_configuration
 
@@ -232,11 +232,11 @@ end
 
 
 function temp_index(notebook_sessions::Vector{NotebookSession})
-    default_index(temp_index.(notebook_sessions))
+    generate_index_html(temp_index_item.(notebook_sessions))
 end
-function temp_index(s::QueuedNotebookSession)
+function temp_index_item(s::QueuedNotebookSession)
     without_pluto_file_extension(s.path) => nothing
 end
-function temp_index(s::NotebookSession{String,<:Any,<:Any})
+function temp_index_item(s::NotebookSession{String,<:Any,<:Any})
     without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path)*".html"
 end

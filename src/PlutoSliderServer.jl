@@ -170,12 +170,6 @@ function run_directory(
     end
 
     to_run = getpaths()
-
-    # TODO: Clean this up
-    # if static_export && run_server
-    #     # The user wants to run a slider server, with static export and static notebook serving, so they very probably want to set `slider_server_url` to "./". 
-    #     settings = with_kwargs(settings; Export_slider_server_url = "./")
-    # end
     
     @info "Settings" Text(settings)
 
@@ -266,12 +260,18 @@ function run_directory(
         serversocket = nothing
     end
 
-    if settings.Export.enabled && settings.Export.create_index && !settings.SliderServer.serve_static_export_folder
+    if (
+        settings.Export.enabled && 
+        settings.Export.create_index && 
+        # If `settings.SliderServer.serve_static_export_folder`, then we serve a dynamic index page (inside HTTPRouter.jl), so we don't want to create a static index page.
+        !settings.SliderServer.serve_static_export_folder
+    )
+        
         exists = any(["index.html", "index.md", ("index"*e for e in pluto_file_extensions)...]) do f
             joinpath(output_dir, f) |> isfile
         end
         if !exists
-            write(joinpath(output_dir, "index.html"), default_index((
+            write(joinpath(output_dir, "index.html"), generate_index_html((
                 without_pluto_file_extension(path) => without_pluto_file_extension(path) * ".html"
                 for path in to_run
             )))

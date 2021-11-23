@@ -3,7 +3,7 @@ using FromFile
 @from "./Types.jl" import Types: NotebookSession
 @from "./Configuration.jl" import Configuration: PlutoDeploySettings, get_configuration
 @from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
-@from "./Export.jl" import Export: default_index
+@from "./Export.jl" import Export: generate_index_html
 import Pluto: without_pluto_file_extension
 
 function d3join(notebook_sessions, new_paths; start_dir::AbstractString)

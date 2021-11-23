@@ -222,9 +222,9 @@ function generate_static_export(path, original_state, jl_contents; settings, out
     mkpath(dirname(export_statefile_path))
 
 
-    running_slider_server = settings.Export.slider_server_url !== nothing || (settings.SliderServer.serve_static_export_folder && settings.SliderServer.enabled)
+    slider_server_running_somewhere = settings.Export.slider_server_url !== nothing || (settings.SliderServer.serve_static_export_folder && settings.SliderServer.enabled)
 
-    notebookfile_js = if settings.Export.offer_binder || running_slider_server
+    notebookfile_js = if settings.Export.offer_binder || slider_server_running_somewhere
         if settings.Export.baked_notebookfile
             "\"data:text/julia;charset=utf-8;base64,$(base64encode(jl_contents))\""
         else
@@ -233,7 +233,7 @@ function generate_static_export(path, original_state, jl_contents; settings, out
     else
         "undefined"
     end
-    slider_server_url_js = if running_slider_server
+    slider_server_url_js = if slider_server_running_somewhere
         abs_path = joinpath(start_dir, path)
         url_of_root = relpath(start_dir, dirname(abs_path)) # e.g. "." or "../../.." 
         repr(something(

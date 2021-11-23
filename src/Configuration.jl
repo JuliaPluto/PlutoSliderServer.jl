@@ -24,10 +24,6 @@ module Configuration
         watch_dir::Bool=false
     end
     
-    # @info "Wowww" get_kwdocs(SliderServerSettings)
-    
-    # println(list_options_md(SliderServerSettings))
-    
     @extract_docs @option struct ExportSettings
         "Generate static HTML files? This setting can only be `false` if you are also running a slider server."
         enabled::Bool=true
@@ -41,17 +37,17 @@ module Configuration
         "base64-encode the state object and write it inside the .html file. If `false`, a separate `.plutostate` file is generated. A separate statefile allows us to show a loading bar in pluto while the statefile is loading, but it can complicate setup in some environments."
         baked_state::Bool=true
         baked_notebookfile::Bool=true
-        "hide all buttons and toolbars to make it look like an article."
+        "Hide all buttons and toolbars in Pluto to make it look like an article."
         disable_ui::Bool=true
-        """show a "Run on Binder" button on the notebooks."""
+        """Show a "Run on Binder" button on the notebooks."""
         offer_binder::Bool=true
         "e.g. `https://mybinder.org/v2/gh/mitmath/18S191/e2dec90`. Defaults to a binder repo that runs the correct version of Pluto -- https://github.com/fonsp/pluto-on-binder. TODO docs"
         binder_url::Union{Nothing,String}=nothing
-        "e.g. `https://sliderserver.mycoolproject.org/` TODO docs"
+        """If 1) you are using this setup to export HTML files for notebooks, AND 2) you are running the slider server **on another setup/computer**, then this setting should be the URL pointing to the slider server, e.g. `"https://sliderserver.mycoolproject.org/"`. For example, you need this if you use GitHub Actions and GitHub Pages to generate HTML files, with a slider server on DigitalOcean. === If you only have *one* server for both the static exports and the slider server, and people will read notebooks directly on your server, then the default value `nothing` will work: it will automatically make the HTML files use their current domain for the slider server."""
         slider_server_url::Union{Nothing,String}=nothing
         "If provided, use this directory to read and write cached notebook states. Caches will be indexed by the hash of the notebook file, but you need to take care to invalidate the cache when Pluto or this export script updates. Useful in combination with https://github.com/actions/cache, see https://github.com/JuliaPluto/static-export-template for an example."
         cache_dir::Union{Nothing,String}=nothing
-        "Automatically generate an `index.html` file listing all the exported notebooks (only if no `index.jl` or `index.html` file exists already)."
+        "Automatically generate an `index.html` file, listing all the exported notebooks (only if no `index.jl` or `index.html` file exists already)."
         create_index::Bool=true
     end
     
