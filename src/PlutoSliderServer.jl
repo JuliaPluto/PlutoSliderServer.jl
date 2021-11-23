@@ -73,8 +73,6 @@ merge_recursive(a::PlutoDeploySettings, b::PlutoDeploySettings) =
         
 with_kwargs(original::PlutoDeploySettings; kwargs...) = merge_recursive(original, Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
 
-include("./HTTPRouter.jl")
-
 showall(xs) = Text(join(string.(xs),"\n"))
 
 default_config_path() = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
@@ -192,6 +190,7 @@ function run_directory(
 
     settings.Pluto.server.disable_writing_notebook_files = true
     settings.Pluto.evaluation.lazy_workspace_creation = true
+    
     server_session = Pluto.ServerSession(;options=settings.Pluto)
 
     notebook_sessions = NotebookSession[]

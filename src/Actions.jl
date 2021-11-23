@@ -127,7 +127,7 @@ function process(s::NotebookSession{Nothing,String,<:Any};
         output_dir,
     )
 
-    @info "### ✓ $(progress) Ready" s.path
+    @info "### ✓ $(progress) Ready" s.path new_hash
 
     NotebookSession(;
         path=s.path,

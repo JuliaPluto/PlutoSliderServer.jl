@@ -82,7 +82,7 @@ function list_options_toml(t::Type;
             field.docstring === nothing ? "" : "$(something(field.docstring))"
         )"
     end
-    join(lines, "\n") 
+    join(lines, "\n\n") 
 end
 
 function show_value(e)
