@@ -13,7 +13,13 @@ import Pkg
 
 export try_fromcache, try_tocache
 
-cache_filename(cache_dir::String, current_hash::String) = joinpath(cache_dir, HTTP.URIs.escapeuri(string(try_get_exact_pluto_version(), current_hash)) * ".plutostate")
+cache_filename(cache_dir::String, current_hash::String) = joinpath(
+    cache_dir, 
+    replace(
+        HTTP.URIs.escapeuri(string(try_get_exact_pluto_version(), current_hash)),
+        "." => "_"
+    ) * ".plutostate"
+)
 
 function try_fromcache(cache_dir::String, current_hash::String)
     p = cache_filename(cache_dir, current_hash)
