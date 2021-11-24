@@ -10,10 +10,10 @@ make_test_dir() = let
     new
 end
 
+cache_dir = tempname(cleanup=false)
 
 @testset "Basic github action" begin
     test_dir = make_test_dir()
-    cache_dir = tempname(cleanup=false)
 
     @show test_dir cache_dir
     cd(test_dir)
@@ -30,6 +30,8 @@ end
     )
 
     @test sort(list_files_recursive()) == sort([ 
+        "index.html",
+        
         "a.jl",
         "a.html",
         "b.pluto.jl",
@@ -94,7 +96,7 @@ end
     @test c.Export.slider_server_url == "appelsap"
 
     @test sort(list_files_recursive()) == sort([
-        # "index.html",
+        "index.html",
 
         "a.jl",
         "a.html",
@@ -117,3 +119,33 @@ end
     @test occursin("appelsap", read("a.html", String))
 end
 
+@testset "Single notebook" begin
+    test_dir = make_test_dir()
+
+    # @show test_dir cache_dir
+    cd(test_dir)
+    @test sort(list_files_recursive()) == sort([
+        "a.jl",
+        "b.pluto.jl",
+        "notanotebook.jl",
+        "subdir/c.plutojl",
+    ])
+
+    export_notebook(
+        "a.jl";
+        Export_cache_dir=cache_dir,
+        Export_baked_state=true,
+    )
+
+    @test sort(list_files_recursive()) == sort([ 
+        # no index for single notebooks
+        # "index.html",
+        
+        "a.jl",
+        "a.html",
+        "b.pluto.jl",
+        "notanotebook.jl",
+        "subdir/c.plutojl",
+    ])
+
+end

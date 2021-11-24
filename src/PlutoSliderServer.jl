@@ -111,7 +111,7 @@ end
 
 A single-file version of [`export_directory`](@ref).
 """
-export_notebook(p; kwargs...) = run_notebook(p; Export_enabled=true, SliderServer_enabled=false, kwargs...)
+export_notebook(p; kwargs...) = run_notebook(p; Export_enabled=true, SliderServer_enabled=false, Export_create_index=false, kwargs...)
 github_action = export_directory
 
 
@@ -276,7 +276,10 @@ function run_directory(
         settings.Export.enabled && 
         settings.Export.create_index && 
         # If `settings.SliderServer.serve_static_export_folder`, then we serve a dynamic index page (inside HTTPRouter.jl), so we don't want to create a static index page.
-        !settings.SliderServer.serve_static_export_folder
+        !(
+            settings.SliderServer.enabled &&
+            settings.SliderServer.serve_static_export_folder
+        )
     )
         
         exists = any(["index.html", "index.md", ("index"*e for e in pluto_file_extensions)...]) do f
