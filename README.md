@@ -52,7 +52,7 @@ PlutoSliderServer.run_notebook("path/to/notebook.jl")
 ```
 
 ## 3. _(WIP): Precomputed slider server_
-Many input elements only have a finite number of possible values. For example `PlutoUI.Slider(5:15)` can only have 11 values. For finitie inputs like the slider, PlutoSliderServer can run the slider server **in advance**, and precompute the results to all possible inputs (in other words: precompute the response to all possible requests). 
+Many input elements only have a finite number of possible values, for example, `PlutoUI.Slider(5:15)` can only have 11 values. For finite inputs like the slider, PlutoSliderServer can run the slider server **in advance**, and precompute the results to all possible inputs (in other words: precompute the response to all possible requests). 
 
 This will generate a directory of subdirectories and files, each corresponding to a possible request. You can host this directory along with the generated HTML file (e.g. on GitHub pages), and Pluto will be able to use these pregenerated files as if they are a slider server! **You can get the interactivity of a slider server, without running a Julia server!**
 
@@ -140,15 +140,15 @@ In our example notebook, there are `10 (x) * 5 (y)  +  100 (z) = 150` combinatio
 
 # How to use this package
 
-As PlutoSliderServer embeds so much functionality, it may be confusing to figure out how to approach your setting. That's why we're going to see how to approach some different use cases:
+As PlutoSliderServer embeds so much functionality, it may be confusing to figure out how to approach your setting. Here is an overview of our most important functions:
 
-- `export_directory` will find all notebooks in a directory, run them, and generate HTML files. One example use case is https://github.com/JuliaPluto/static-export-template
-- `run_directory` does the same as `export_directory`, but it **keeps the notebooks running** and runs the slider server! It will also watch the given directory for changes to notebook files, and automatically update the slider server.
+- `export_directory` will find all notebooks in a directory, run them, and generate HTML files. *(`export_notebook` for a single file.)* One example use case is https://github.com/JuliaPluto/static-export-template
+- `run_directory` does the same as `export_directory`, but it **keeps the notebooks running** and runs the slider server! It will also watch the given directory for changes to notebook files, and automatically update the slider server. *(`run_notebook` for a single file.)*
 - `run_git_directory` does the same as `run_directory`, but it will keep running `git pull` in the given directory. Any changes will get picked up by our directory watching!
 
 ## Configuration
 
-PlutoSliderServer is very configurable, and we use [Configurations.jl](https://github.com/Roger-luo/Configurations.jl) to configure the server. We try our best to smart about the default settings, and we hope that most users do not need to configure anything.
+PlutoSliderServer is very configurable, and we use [Configurations.jl](https://github.com/Roger-luo/Configurations.jl) to configure the server. We try our best to be smart about the default settings, and we hope that most users do not need to configure anything.
 
 There are two ways to change configurations: using keywords arguments, and using a `PlutoDeployment.toml` file.
 
@@ -177,7 +177,7 @@ baked_notebookfile = true
 
 [SliderServer]
 port = 8080
-host = 0.0.0.0
+host = "0.0.0.0"
 
 # You can also set Pluto's configuration here:
 [Pluto]
@@ -293,5 +293,5 @@ Since this server is a new and experimental concept, we highly recommend that yo
 
 In the future, we are planning to implement a hook that allows widgets (such as `Slider`) to validate a value before it is run: [`AbstractPlutoDingetjes.Bonds.validate_value`](https://docs.juliahub.com/AbstractPlutoDingetjes/UHbnu/1.1.1/#AbstractPlutoDingetjes.Bonds.validate_value-Tuple{Any,%20Any}).
 
-Of course, we are not security experts, and this software does not come with any kind of security guarantee. To be completely safe, assume that someone who can visit the server can execute arbitrary code in the notebook, despite our measures to prevent it.
+Of course, we are not security experts, and this software does not come with any kind of security guarantee. To be completely safe, assume that someone who can visit the server can execute arbitrary code in the notebook, despite our measures to prevent it. Run PlutoSliderServer in a containerized environment.
 
