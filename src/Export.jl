@@ -1,7 +1,3 @@
-module Export
-
-export generate_index_html
-
 import Pluto: Pluto, ServerSession
 using HTTP
 using Base64
@@ -117,7 +113,4 @@ function generate_index_html(paths#=::Vector{Pair}=#)
     </body>
     </html>
     """
-end
-
-
 end

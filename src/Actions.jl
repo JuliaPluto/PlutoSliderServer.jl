@@ -4,11 +4,11 @@ using Base64
 using SHA
 using FromFile
 
-@from "./MoreAnalysis.jl" import MoreAnalysis 
-@from "./Export.jl" import Export: Export, try_fromcache, try_tocache
-@from "./Types.jl" import Types: NotebookSession, RunningNotebook, FinishedNotebook
-@from "./Configuration.jl" import Configuration: PlutoDeploySettings
-@from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
+@from "./MoreAnalysis.jl" import bound_variable_connections_graph 
+@from "./Export.jl" import try_get_exact_pluto_version, try_fromcache, try_tocache
+@from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
+@from "./Configuration.jl" import PlutoDeploySettings
+@from "./FileHelpers.jl" import find_notebook_files_recursive
 myhash = base64encode ∘ sha256
 function path_hash(path)
     myhash(read(path))
@@ -97,7 +97,7 @@ function process(s::NotebookSession{Nothing,String,<:Any};
             end
             try_tocache(settings.Export.cache_dir, new_hash, original_state)
             if keep_running
-                bond_connections = MoreAnalysis.bound_variable_connections_graph(notebook)
+                bond_connections = bound_variable_connections_graph(notebook)
                 @info "Bond connections" s.path showall(collect(bond_connections))
 
                 RunningNotebook(;
@@ -201,7 +201,7 @@ Core Action: Generate static export for a Pluto Notebook
 5. pluto_cdn_root: URL where pluto will go to find the static frontend assets 
 """
 function generate_static_export(path, original_state, jl_contents; settings, output_dir, start_dir)
-    pluto_version = Export.try_get_exact_pluto_version()
+    pluto_version = try_get_exact_pluto_version()
     export_jl_path = let
         relative_to_notebooks_dir = path
         joinpath(output_dir, relative_to_notebooks_dir)

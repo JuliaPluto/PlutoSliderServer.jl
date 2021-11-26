@@ -1,7 +1,3 @@
-module MoreAnalysis
-
-export bound_variable_connections_graph
-
 import Pluto
 import Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer
 
@@ -99,5 +95,4 @@ function bound_variable_connections_graph(notebook::Notebook)::Dict{Symbol,Vecto
         end
         for var in bound_variables
     )
-end
 end

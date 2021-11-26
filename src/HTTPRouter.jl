@@ -10,9 +10,9 @@ using Sockets
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
 
-@from "./Export.jl" import Export:  generate_index_html
-@from "./Types.jl" import Types: NotebookSession, RunningNotebook
-@from "./Configuration.jl" import Configuration: PlutoDeploySettings, get_configuration
+@from "./Export.jl" import generate_index_html
+@from "./Types.jl" import NotebookSession, RunningNotebook
+@from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 
 const RunningNotebookSession = NotebookSession{String,String,RunningNotebook}
 const QueuedNotebookSession = NotebookSession{Nothing,<:Any,<:Any}

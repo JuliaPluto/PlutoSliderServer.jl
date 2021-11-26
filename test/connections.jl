@@ -1,5 +1,5 @@
 import PlutoSliderServer
-import PlutoSliderServer.MoreAnalysis
+import PlutoSliderServer: bound_variable_connections_graph
 import PlutoSliderServer.Pluto
 
 using Test
@@ -22,7 +22,7 @@ using Test
 
     # @show bound_variables
 
-    connections = MoreAnalysis.bound_variable_connections_graph(notebook)
+    connections = bound_variable_connections_graph(notebook)
     # @show connections
 
     @test !isempty(connections)

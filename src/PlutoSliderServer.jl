@@ -2,13 +2,13 @@ module PlutoSliderServer
 
 using FromFile
 
-@from "./MoreAnalysis.jl" import MoreAnalysis
-@from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive, list_files_recursive
-@from "./Export.jl" using Export
+@from "./MoreAnalysis.jl" import bound_variable_connections_graph
+@from "./FileHelpers.jl" import find_notebook_files_recursive, list_files_recursive
+@from "./Export.jl" import generate_index_html
 @from "./Actions.jl" import process, should_shutdown, should_update, should_launch, will_process
-@from "./Types.jl" using Types: Types, NotebookSession
+@from "./Types.jl" import NotebookSession
 @from "./Lock.jl" import withlock
-@from "./Configuration.jl" using Configuration: Configuration, PlutoDeploySettings, ExportSettings, SliderServerSettings, get_configuration
+@from "./Configuration.jl" import PlutoDeploySettings, ExportSettings, SliderServerSettings, get_configuration
 @from "./ConfigurationDocs.jl" import @extract_docs, get_kwdocs, list_options_md, list_options_toml
 @from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router

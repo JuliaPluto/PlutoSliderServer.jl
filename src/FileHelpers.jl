@@ -1,4 +1,3 @@
-module FileHelpers
 import Pluto: is_pluto_notebook
 
 flatmap(args...) = vcat(map(args...)...)
@@ -26,5 +25,4 @@ function find_notebook_files_recursive(start_dir)
 
     # reverse alphabetical order so that week5 becomes available before week4 :)
     reverse(not_interal_notebook_files)
-end
 end

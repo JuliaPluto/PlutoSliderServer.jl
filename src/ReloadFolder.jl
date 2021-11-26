@@ -1,9 +1,8 @@
 using FromFile
 @from "./Actions.jl" import path_hash
-@from "./Types.jl" import Types: NotebookSession
-@from "./Configuration.jl" import Configuration: PlutoDeploySettings, get_configuration
-@from "./FileHelpers.jl" import FileHelpers: find_notebook_files_recursive
-@from "./Export.jl" import Export: generate_index_html
+@from "./Types.jl" import NotebookSession
+@from "./Configuration.jl" import PlutoDeploySettings, get_configuration
+@from "./FileHelpers.jl" import find_notebook_files_recursive
 import Pluto: without_pluto_file_extension
 
 function d3join(notebook_sessions, new_paths; start_dir::AbstractString)
