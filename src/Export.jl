@@ -10,11 +10,11 @@ import Pkg
 export try_fromcache, try_tocache
 
 cache_filename(cache_dir::String, current_hash::String) = joinpath(
-    cache_dir, 
+    cache_dir,
     replace(
         HTTP.URIs.escapeuri(string(try_get_exact_pluto_version(), current_hash)),
-        "." => "_"
-    ) * ".plutostate"
+        "." => "_",
+    ) * ".plutostate",
 )
 
 function try_fromcache(cache_dir::String, current_hash::String)
@@ -23,7 +23,8 @@ function try_fromcache(cache_dir::String, current_hash::String)
         try
             open(Pluto.unpack, p, "r")
         catch e
-            @warn "Failed to load statefile from cache" current_hash exception=(e,catch_backtrace())
+            @warn "Failed to load statefile from cache" current_hash exception =
+                (e, catch_backtrace())
         end
     end
 end
@@ -37,7 +38,8 @@ function try_tocache(cache_dir::String, current_hash::String, state)
             Pluto.pack(io, state)
         end
     catch e
-        @warn "Failed to write to cache file" current_hash exception=(e,catch_backtrace())
+        @warn "Failed to write to cache file" current_hash exception =
+            (e, catch_backtrace())
     end
 end
 try_tocache(cache_dir::Nothing, current_hash, state) = nothing
@@ -61,26 +63,31 @@ function try_get_exact_pluto_version()
         if p.is_tracking_registry
             p.version
         elseif p.is_tracking_path
-            error("Do not add the Pluto dependency as a local path, but by specifying its VERSION or an exact COMMIT SHA.")
+            error(
+                "Do not add the Pluto dependency as a local path, but by specifying its VERSION or an exact COMMIT SHA.",
+            )
         else
             # ugh
             is_probably_a_commit_thing = all(in(('0':'9') ∪ ('a':'f')), p.git_revision)
             if !is_probably_a_commit_thing
-                error("Do not add the Pluto dependency by specifying its BRANCH, but by specifying its VERSION or an exact COMMIT SHA.")
+                error(
+                    "Do not add the Pluto dependency by specifying its BRANCH, but by specifying its VERSION or an exact COMMIT SHA.",
+                )
             end
 
             p.git_revision
         end
     catch e
         if get(ENV, "HIDE_PLUTO_EXACT_VERSION_WARNING", "false") == "false"
-            @error "Failed to get exact Pluto version from dependency. Your website is not guaranteed to work forever." exception=(e, catch_backtrace())
+            @error "Failed to get exact Pluto version from dependency. Your website is not guaranteed to work forever." exception =
+                (e, catch_backtrace())
         end
         Pluto.PLUTO_VERSION
     end
 end
 
 
-function generate_index_html(paths#=::Vector{Pair}=#)
+function generate_index_html(paths)#=::Vector{Pair}=#
     """
     <!DOCTYPE html>
     <html lang="en">

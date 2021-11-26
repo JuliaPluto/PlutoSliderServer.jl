@@ -9,7 +9,8 @@ cp(@__DIR__, test_dir)
 try
     # open the folder on macos:
     run(`open $(test_dir)`)
-catch end
+catch
+end
 
 port = 2341
 
@@ -17,5 +18,10 @@ port = 2341
 cdn = "http://127.0.0.1:$(port)/pluto_asset/"
 # cdn = nothing
 
-PlutoSliderServer.run_directory(test_dir; 
-    SliderServer_port=port, SliderServer_host="127.0.0.1", SliderServer_watch_dir=true, Export_pluto_cdn_root=cdn)
+PlutoSliderServer.run_directory(
+    test_dir;
+    SliderServer_port=port,
+    SliderServer_host="127.0.0.1",
+    SliderServer_watch_dir=true,
+    Export_pluto_cdn_root=cdn,
+)

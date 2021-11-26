@@ -39,13 +39,15 @@ end
 
 function get_kwdocs end
 
-function list_options_md(t::Type; 
-        prefix::Union{Nothing,String}=nothing,
-        hide_undocumented_fields::Bool=true,
-    )
+function list_options_md(
+    t::Type;
+    prefix::Union{Nothing,String}=nothing,
+    hide_undocumented_fields::Bool=true,
+)
     fields = get_kwdocs(t)
-    fields = hide_undocumented_fields ? filter(f -> f.docstring !== nothing, fields) : fields
-    
+    fields =
+        hide_undocumented_fields ? filter(f -> f.docstring !== nothing, fields) : fields
+
     lines = map(fields) do field
         "- `$(
             prefix === nothing ? "" : "$(prefix)_"
@@ -59,14 +61,13 @@ function list_options_md(t::Type;
             field.docstring === nothing ? "" : ": $(something(field.docstring))"
         )"
     end
-    join(lines, "\n") 
+    join(lines, "\n")
 end
 
-function list_options_toml(t::Type; 
-        hide_undocumented_fields::Bool=true,
-    )
+function list_options_toml(t::Type; hide_undocumented_fields::Bool=true)
     fields = get_kwdocs(t)
-    fields = hide_undocumented_fields ? filter(f -> f.docstring !== nothing, fields) : fields
+    fields =
+        hide_undocumented_fields ? filter(f -> f.docstring !== nothing, fields) : fields
 
     lines = map(fields) do field
         "$(
@@ -82,7 +83,7 @@ function list_options_toml(t::Type;
             field.docstring === nothing ? "" : "$(something(field.docstring))"
         )"
     end
-    join(lines, "\n\n") 
+    join(lines, "\n\n")
 end
 
 function show_value(e)
@@ -98,7 +99,7 @@ end
 this_mod = @__MODULE__
 
 macro extract_docs(raw_expr::Expr)
-    
+
     struct_def = let
         local e = raw_expr
         while e.head != :struct
@@ -106,15 +107,15 @@ macro extract_docs(raw_expr::Expr)
         end
         e
     end
-    
+
     struct_name = struct_def.args[2]
-    
-    
+
+
     found = collect_field_info(struct_def)
 
     return quote
         result = $(esc(raw_expr))
-        
+
         m = $(this_mod)
         m.get_kwdocs(::Type{$(esc(struct_name))}) = $(found)
 

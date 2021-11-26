@@ -8,19 +8,19 @@ end
 
 
 function fetch(dir=".")::Bool
-    
+
     branch_name = current_branch_name(dir)
-    
-    
+
+
     cd(dir) do
         run(`$(git()) fetch origin $(branch_name) --quiet`)
-        
+
         local_hash = read(`$(git()) rev-parse HEAD`, String)
         remote_hash = read(`$(git()) rev-parse \@\{u\}`, String)
 
         return local_hash == remote_hash
     end
-    
+
 end
 
 

@@ -3,22 +3,28 @@ import Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer
 
 "Find all subexpressions of the form `@bind symbol something`, and extract the `symbol`s."
 function find_bound_variables(expr)
-	found = Set{Symbol}()
-	find_bound_variables!(found, ExpressionExplorer.maybe_macroexpand(expr; recursive=true, expand_bind=false))
-	found
+    found = Set{Symbol}()
+    find_bound_variables!(
+        found,
+        ExpressionExplorer.maybe_macroexpand(expr; recursive=true, expand_bind=false),
+    )
+    found
 end
 
 function find_bound_variables!(found::Set{Symbol}, expr::Expr)
-	if expr.head === :macrocall && expr.args[1] === Symbol("@bind") && length(expr.args) == 4 && expr.args[3] isa Symbol
-		push!(found, expr.args[3])
-		find_bound_variables!(found, expr.args[4])
+    if expr.head === :macrocall &&
+       expr.args[1] === Symbol("@bind") &&
+       length(expr.args) == 4 &&
+       expr.args[3] isa Symbol
+        push!(found, expr.args[3])
+        find_bound_variables!(found, expr.args[4])
     elseif expr.args === :quote
         found
     else
-		for a in expr.args
-			find_bound_variables!(found, a)
-		end
-	end
+        for a in expr.args
+            find_bound_variables!(found, a)
+        end
+    end
 end
 
 function find_bound_variables!(found::Set{Symbol}, expr::Any) end
@@ -27,13 +33,22 @@ function find_bound_variables!(found::Set{Symbol}, expr::Any) end
 
 
 "Return the given cells, and all cells that depend on them (recursively)."
-function downstream_recursive(notebook::Notebook, topology::NotebookTopology, from::Union{Vector{Cell},Set{Cell}})
+function downstream_recursive(
+    notebook::Notebook,
+    topology::NotebookTopology,
+    from::Union{Vector{Cell},Set{Cell}},
+)
     found = Set{Cell}(copy(from))
     downstream_recursive!(found, notebook, topology, from)
     found
 end
 
-function downstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})
+function downstream_recursive!(
+    found::Set{Cell},
+    notebook::Notebook,
+    topology::NotebookTopology,
+    from::Vector{Cell},
+)
     for cell in from
         one_down = Pluto.where_referenced(notebook, topology, cell)
         for next in one_down
@@ -49,13 +64,22 @@ end
 
 
 "Return all cells that are depended upon by any of the given cells."
-function upstream_recursive(notebook::Notebook, topology::NotebookTopology, from::Union{Vector{Cell},Set{Cell}})
+function upstream_recursive(
+    notebook::Notebook,
+    topology::NotebookTopology,
+    from::Union{Vector{Cell},Set{Cell}},
+)
     found = Set{Cell}(copy(from))
     upstream_recursive!(found, notebook, topology, from)
     found
 end
 
-function upstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})
+function upstream_recursive!(
+    found::Set{Cell},
+    notebook::Notebook,
+    topology::NotebookTopology,
+    from::Vector{Cell},
+)
     for cell in from
         references = topology.nodes[cell].references
         for upstream in Pluto.where_assigned(notebook, topology, references)
@@ -72,7 +96,7 @@ function codependents(notebook::Notebook, topology::NotebookTopology, var::Symbo
     assigned_in = filter(notebook.cells) do cell
         var ∈ topology.nodes[cell].definitions
     end
-    
+
     downstream = collect(downstream_recursive(notebook, topology, assigned_in))
 
     downupstream = upstream_recursive(notebook, topology, downstream)
@@ -89,10 +113,12 @@ function bound_variable_connections_graph(notebook::Notebook)::Dict{Symbol,Vecto
     Dict{Symbol,Vector{Symbol}}(
         var => let
             cells = codependents(notebook, topology, var)
-            defined_there = union!(Set{Symbol}(), (topology.nodes[c].definitions for c in cells)...)
+            defined_there = union!(
+                Set{Symbol}(),
+                (topology.nodes[c].definitions for c in cells)...,
+            )
             # Set([var]) ∪ 
             collect((defined_there ∩ bound_variables))
-        end
-        for var in bound_variables
+        end for var in bound_variables
     )
 end

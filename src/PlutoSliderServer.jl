@@ -5,17 +5,26 @@ using FromFile
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./FileHelpers.jl" import find_notebook_files_recursive, list_files_recursive
 @from "./Export.jl" import generate_index_html
-@from "./Actions.jl" import process, should_shutdown, should_update, should_launch, will_process
+@from "./Actions.jl" import process,
+    should_shutdown, should_update, should_launch, will_process
 @from "./Types.jl" import NotebookSession
 @from "./Lock.jl" import withlock
-@from "./Configuration.jl" import PlutoDeploySettings, ExportSettings, SliderServerSettings, get_configuration
-@from "./ConfigurationDocs.jl" import @extract_docs, get_kwdocs, list_options_md, list_options_toml
+@from "./Configuration.jl" import PlutoDeploySettings,
+    ExportSettings, SliderServerSettings, get_configuration
+@from "./ConfigurationDocs.jl" import @extract_docs,
+    get_kwdocs, list_options_md, list_options_toml
 @from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router
 @from "./gitpull.jl" import fetch_pull
 
 import Pluto
-import Pluto: ServerSession, Firebasey, Token, withtoken, pluto_file_extensions, without_pluto_file_extension
+import Pluto:
+    ServerSession,
+    Firebasey,
+    Token,
+    withtoken,
+    pluto_file_extensions,
+    without_pluto_file_extension
 using HTTP
 using Base64
 using SHA
@@ -67,13 +76,15 @@ end
 merge_recursive(a::AbstractDict, b::AbstractDict) = mergewith(merge_recursive, a, b)
 merge_recursive(a, b) = b
 
-merge_recursive(a::PlutoDeploySettings, b::PlutoDeploySettings) = 
-    Configurations.from_dict(PlutoDeploySettings, 
-        merge_recursive(Configurations.to_dict(a), Configurations.to_dict(b)))
-        
-with_kwargs(original::PlutoDeploySettings; kwargs...) = merge_recursive(original, Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
+merge_recursive(a::PlutoDeploySettings, b::PlutoDeploySettings) = Configurations.from_dict(
+    PlutoDeploySettings,
+    merge_recursive(Configurations.to_dict(a), Configurations.to_dict(b)),
+)
 
-showall(xs) = Text(join(string.(xs),"\n"))
+with_kwargs(original::PlutoDeploySettings; kwargs...) =
+    merge_recursive(original, Configurations.from_kwargs(PlutoDeploySettings; kwargs...))
+
+showall(xs) = Text(join(string.(xs), "\n"))
 
 default_config_path() = joinpath(Base.active_project() |> dirname, "PlutoDeployment.toml")
 
@@ -111,7 +122,13 @@ end
 
 A single-file version of [`export_directory`](@ref).
 """
-export_notebook(p; kwargs...) = run_notebook(p; Export_enabled=true, SliderServer_enabled=false, Export_create_index=false, kwargs...)
+export_notebook(p; kwargs...) = run_notebook(
+    p;
+    Export_enabled=true,
+    SliderServer_enabled=false,
+    Export_create_index=false,
+    kwargs...,
+)
 github_action = export_directory
 
 
@@ -144,32 +161,34 @@ If `Export_enabled` is `true`, then additional `Export_` keywords can be given:
 $(list_options_md(ExportSettings; prefix="Export"))
 """
 function run_directory(
-        start_dir::String="."; 
-        notebook_paths::Union{Nothing,Vector{String}}=nothing,
-        on_ready::Function=((args...)->()),
-        config_toml_path::Union{String,Nothing}=default_config_path(),
-        kwargs...
-    )
-    
-    @assert joinpath("a","b") == "a/b" "PlutoSliderServer does not work on Windows yet!"
-    
+    start_dir::String=".";
+    notebook_paths::Union{Nothing,Vector{String}}=nothing,
+    on_ready::Function=((args...) -> ()),
+    config_toml_path::Union{String,Nothing}=default_config_path(),
+    kwargs...,
+)
+
+    @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet!"
+
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
 
     settings = get_configuration(config_toml_path; kwargs...)
     output_dir = something(
-        settings.Export.output_dir, 
-        settings.SliderServer.enabled ? mktempdir() : start_dir
+        settings.Export.output_dir,
+        settings.SliderServer.enabled ? mktempdir() : start_dir,
     )
     mkpath(output_dir)
 
-    if joinpath("a","b") != "a/b"
+    if joinpath("a", "b") != "a/b"
         @error "PlutoSliderServer.jl is only designed to work on unix systems."
         exit()
     end
 
     function getpaths()
-        all_nbs = notebook_paths !== nothing ? notebook_paths : find_notebook_files_recursive(start_dir)
+        all_nbs =
+            notebook_paths !== nothing ? notebook_paths :
+            find_notebook_files_recursive(start_dir)
         if settings.Export.enabled
             setdiff(all_nbs, settings.SliderServer.exclude ∩ settings.Export.exclude)
         else
@@ -181,10 +200,11 @@ function run_directory(
     end
 
     to_run = getpaths()
-    
+
     @info "Settings" Text(settings)
 
-    settings.SliderServer.enabled && @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
+    settings.SliderServer.enabled &&
+        @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
 
     # if to_run != notebook_paths
     #     @info "Excluded notebooks:" showall(setdiff(notebook_paths, to_run))
@@ -192,18 +212,18 @@ function run_directory(
 
     settings.Pluto.server.disable_writing_notebook_files = true
     settings.Pluto.evaluation.lazy_workspace_creation = true
-    
-    server_session = Pluto.ServerSession(;options=settings.Pluto)
+
+    server_session = Pluto.ServerSession(; options=settings.Pluto)
 
     notebook_sessions = NotebookSession[]
     # notebook_sessions = NotebookSession[QueuedNotebookSession(;path, current_hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if settings.SliderServer.enabled
-        static_dir = (
-            settings.Export.enabled && settings.SliderServer.serve_static_export_folder
-        ) ? output_dir : nothing
-        router = make_router(notebook_sessions, server_session; settings, static_dir )
-        
+        static_dir =
+            (settings.Export.enabled && settings.SliderServer.serve_static_export_folder) ?
+            output_dir : nothing
+        router = make_router(notebook_sessions, server_session; settings, static_dir)
+
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
         port = settings.SliderServer.port
@@ -243,15 +263,20 @@ function run_directory(
 
         # This is boilerplate HTTP code, don't read it
         # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
-        http_server_task = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
+        http_server_task = @async HTTP.serve(
+            hostIP,
+            UInt16(port),
+            stream=true,
+            server=serversocket,
+        ) do http::HTTP.Stream
             request::HTTP.Request = http.message
             request.body = read(http)
             HTTP.closeread(http)
-    
+
             params = HTTP.queryparams(HTTP.URI(request.target))
-    
+
             response_body = HTTP.handle(router, request)
-    
+
             request.response::HTTP.Response = response_body
             request.response.request = request
             try
@@ -268,57 +293,56 @@ function run_directory(
             end
         end
     else
-        http_server_task = @async 1+1
+        http_server_task = @async 1 + 1
         serversocket = nothing
     end
 
     if (
-        settings.Export.enabled && 
-        settings.Export.create_index && 
+        settings.Export.enabled &&
+        settings.Export.create_index &&
         # If `settings.SliderServer.serve_static_export_folder`, then we serve a dynamic index page (inside HTTPRouter.jl), so we don't want to create a static index page.
-        !(
-            settings.SliderServer.enabled &&
-            settings.SliderServer.serve_static_export_folder
-        )
+        !(settings.SliderServer.enabled && settings.SliderServer.serve_static_export_folder)
     )
-        
-        exists = any(["index.html", "index.md", ("index"*e for e in pluto_file_extensions)...]) do f
+
+        exists = any([
+            "index.html",
+            "index.md",
+            ("index" * e for e in pluto_file_extensions)...,
+        ]) do f
             joinpath(output_dir, f) |> isfile
         end
         if !exists
-            write(joinpath(output_dir, "index.html"), generate_index_html((
-                without_pluto_file_extension(path) => without_pluto_file_extension(path) * ".html"
-                for path in to_run
-            )))
+            write(
+                joinpath(output_dir, "index.html"),
+                generate_index_html((
+                    without_pluto_file_extension(path) =>
+                        without_pluto_file_extension(path) * ".html" for path in to_run
+                )),
+            )
         end
     end
 
 
     function refresh_until_synced(check_dir_on_every_step::Bool, did_something::Bool=false)
         should_continue = withlock(notebook_sessions) do
-            
-            check_dir_on_every_step && update_sessions!(notebook_sessions, getpaths(); start_dir)
+
+            check_dir_on_every_step &&
+                update_sessions!(notebook_sessions, getpaths(); start_dir)
 
             # todo: try catch to release lock?
             to_shutdown = select(should_shutdown, notebook_sessions)
             to_update = select(should_update, notebook_sessions)
             to_launch = select(should_launch, notebook_sessions)
-    
+
             s = something(to_shutdown, to_update, to_launch, "not found")
-    
+
             if s != "not found"
 
                 progress = "[$(
                     count(!will_process, notebook_sessions) + 1
                 )/$(length(notebook_sessions))]"
 
-                new = process(s;
-                    server_session,
-                    settings,
-                    output_dir,
-                    start_dir,
-                    progress
-                )
+                new = process(s; server_session, settings, output_dir, start_dir, progress)
                 if new !== s
                     if new isa NotebookSession{Nothing,Nothing,<:Any}
                         # remove it
@@ -343,12 +367,12 @@ function run_directory(
     refresh_until_synced(false)
 
     should_watch = settings.SliderServer.enabled && settings.SliderServer.watch_dir
-    
+
     watch_dir_task = Pluto.@asynclog if should_watch
         @info "Watching directory for changes..."
         debounced = kind_of_debounced() do _
             @debug "File change detected!"
-            sleep(.5)
+            sleep(0.5)
             refresh_until_synced(true)
         end
         watch_folder(debounced, start_dir)
@@ -360,11 +384,7 @@ function run_directory(
     end
 
 
-    on_ready((;
-        serversocket,
-        server_session, 
-        notebook_sessions,
-    ))
+    on_ready((; serversocket, server_session, notebook_sessions))
 
     try
         wait(http_server_task)
@@ -383,29 +403,37 @@ Like [`run_directory`](@ref), but will automatically keep running `git pull` in 
 If you use a `PlutoDeployment.toml` file, we also keep checking whether this file changed. If it changed, we **exit Julia session**, and you will have to restart it. Open an issue if this is a problem.
 """
 function run_git_directory(
-    start_dir::String="."; 
+    start_dir::String=".";
     notebook_paths::Union{Nothing,Vector{String}}=nothing,
-    on_ready::Function=((args...)->()),
+    on_ready::Function=((args...) -> ()),
     config_toml_path::Union{String,Nothing}=default_config_path(),
-    kwargs...
-    )
-    
+    kwargs...,
+)
+
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
 
-    
-    get_settings() = get_configuration(config_toml_path; SliderServer_watch_dir=true, kwargs...)
+
+    get_settings() =
+        get_configuration(config_toml_path; SliderServer_watch_dir=true, kwargs...)
     old_settings = get_settings()
 
     run_dir_task = Pluto.@asynclog begin
-        run_directory(start_dir; notebook_paths, on_ready, config_toml_path, SliderServer_watch_dir=true, kwargs...)
+        run_directory(
+            start_dir;
+            notebook_paths,
+            on_ready,
+            config_toml_path,
+            SliderServer_watch_dir=true,
+            kwargs...,
+        )
     end
     pull_loop_task = Pluto.@asynclog while true
         new_settings = get_settings()
 
         if old_settings != new_settings
             @error "Configuration changed. Shutting down!"
-            
+
             println(stderr, "Old settings:")
             println(stderr, repr(old_settings))
             println(stderr, "")
@@ -419,7 +447,7 @@ function run_git_directory(
         sleep(5)
         fetch_pull(start_dir)
     end
-    
+
     waitall([run_dir_task, pull_loop_task])
 end
 
@@ -435,7 +463,10 @@ function waitall(tasks)
             if !killing[]
                 killing[] = true
                 for t2 in tasks
-                    try schedule(t2, e; error=true); catch e; end
+                    try
+                        schedule(t2, e; error=true)
+                    catch e
+                    end
                 end
             end
         end
