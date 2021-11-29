@@ -315,7 +315,7 @@ function run_bonds_get_patch_info(
 )::Union{AbstractDict{String,Any},Nothing}
     sesh = notebook_session
 
-    notebook = sesh.notebook
+    notebook = sesh.run.notebook
 
     topological_order, new_state = withtoken(sesh.run.token) do
         try
@@ -396,7 +396,7 @@ function generate_static_staterequests(
         possible_values = [
             Pluto.possible_bond_values(
                 pluto_session::Pluto.ServerSession,
-                sesh.notebook::Pluto.Notebook,
+                sesh.run.notebook::Pluto.Notebook,
                 n::Symbol,
             ) for n in names
         ]
