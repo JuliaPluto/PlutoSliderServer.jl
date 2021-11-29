@@ -1,13 +1,15 @@
 name = "PlutoSliderServer"
 uuid = "2fc8631c-6f24-4c5b-bca7-cbb509c42db4"
 authors = ["Fons van der Plas <fons@plutojl.org>"]
-version = "0.2.6"
+version = "0.3.2"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+BetterFileWatching = "c9fd44ac-77b5-486c-9482-9798bd063cc6"
 Configurations = "5218b696-f38b-4ac9-8b61-a12ec717816d"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 FromFile = "ff7dd447-1dcb-4ce3-b8ac-22a812192de7"
+Git = "d7ba0133-e1db-5d97-8f8c-041e4b3a1eb2"
 GitHubActions = "6b79fd1a-b13a-48ab-b6b0-aaee1fee41df"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
@@ -17,15 +19,19 @@ Pluto = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
+BetterFileWatching = "^0.1.2"
 Configurations = "0.16"
 FromFile = "0.1"
+Git = "1"
 GitHubActions = "0.1"
 HTTP = "^0.9.3"
-Pluto = "^0.14.7, 0.15, 0.16, 0.17.0"
-julia = "1.5"
+Pluto = "0.15, 0.16, 0.17"
+TerminalLoggers = "0.1"
+julia = "1.6"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
