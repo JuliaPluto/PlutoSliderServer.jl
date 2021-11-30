@@ -448,3 +448,11 @@ function generate_static_staterequests(
 
 
 end
+
+function Random.rand(
+    rng::Random.AbstractRNG,
+    iterator::Random.SamplerTrivial{Base.Iterators.ProductIterator{T}},
+) where {T}
+    r(x) = rand(rng, x)
+    r.(iterator[].iterators)
+end
