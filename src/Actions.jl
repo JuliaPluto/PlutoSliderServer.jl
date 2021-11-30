@@ -1,8 +1,10 @@
-import Pluto: Pluto, without_pluto_file_extension, generate_html, @asynclog
+import Pluto:
+    Pluto, without_pluto_file_extension, generate_html, @asynclog, withtoken, Firebasey
 using Base64
 using SHA
 using OrderedCollections
 using FromFile
+import HTTP.URIs
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./Export.jl" import try_get_exact_pluto_version, try_fromcache, try_tocache
@@ -67,7 +69,7 @@ function process(
         @warn "Notebook file does not have desired hash. This probably means that the file changed too quickly. Continuing and hoping for the best!" s.path new_hash s.desired_hash
     end
 
-    keep_running = settings.SliderServer.enabled
+    keep_running = settings.SliderServer.enabled || settings.Export.static_export_state
     skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
@@ -113,18 +115,25 @@ function process(
         start_dir,
         output_dir,
     )
-    if settings.Export.static_export_state
-        generate_static_staterequests(path, settings, server_session, session, output_dir)
-    end
-
-    @info "### ✓ $(progress) Ready" s.path new_hash
-
-    NotebookSession(;
+    new_session = NotebookSession(;
         path=s.path,
         current_hash=new_hash,
         desired_hash=s.desired_hash,
         run=run,
     )
+    if settings.Export.static_export_state
+        generate_static_staterequests(
+            new_session;
+            settings,
+            pluto_session=server_session,
+            output_dir,
+        )
+        # TODO shutdown
+    end
+
+    @info "### ✓ $(progress) Ready" s.path new_hash
+
+    new_session
 end
 
 ###
@@ -369,23 +378,25 @@ function run_bonds_get_patch_info(
 end
 
 function generate_static_staterequests(
-    path,
+    notebook_session::NotebookSession;
     settings::PlutoDeploySettings,
     pluto_session::Pluto.ServerSession,
-    notebook_session::NotebookSession,
     output_dir=".",
 )
     sesh = notebook_session
-    connections = sesh.bond_connections
+    run = sesh.run
+    connections = run.bond_connections
+    current_hash = sesh.current_hash
+
+    @assert run isa RunningNotebook
 
     mkpath(joinpath(output_dir, "bondconnections"))
 
-    mkpath(joinpath(output_dir, "staterequest", HTTP.URIs.escapeuri(sesh.current_hash)))
+    mkpath(joinpath(output_dir, "staterequest", URIs.escapeuri(current_hash)))
 
-    write_path =
-        joinpath(output_dir, "bondconnections", HTTP.URIs.escapeuri(sesh.current_hash))
+    write_path = joinpath(output_dir, "bondconnections", URIs.escapeuri(current_hash))
 
-    write(write_path, Pluto.pack(sesh.bond_connections))
+    write(write_path, Pluto.pack(run.bond_connections))
 
     @info "Written bond connections to " write_path
 
@@ -394,11 +405,19 @@ function generate_static_staterequests(
         names = sort(variable_group)
 
         possible_values = [
-            Pluto.possible_bond_values(
-                pluto_session::Pluto.ServerSession,
-                sesh.run.notebook::Pluto.Notebook,
-                n::Symbol,
-            ) for n in names
+            let
+                result = Pluto.possible_bond_values(
+                    pluto_session::Pluto.ServerSession,
+                    run.notebook::Pluto.Notebook,
+                    n::Symbol,
+                )
+                if result isa Symbol
+                    @error "Failed to get possible values for $(n)" result
+                    []
+                else
+                    result
+                end
+            end for n in names
         ]
 
         for combination in Iterators.product(possible_values...)
@@ -413,13 +432,14 @@ function generate_static_staterequests(
                 write_path = joinpath(
                     output_dir,
                     "staterequest",
-                    HTTP.URIs.escapeuri(sesh.current_hash),
-                    Pluto.pack(bonds) |> base64encode |> HTTP.URIs.escapeuri,
+                    URIs.escapeuri(current_hash),
+                    Pluto.pack(bonds) |> base64encode |> URIs.escapeuri,
                 )
 
                 write(write_path, Pluto.pack(result))
 
-                @info "Written state request to " write_path
+                @info "Written state request to " write_path values =
+                    (; (zip(names, combination))...)
 
             end
         end

@@ -35,7 +35,8 @@ TerminalLoggers = "0.1"
 julia = "1.6"
 
 [extras]
+Deno_jll = "04572ae6-984a-583e-9378-9577a1c2574d"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Deno_jll", "Test"]
