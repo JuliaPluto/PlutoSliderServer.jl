@@ -49,7 +49,12 @@ using Base64
     @test isdir(joinpath(test_dir, "bondconnections"))
     @show list_files_recursive(joinpath(test_dir, "staterequest"))
     @show readdir(joinpath(test_dir, "bondconnections"))
-    @test length(list_files_recursive(joinpath(test_dir, "staterequest"))) == 10 * 10
+    @test length(list_files_recursive(joinpath(test_dir, "staterequest"))) == let
+        x = 10
+        y = 20
+        z = 15
+        x * y + z
+    end
 
     while !occursin(
         "Pluto.jl notebook",
@@ -129,7 +134,11 @@ using Base64
             end
 
             @test state["cell_results"][sum_cell_id]["output"]["body"] ==
-                  string(bonds["x"]["value"] + bonds["y"]["value"])
+                  let
+                x = bonds["x"]["value"]
+                y = bonds["y"]["value"]
+                repeat(string(x), y)
+            end |> repr
 
         end
     end

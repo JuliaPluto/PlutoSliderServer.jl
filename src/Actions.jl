@@ -5,6 +5,10 @@ using SHA
 using OrderedCollections
 using FromFile
 import HTTP.URIs
+import Random
+import Statistics
+using Distributions
+import Markdown
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./Export.jl" import try_get_exact_pluto_version, try_fromcache, try_tocache
@@ -377,12 +381,258 @@ function run_bonds_get_patch_info(
     )
 end
 
+const Reason = Symbol
+
+Base.@kwdef struct VariableGroupPossibilities
+    names::Vector{Symbol}
+    file_size_sample_statistics::Union{Nothing,Distribution} = nothing
+    num_possibilities::Int64
+    possible_values::Vector{Any}
+    not_available::Dict{Symbol,Reason}
+end
+
+struct PrecomputedSampleReport
+    groups::Vector{VariableGroupPossibilities}
+end
+
+# TODO
+# - if one of the fields in the group has no possible values then we cant precompute anything, that should be displayed, but its actually cool that it works
+
+
+
+
+function variable_groups(
+    connections;
+    pluto_session::Pluto.ServerSession,
+    notebook::Pluto.Notebook,
+)
+    map(collect(Set(values(connections)))) do variable_group
+
+        names = sort(variable_group)
+
+        not_available = Dict{Symbol,Reason}()
+
+        possible_values = [
+            let
+                result = Pluto.possible_bond_values(
+                    pluto_session::Pluto.ServerSession,
+                    notebook::Pluto.Notebook,
+                    n::Symbol,
+                )
+                if result isa Symbol
+                    # @error "Failed to get possible values for $(n)" result
+                    not_available[n] = result
+                    []
+                else
+                    result
+                end
+            end for n in names
+        ]
+
+        VariableGroupPossibilities(
+            names=names,
+            # file_size_sample_statistics=(
+            #     Statistics.mean(file_size_sample),
+            #     Statistics.stddev(file_size_sample),
+            # ),
+            num_possibilities=prod(Int64.(length.(possible_values))),
+            possible_values=possible_values,
+            not_available=not_available,
+        )
+    end
+end
+
+
+function combination_iterator(group::VariableGroupPossibilities)
+    Iterators.map(Iterators.product(group.possible_values...)) do combination
+        bonds_dict = OrderedDict{Symbol,Any}(
+            n => OrderedDict{String,Any}("value" => v, "is_first_value" => true) for
+            (n, v) in zip(group.names, combination)
+        )
+
+        return (combination, bonds_dict)
+    end
+end
+
+format_filesize(x::Real) = isnan(x) ? "NaN" : try
+    Base.format_bytes(floor(Int64, x))
+catch
+    "$(x / 1e6) MB"
+end
+
+function format_filesize(x::Distribution)
+    m, s = mean(x), std(x)
+    if s / m > 0.05
+        format_filesize(m) * " ± " * format_filesize(s)
+    else
+        format_filesize(m)
+    end
+end
+
+sum_distributions(ds; init=Normal(0, 0)) = reduce(convolve, ds; init=init)
+
+function Base.show(io::IO, m::MIME"text/plain", p::PrecomputedSampleReport)
+    groups = sort(p.groups; by=g -> mean(g.file_size_sample_statistics), rev=true)
+
+    r = Markdown.parse(
+        """
+# Summary of precomputed
+
+Total size estimate: $(
+    sum(Int64[g.num_possibilities for g in groups])
+) files, $(map(groups) do group
+    group.file_size_sample_statistics
+end |> sum_distributions |> format_filesize)
+
+$(map(groups) do group
+total_size_dist = group.file_size_sample_statistics
+
+"""
+## Group: $(join(["`$(n)`" for n in group.names], ", "))
+
+$(
+    if isempty(group.not_available)
+        """
+        Size estimate for this group: $(
+            group.num_possibilities
+        ) files, $(
+            format_filesize(total_size_dist)
+        )
+    
+        | Name | Possible values | File size per value |
+        |---|---|---|
+        $(map(zip(group.names, group.possible_values)) do (n, vs)
+            "| `$(n)` | $(length(vs)) | $(format_filesize(total_size_dist / length(vs))) | \n"
+        end |> join)
+        """
+    else
+        notgivens = [k for (k,v) in group.not_available if v == :NotGiven]
+        infitesss = [k for (k,v) in group.not_available if v == :InfinitePossibilities]
+        
+        """
+        This group could not be precomputed because:
+        $(
+            isempty(notgivens) ? "" : "- The set of possible values for $(join(("`$(s)`" for s in notgivens), ", ")) is not known. If you are using PlutoUI, be sure to use an up-to-date version. If this input element is custom-made, take a look at `AbstractPlutoDingetjes.jl`. \n"
+        )$(
+            isempty(infitesss) ? "" : "- The set of possible values for $(join(("`$(s)`" for s in infitesss), ", ")) is infinite. \n"
+        )
+        """
+    end
+)
+
+""" 
+end |> join)
+""",
+    )
+    show(io, m, r)
+end
+
+# function static_staterequest_report(; connections)
+
+#     groups = variable_groups(connections; pluto_session, notebook=notebook_session.run.notebook)
+
+#     map(Set(values(connections))) do variable_group
+
+#         names = sort(variable_group)
+
+#         not_available = Dict{Symbol,Reason}()
+
+#         possible_values = [
+#             let
+#                 result = Pluto.possible_bond_values(
+#                     pluto_session::Pluto.ServerSession,
+#                     run.notebook::Pluto.Notebook,
+#                     n::Symbol,
+#                 )
+#                 if result isa Symbol
+#                     # @error "Failed to get possible values for $(n)" result
+#                     not_available[n] = result
+#                     []
+#                 else
+#                     result
+#                 end
+#             end for n in names
+#         ]
+
+
+#         file_size_sample = map(
+#             rand(Iterators.product(possible_values...), length(names) * 3),
+#         ) do combination
+#             bonds = OrderedDict{Symbol,Any}(
+#                 n => OrderedDict{String,Any}("value" => v, "is_first_value" => true)
+#                 for (n, v) in zip(names, combination)
+#             )
+
+#             result = run_bonds_get_patch_info(pluto_session, sesh, bonds)
+
+#             if result !== nothing
+#                 length(Pluto.pack(result))
+#             else
+#                 0
+#             end
+#         end
+
+#         VariableGroupPossibilities(
+#             variables=variable_group,
+#             file_size_sample_statistics=(
+#                 Statistics.mean(file_size_sample),
+#                 Statistics.stddev(file_size_sample),
+#             ),
+#             num_possible_values=Dict{Symbol,Int64}(n => Int64(length(possible_values[n]))),
+#             not_available=not_available,
+#         )
+#     end |> PrecomputedSampleReport
+# end
+
+
+function generate_static_staterequests_report(
+    groups::Vector{VariableGroupPossibilities},
+    notebook_session::NotebookSession;
+    settings::PlutoDeploySettings,
+    pluto_session::Pluto.ServerSession,
+)
+    sesh = notebook_session
+    run = sesh.run
+
+    @assert run isa RunningNotebook
+
+    map(groups) do group
+        stat = if !isempty(group.not_available) || isempty(combination_iterator(group))
+            Normal(0, 0)
+        else
+            iterator = combination_iterator(group)
+            file_size_sample =
+                map(rand(iterator, length(group.names) * 3)) do (combination, bonds_dict)
+
+                    result = run_bonds_get_patch_info(pluto_session, sesh, bonds_dict)
+
+                    if result !== nothing
+                        length(Pluto.pack(result))
+                    else
+                        0
+                    end
+                end .* length(iterator) # multiply by number of combinations to get an estimate of the total file size
+
+            fit(Normal, file_size_sample)
+        end
+        VariableGroupPossibilities(
+            names=group.names,
+            possible_values=group.possible_values,
+            num_possibilities=group.num_possibilities,
+            not_available=group.not_available,
+            file_size_sample_statistics=stat,
+        )
+    end |> PrecomputedSampleReport
+end
+
+
 function generate_static_staterequests(
     notebook_session::NotebookSession;
     settings::PlutoDeploySettings,
     pluto_session::Pluto.ServerSession,
     output_dir=".",
 )
+
     sesh = notebook_session
     run = sesh.run
     connections = run.bond_connections
@@ -391,62 +641,44 @@ function generate_static_staterequests(
     @assert run isa RunningNotebook
 
     mkpath(joinpath(output_dir, "bondconnections"))
-
     mkpath(joinpath(output_dir, "staterequest", URIs.escapeuri(current_hash)))
 
-    write_path = joinpath(output_dir, "bondconnections", URIs.escapeuri(current_hash))
+    bondconnections_path =
+        joinpath(output_dir, "bondconnections", URIs.escapeuri(current_hash))
+    write(bondconnections_path, Pluto.pack(run.bond_connections))
+    @info "Written bond connections to " bondconnections_path
 
-    write(write_path, Pluto.pack(run.bond_connections))
+    groups =
+        variable_groups(connections; pluto_session, notebook=notebook_session.run.notebook)
 
-    @info "Written bond connections to " write_path
+    report = generate_static_staterequests_report(groups, sesh; settings, pluto_session)
 
-    for variable_group in Set(values(connections))
+    println(stderr)
+    println(stderr)
+    show(stderr, MIME"text/plain"(), report)
+    println(stderr)
+    println(stderr)
 
-        names = sort(variable_group)
+    foreach(groups) do group
+        foreach(combination_iterator(group)) do (combination, bonds_dict)
 
-        possible_values = [
-            let
-                result = Pluto.possible_bond_values(
-                    pluto_session::Pluto.ServerSession,
-                    run.notebook::Pluto.Notebook,
-                    n::Symbol,
-                )
-                if result isa Symbol
-                    @error "Failed to get possible values for $(n)" result
-                    []
-                else
-                    result
-                end
-            end for n in names
-        ]
-
-        for combination in Iterators.product(possible_values...)
-            bonds = OrderedDict{Symbol,Any}(
-                n => OrderedDict{String,Any}("value" => v, "is_first_value" => true) for
-                (n, v) in zip(names, combination)
-            )
-
-            result = run_bonds_get_patch_info(pluto_session, sesh, bonds)
+            result = run_bonds_get_patch_info(pluto_session, sesh, bonds_dict)
 
             if result !== nothing
                 write_path = joinpath(
                     output_dir,
                     "staterequest",
                     URIs.escapeuri(current_hash),
-                    Pluto.pack(bonds) |> base64encode |> URIs.escapeuri,
+                    Pluto.pack(bonds_dict) |> base64encode |> URIs.escapeuri,
                 )
 
                 write(write_path, Pluto.pack(result))
 
                 @info "Written state request to " write_path values =
-                    (; (zip(names, combination))...)
-
+                    (; (zip(group.names, combination))...)
             end
         end
-
     end
-
-
 end
 
 function Random.rand(
@@ -455,4 +687,11 @@ function Random.rand(
 ) where {T}
     r(x) = rand(rng, x)
     r.(iterator[].iterators)
+end
+
+function Random.rand(
+    rng::Random.AbstractRNG,
+    iterator::Random.SamplerTrivial{Base.Generator{T,F}},
+) where {T,F}
+    iterator[].f(rand(rng, iterator[].iter))
 end
