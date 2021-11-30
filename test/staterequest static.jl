@@ -3,6 +3,7 @@ import HTTP
 import Deno_jll
 using OrderedCollections
 
+import Random
 using Test
 using UUIDs
 using Base64
@@ -14,7 +15,7 @@ using Base64
     notebook_paths = ["basic3.jl"]
     # notebook_paths = ["basic2.jl", "parallelpaths4.jl"]
 
-    port = rand(12345:65000)
+    port = rand(Random.RandomDevice(), 12345:65000)
 
 
     still_booting = Ref(true)
