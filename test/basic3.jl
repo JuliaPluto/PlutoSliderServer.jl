@@ -41,19 +41,19 @@ begin
 end
 
 # ╔═╡ 635e5ebc-6567-11eb-1d9d-f98bfca7ec27
-@bind x CoolSlider(10)
+@bind x CoolSlider(100)
 
 # ╔═╡ ad853ac9-a8a0-44ef-8d41-c8cea165ad57
-@bind y CoolSlider(20)
-
-# ╔═╡ 26025270-9b5e-4841-b295-0c47437bc7db
-repeat(string(x), y)
+@bind y CoolSlider(200)
 
 # ╔═╡ 8fb4ff71-6f86-4643-a0af-6b6665d63634
 
 
 # ╔═╡ ea600f99-b634-492f-a1d6-7137ff896e84
 @bind z CoolSlider(15)
+
+# ╔═╡ 26025270-9b5e-4841-b295-0c47437bc7db
+repeat(string(x), y + z)
 
 # ╔═╡ 815f3a2d-b5f6-4b5d-84ec-fa660c3dbfe8
 z * 100
@@ -213,8 +213,8 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 
 # ╔═╡ Cell order:
 # ╠═22dc8ce8-392e-4202-a549-f0fd46152322
-# ╠═9b342ef4-fff9-46d0-b316-cc383fe71a59
-# ╠═4a683caa-6910-4922-bda4-c3a00950a14b
+# ╟─9b342ef4-fff9-46d0-b316-cc383fe71a59
+# ╟─4a683caa-6910-4922-bda4-c3a00950a14b
 # ╠═635e5ebc-6567-11eb-1d9d-f98bfca7ec27
 # ╠═ad853ac9-a8a0-44ef-8d41-c8cea165ad57
 # ╠═26025270-9b5e-4841-b295-0c47437bc7db

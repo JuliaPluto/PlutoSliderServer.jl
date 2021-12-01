@@ -16,7 +16,7 @@ using Sockets
 using Logging: global_logger
 using GitHubActions: GitHubActionsLogger
 
-@from "./Actions.jl" import run_bonds_get_patch_info
+@from "./run_bonds.jl" import run_bonds_get_patches
 @from "./Export.jl" import generate_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
@@ -102,7 +102,7 @@ function make_router(
             end
 
             ##
-            result = run_bonds_get_patch_info(server_session, sesh, bonds)
+            result = run_bonds_get_patches(server_session, sesh.run, bonds)
             ##
 
             if result === nothing

@@ -16,6 +16,7 @@ using FromFile
 @from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router
 @from "./gitpull.jl" import fetch_pull
+@from "./precomputed/debug.jl" import start_debugging
 
 import Pluto
 import Pluto:
@@ -492,6 +493,7 @@ function kind_of_debounced(f)
 
     return go
 end
+
 
 
 end
