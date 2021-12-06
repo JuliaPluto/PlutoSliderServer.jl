@@ -57,7 +57,7 @@ end
 function combination_iterator(group::VariableGroupPossibilities)
     Iterators.map(Iterators.product(group.possible_values...)) do combination
         bonds_dict = OrderedDict{Symbol,Any}(
-            n => OrderedDict{String,Any}("value" => v, "is_first_value" => true) for
+            n => OrderedDict{String,Any}("value" => v) for
             (n, v) in zip(group.names, combination)
         )
 

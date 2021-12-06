@@ -100,7 +100,7 @@ using Base64
 
         @testset "Method $(method)" for method in ["GET"], x = 3:7
 
-            v(x) = OrderedDict("value" => x, "is_first_value" => true)
+            v(x) = OrderedDict("value" => x)
 
             bonds = OrderedDict("x" => v(x), "y" => v(7))
 
