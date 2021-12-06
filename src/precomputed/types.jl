@@ -10,7 +10,7 @@ import Markdown
 const Reason = Symbol
 
 Base.@kwdef struct Judgement
-    should_precompute::Bool = false
+    should_precompute_all::Bool = false
     not_available::Bool = false
     close_to_filesize_limit::Bool = false
     exceeds_filesize_limit::Bool = false
@@ -51,7 +51,7 @@ function VariableGroupPossibilities(;
     end
 
     j = Judgement(;
-        should_precompute=!is_not_available && !exceeds_filesize_limit,
+        should_precompute_all=!is_not_available && !exceeds_filesize_limit,
         exceeds_filesize_limit,
         close_to_filesize_limit,
         not_available=is_not_available,
@@ -84,7 +84,7 @@ function PrecomputedSampleReport(groups::Vector{VariableGroupPossibilities})
         end |> sum_distributions
 
     judgement = Judgement(;
-        should_precompute=any(g.judgement.should_precompute for g in groups),
+        should_precompute_all=all(g.judgement.should_precompute_all for g in groups),
         not_available=any(g.judgement.not_available for g in groups),
         exceeds_filesize_limit=any(g.judgement.exceeds_filesize_limit for g in groups),
         close_to_filesize_limit=any(g.judgement.close_to_filesize_limit for g in groups),
@@ -98,17 +98,23 @@ function PrecomputedSampleReport(groups::Vector{VariableGroupPossibilities})
     )
 end
 
+function exceeds_limit(j::Judgement, prefix::String="")
+
+    j.exceeds_filesize_limit ? "*($(prefix)exceeding filesize limit)*" :
+    j.close_to_filesize_limit ? "*($(prefix)close to filesize limit)*" : ""
+end
+
 
 function Base.show(io::IO, m::MIME"text/plain", p::PrecomputedSampleReport)
     groups = sort(p.groups; by=g -> mean(g.file_size_sample_distribution), rev=true)
 
     r = Markdown.parse(
         """
-# $(pretty(p.judgement)) Precomputed state summary
+# Precomputed state summary
 
 Total size estimate: $(p.num_possibilities) files, $(
     p.file_size_sample_distribution |> format_filesize
-)
+) $(exceeds_limit(p.judgement, "some groups are "))
 
 $(map(groups) do group
 total_size_dist = group.file_size_sample_distribution
@@ -122,7 +128,7 @@ $(if isempty(group.not_available)
         group.num_possibilities
     ) files, $(
         format_filesize(total_size_dist)
-    )
+    ) $(exceeds_limit(group.judgement))
 
     | Name | Possible values | File size per value |
     |---|---|---|
@@ -198,7 +204,7 @@ sum_distributions(ds; init=Normal(0, 0)) =
 
 
 pretty(j::Judgement) =
-    if j.should_precompute
+    if j.should_precompute_all
         j.close_to_filesize_limit ? "⚠️" : "✓"
     else
         "❌"

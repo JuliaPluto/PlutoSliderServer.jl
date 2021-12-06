@@ -20,37 +20,38 @@ function variable_groups(
     connections;
     pluto_session::Pluto.ServerSession,
     notebook::Pluto.Notebook,
-)
-    map(collect(Set(values(connections)))) do variable_group
+)::Vector{VariableGroupPossibilities}
+    VariableGroupPossibilities[
+        let
+            names = sort(variable_group)
 
-        names = sort(variable_group)
+            not_available = Dict{Symbol,Reason}()
 
-        not_available = Dict{Symbol,Reason}()
+            possible_values = [
+                let
+                    result = Pluto.possible_bond_values(
+                        pluto_session::Pluto.ServerSession,
+                        notebook::Pluto.Notebook,
+                        n::Symbol,
+                    )
+                    if result isa Symbol
+                        # @error "Failed to get possible values for $(n)" result
+                        not_available[n] = result
+                        []
+                    else
+                        result
+                    end
+                end for n in names
+            ]
 
-        possible_values = [
-            let
-                result = Pluto.possible_bond_values(
-                    pluto_session::Pluto.ServerSession,
-                    notebook::Pluto.Notebook,
-                    n::Symbol,
-                )
-                if result isa Symbol
-                    # @error "Failed to get possible values for $(n)" result
-                    not_available[n] = result
-                    []
-                else
-                    result
-                end
-            end for n in names
-        ]
-
-        VariableGroupPossibilities(;
-            names=names,
-            possible_values=possible_values,
-            not_available=not_available,
-            num_possibilities=prod(Int64.(length.(possible_values))),
-        )
-    end
+            VariableGroupPossibilities(;
+                names=names,
+                possible_values=possible_values,
+                not_available=not_available,
+                num_possibilities=prod(Int64.(length.(possible_values))),
+            )
+        end for variable_group in Set(values(connections))
+    ]
 end
 
 
@@ -70,7 +71,7 @@ function generate_precomputed_staterequests_report(
     run::RunningNotebook;
     settings::PlutoDeploySettings,
     pluto_session::Pluto.ServerSession,
-)
+)::PrecomputedSampleReport
     map(groups) do group
         stat = if !isempty(group.not_available)
             Normal(0, 0)
@@ -130,15 +131,21 @@ function generate_precomputed_staterequests(
     write(bondconnections_path, Pluto.pack(run.bond_connections))
     @debug "Written bond connections to " bondconnections_path
 
-    groups = variable_groups(connections; pluto_session, notebook=run.notebook)
+    unanalyzed_groups = variable_groups(connections; pluto_session, notebook=run.notebook)
 
-    report = generate_precomputed_staterequests_report(groups, run; settings, pluto_session)
+    report = generate_precomputed_staterequests_report(
+        unanalyzed_groups,
+        run;
+        settings,
+        pluto_session,
+    )
+    groups = report.groups
 
-    println(stderr)
-    println(stderr)
-    show(stderr, MIME"text/plain"(), report)
-    println(stderr)
-    println(stderr)
+    if report.judgement.should_precompute_all
+        @info "Notebook can be fully precomputed!" report
+    else
+        @warn "Notebook cannot be (fully) precomputed" report
+    end
 
     foreach(groups) do group
         foreach(combination_iterator(group)) do (combination, bonds_dict)
