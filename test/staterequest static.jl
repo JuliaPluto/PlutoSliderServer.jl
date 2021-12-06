@@ -38,12 +38,14 @@ using Base64
         end
     end
 
-    PlutoSliderServer.export_directory(
-        test_dir;
-        Export_static_export_state=true,
-        notebook_paths,
-        on_ready,
-    )
+    withenv("JULIA_DEBUG" => nothing) do
+        PlutoSliderServer.export_directory(
+            test_dir;
+            Precompute_enabled=true,
+            notebook_paths,
+            on_ready,
+        )
+    end
 
     @test isdir(joinpath(test_dir, "staterequest"))
     @test isdir(joinpath(test_dir, "bondconnections"))

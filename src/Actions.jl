@@ -70,7 +70,7 @@ function process(
         @warn "Notebook file does not have desired hash. This probably means that the file changed too quickly. Continuing and hoping for the best!" s.path new_hash s.desired_hash
     end
 
-    keep_running = settings.SliderServer.enabled || settings.Export.static_export_state
+    keep_running = settings.SliderServer.enabled || settings.Precompute.enabled
     skip_cache = keep_running || path ∈ settings.Export.ignore_cache
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
@@ -122,7 +122,7 @@ function process(
         desired_hash=s.desired_hash,
         run=run,
     )
-    if settings.Export.static_export_state
+    if settings.Precompute.enabled
         generate_precomputed_staterequests(
             new_session;
             settings,

@@ -46,9 +46,9 @@ function variable_groups(
 
         VariableGroupPossibilities(;
             names=names,
-            num_possibilities=prod(Int64.(length.(possible_values))),
             possible_values=possible_values,
             not_available=not_available,
+            num_possibilities=prod(Int64.(length.(possible_values))),
         )
     end
 end
@@ -102,6 +102,7 @@ function generate_precomputed_staterequests_report(
             num_possibilities=group.num_possibilities,
             not_available=group.not_available,
             file_size_sample_distribution=stat,
+            settings,
         )
     end |> PrecomputedSampleReport
 end
@@ -127,7 +128,7 @@ function generate_precomputed_staterequests(
     bondconnections_path =
         joinpath(output_dir, "bondconnections", URIs.escapeuri(current_hash))
     write(bondconnections_path, Pluto.pack(run.bond_connections))
-    @info "Written bond connections to " bondconnections_path
+    @debug "Written bond connections to " bondconnections_path
 
     groups = variable_groups(connections; pluto_session, notebook=run.notebook)
 
@@ -154,7 +155,7 @@ function generate_precomputed_staterequests(
 
                 write(write_path, Pluto.pack(result))
 
-                @info "Written state request to " write_path values =
+                @debug "Written state request to " write_path values =
                     (; (zip(group.names, combination))...)
             end
         end

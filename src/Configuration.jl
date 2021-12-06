@@ -1,7 +1,8 @@
 using Configurations
 import TOML
 import Pluto
-export SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration
+export SliderServerSettings,
+    ExportSettings, PrecomputeSettings, PlutoDeploySettings, get_configuration
 using TerminalLoggers: TerminalLogger
 using Logging: global_logger
 using FromFile
@@ -23,10 +24,18 @@ using FromFile
     simulated_lag::Real = 0
 end
 
+
+@extract_docs @option struct PrecomputeSettings
+    "Precompute slider server requests?"
+    enabled::Bool = false
+    "List of notebook files to skip precomputation. Provide paths relative to `start_dir`."
+    exclude::Vector{String} = String[]
+    max_filesize_per_group::Integer = 10_000_000
+end
+
 @extract_docs @option struct ExportSettings
     "Generate static HTML files? This setting can only be `false` if you are also running a slider server."
     enabled::Bool = true
-    static_export_state::Bool = false
     "Folder to write generated HTML files to (will create directories to preserve the input folder structure). The behaviour of the default value depends on whether you are running the slider server, or just exporting. If running the slider server, we use a temporary directory; otherwise, we use `start_dir` (i.e. we generate each HTML file in the same folder as the notebook file)."
     output_dir::Union{Nothing,String} = nothing
     "List of notebook files to skip. Provide paths relative to `start_dir`."
@@ -54,6 +63,7 @@ end
 @option struct PlutoDeploySettings
     SliderServer::SliderServerSettings = SliderServerSettings()
     Export::ExportSettings = ExportSettings()
+    Precompute::PrecomputeSettings = PrecomputeSettings()
     Pluto::Pluto.Configuration.Options = Pluto.Configuration.Options()
 end
 
