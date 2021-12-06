@@ -41,10 +41,10 @@ begin
 end
 
 # ╔═╡ 635e5ebc-6567-11eb-1d9d-f98bfca7ec27
-@bind x CoolSlider(100)
+@bind x CoolSlider(10)
 
 # ╔═╡ ad853ac9-a8a0-44ef-8d41-c8cea165ad57
-@bind y CoolSlider(200)
+@bind y CoolSlider(20)
 
 # ╔═╡ 8fb4ff71-6f86-4643-a0af-6b6665d63634
 
@@ -53,7 +53,7 @@ end
 @bind z CoolSlider(15)
 
 # ╔═╡ 26025270-9b5e-4841-b295-0c47437bc7db
-repeat(string(x), y + z)
+repeat(string(x), y)
 
 # ╔═╡ 815f3a2d-b5f6-4b5d-84ec-fa660c3dbfe8
 z * 100
