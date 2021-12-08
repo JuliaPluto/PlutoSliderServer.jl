@@ -29,11 +29,15 @@ function variable_groups(
 
             possible_values = [
                 let
-                    result = Pluto.possible_bond_values(
-                        pluto_session::Pluto.ServerSession,
-                        notebook::Pluto.Notebook,
-                        n::Symbol,
-                    )
+                    result = try
+                        Pluto.possible_bond_values(
+                            pluto_session::Pluto.ServerSession,
+                            notebook::Pluto.Notebook,
+                            n::Symbol,
+                        )
+                    catch e
+                        Symbol("Failed ", string(e))
+                    end
                     if result isa Symbol
                         # @error "Failed to get possible values for $(n)" result
                         not_available[n] = result
