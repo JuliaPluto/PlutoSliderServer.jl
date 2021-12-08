@@ -84,7 +84,7 @@ function generate_precomputed_staterequests_report(
             Normal(0.0, 0.0)
         else
             iterator = combination_iterator(group)
-            if isempty(iterator)
+            if isempty(iterator) || isempty(group.names)
                 Normal(0.0, 0.0)
             else
                 file_size_sample =
