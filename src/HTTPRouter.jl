@@ -13,9 +13,6 @@ using Base64
 using SHA
 using Sockets
 
-using Logging: global_logger
-using GitHubActions: GitHubActionsLogger
-
 @from "./Export.jl" import generate_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
@@ -49,7 +46,7 @@ function make_router(
             This means that the notebook file used by the web client does not precisely match any of the notebook files running in this server. 
 
             If this is an automated setup, then this could happen inotebooketween deployments. 
-                        
+
             If this is a manual setup, then running the .jl notebook file might have caused a small change (e.g. the version number or a whitespace change). Copy notebooks to a temporary directory before running them using the bind server. =#
             @info "Request hash not found. See errror hint in my source code." notebook_hash
             nothing
