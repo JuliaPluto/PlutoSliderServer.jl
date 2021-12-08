@@ -54,7 +54,7 @@ function variable_groups(
                 not_available=not_available,
                 num_possibilities=prod(BigInt.(length.(possible_values))),
             )
-        end for variable_group in Set(values(connections))
+        end for variable_group in filter(!isempty, Set(values(connections)))
     ]
 end
 
@@ -98,7 +98,7 @@ function generate_precomputed_staterequests_report(
                             length(Pluto.pack(result))
                         else
                             0
-                        end
+                        end |> BigInt
                     end .* biglength(iterator) # multiply by number of combinations to get an estimate of the total file size
 
                 fit(Normal, file_size_sample)
@@ -156,8 +156,12 @@ function generate_precomputed_staterequests(
 
     foreach(groups) do group::VariableGroupPossibilities
         if group.judgement.should_precompute_all
-            foreach(combination_iterator(group)) do (combination, bonds_dict)
-
+            for (combination, bonds_dict) in combination_iterator(group)
+                filename = Pluto.pack(bonds_dict) |> base64encode |> URIs.escapeuri
+                if length(filename) > 255
+                    @warn "Filename is too long, stopping this group" group.names
+                    break
+                end
                 result = run_bonds_get_patches(pluto_session, run, bonds_dict)
 
                 if result !== nothing
@@ -165,7 +169,7 @@ function generate_precomputed_staterequests(
                         output_dir,
                         "staterequest",
                         URIs.escapeuri(current_hash),
-                        Pluto.pack(bonds_dict) |> base64encode |> URIs.escapeuri,
+                        filename,
                     )
 
                     write(write_path, Pluto.pack(result))

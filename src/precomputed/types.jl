@@ -148,9 +148,9 @@ else
     )$(
         isempty(infinites) ? "" : "- The set of possible values for $(join(("`$(s)`" for s in infinites), ", ")) is infinite. \n"
     )$(
-        isempty(remainder) ? "" : "- The set of possible values for $(join(("`$(s)`" for s in remainder), ", ")) could not be determined because of an unknown reason: $(
+        isempty(remainder) ? "" : "- The set of possible values for $(join(("`$(s)`" for s in remainder), ", ")) could not be determined because of an unknown reason: `$(
             join((group.not_available[k] for k in remainder), ", ")
-        ). \n"
+        )`. \n"
     )
     """
 end)
@@ -164,7 +164,7 @@ end
 
 
 format_filesize(x::Real) = isnan(x) ? "NaN" : try
-    Base.format_bytes(floor(Int64, x))
+    Base.format_bytes(floor(BigInt, x))
 catch
     "$(x / 1e6) MB"
 end
