@@ -70,6 +70,9 @@ function combination_iterator(group::VariableGroupPossibilities)
     end
 end
 
+biglength(pr::Iterators.ProductIterator) = prod(BigInt[biglength(i) for i in pr.iterators])
+biglength(x) = BigInt(length(x))
+
 function generate_precomputed_staterequests_report(
     groups::Vector{VariableGroupPossibilities},
     run::RunningNotebook;
@@ -96,7 +99,7 @@ function generate_precomputed_staterequests_report(
                         else
                             0
                         end
-                    end .* length(iterator) # multiply by number of combinations to get an estimate of the total file size
+                    end .* biglength(iterator) # multiply by number of combinations to get an estimate of the total file size
 
                 fit(Normal, file_size_sample)
             end
