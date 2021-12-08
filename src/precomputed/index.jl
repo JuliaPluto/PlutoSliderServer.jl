@@ -71,6 +71,7 @@ function combination_iterator(group::VariableGroupPossibilities)
 end
 
 biglength(pr::Iterators.ProductIterator) = prod(BigInt[biglength(i) for i in pr.iterators])
+biglength(g::Base.Generator) = biglength(g.iter)
 biglength(x) = BigInt(length(x))
 
 function generate_precomputed_staterequests_report(
