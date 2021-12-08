@@ -233,7 +233,11 @@ function generate_static_export(
 
     slider_server_running_somewhere =
         settings.Export.slider_server_url !== nothing ||
-        (settings.SliderServer.serve_static_export_folder && settings.SliderServer.enabled)
+        (
+            settings.SliderServer.serve_static_export_folder &&
+            settings.SliderServer.enabled
+        ) ||
+        settings.Precompute.enabled
 
     notebookfile_js = if settings.Export.offer_binder || slider_server_running_somewhere
         if settings.Export.baked_notebookfile
