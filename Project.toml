@@ -35,7 +35,7 @@ Git = "1"
 GitHubActions = "0.1"
 HTTP = "^0.9.3"
 OrderedCollections = "1"
-Pluto = "0.15, 0.16, 0.17"
+Pluto = "0.17.3"
 TerminalLoggers = "0.1"
 julia = "1.6"
 
