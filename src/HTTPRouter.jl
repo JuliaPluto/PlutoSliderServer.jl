@@ -13,9 +13,6 @@ using Base64
 using SHA
 using Sockets
 
-using Logging: global_logger
-using GitHubActions: GitHubActionsLogger
-
 @from "./run_bonds.jl" import run_bonds_get_patches
 @from "./Export.jl" import generate_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook
