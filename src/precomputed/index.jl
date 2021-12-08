@@ -147,23 +147,25 @@ function generate_precomputed_staterequests(
         @warn "Notebook cannot be (fully) precomputed" report
     end
 
-    foreach(groups) do group
-        foreach(combination_iterator(group)) do (combination, bonds_dict)
+    foreach(groups) do group::VariableGroupPossibilities
+        if group.judgement.should_precompute_all
+            foreach(combination_iterator(group)) do (combination, bonds_dict)
 
-            result = run_bonds_get_patches(pluto_session, run, bonds_dict)
+                result = run_bonds_get_patches(pluto_session, run, bonds_dict)
 
-            if result !== nothing
-                write_path = joinpath(
-                    output_dir,
-                    "staterequest",
-                    URIs.escapeuri(current_hash),
-                    Pluto.pack(bonds_dict) |> base64encode |> URIs.escapeuri,
-                )
+                if result !== nothing
+                    write_path = joinpath(
+                        output_dir,
+                        "staterequest",
+                        URIs.escapeuri(current_hash),
+                        Pluto.pack(bonds_dict) |> base64encode |> URIs.escapeuri,
+                    )
 
-                write(write_path, Pluto.pack(result))
+                    write(write_path, Pluto.pack(result))
 
-                @debug "Written state request to " write_path values =
-                    (; (zip(group.names, combination))...)
+                    @debug "Written state request to " write_path values =
+                        (; (zip(group.names, combination))...)
+                end
             end
         end
     end

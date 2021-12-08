@@ -30,7 +30,7 @@ end
     enabled::Bool = false
     "List of notebook files to skip precomputation. Provide paths relative to `start_dir`."
     exclude::Vector{String} = String[]
-    max_filesize_per_group::Integer = 10_000_000
+    max_filesize_per_group::Integer = 1_000_000
 end
 
 @extract_docs @option struct ExportSettings
