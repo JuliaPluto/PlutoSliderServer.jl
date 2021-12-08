@@ -52,7 +52,7 @@ function variable_groups(
                 names=names,
                 possible_values=possible_values,
                 not_available=not_available,
-                num_possibilities=prod(Int64.(length.(possible_values))),
+                num_possibilities=prod(BigInt.(length.(possible_values))),
             )
         end for variable_group in Set(values(connections))
     ]
@@ -81,11 +81,11 @@ function generate_precomputed_staterequests_report(
 )::PrecomputedSampleReport
     map(groups) do group
         stat = if !isempty(group.not_available)
-            Normal(0, 0)
+            Normal(0.0, 0.0)
         else
             iterator = combination_iterator(group)
             if isempty(iterator)
-                Normal(0, 0)
+                Normal(0.0, 0.0)
             else
                 file_size_sample =
                     map(

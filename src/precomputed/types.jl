@@ -22,7 +22,7 @@ struct VariableGroupPossibilities
     not_available::Dict{Symbol,Reason}
     # size info:
     file_size_sample_distribution::Union{Nothing,Distribution}
-    num_possibilities::Int64
+    num_possibilities::BigInt
 
     judgement::Judgement
 end
@@ -32,7 +32,7 @@ function VariableGroupPossibilities(;
     possible_values::Vector,
     not_available::Dict{Symbol,Reason},
     # size info:
-    num_possibilities::Int64,
+    num_possibilities::BigInt,
     file_size_sample_distribution::Union{Nothing,Distribution}=nothing,
     settings::Union{Nothing,PlutoDeploySettings}=nothing,
 )
@@ -71,12 +71,12 @@ Base.@kwdef struct PrecomputedSampleReport
     groups::Vector{VariableGroupPossibilities}
     # size info:
     file_size_sample_distribution::Union{Nothing,Distribution} = nothing
-    num_possibilities::Int64
+    num_possibilities::BigInt
     judgement::Judgement
 end
 
 function PrecomputedSampleReport(groups::Vector{VariableGroupPossibilities})
-    num_possibilities = sum(Int64[g.num_possibilities for g in groups])
+    num_possibilities = sum(BigInt[g.num_possibilities for g in groups])
 
     file_size_sample_distribution =
         map(groups) do group
