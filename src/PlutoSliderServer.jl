@@ -189,8 +189,13 @@ function run_directory(
         all_nbs =
             notebook_paths !== nothing ? notebook_paths :
             find_notebook_files_recursive(start_dir)
+
         if settings.Export.enabled
-            setdiff(all_nbs, settings.SliderServer.exclude ∩ settings.Export.exclude)
+            if settings.SliderServer.enabled
+                setdiff(all_nbs, settings.SliderServer.exclude ∩ settings.Export.exclude)
+            else
+                setdiff(all_nbs, settings.Export.exclude)
+            end
         else
             s = setdiff(all_nbs, settings.SliderServer.exclude)
             filter(s) do f
