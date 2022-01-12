@@ -33,7 +33,13 @@ function make_router(
 
         parts = HTTP.URIs.splitpath(uri.path)
         # parts[1] == "staterequest"
-        notebook_hash = parts[2] |> HTTP.unescapeuri
+
+        # some reverse proxies unescape the uri directly, this results in unnecessary splitting in the above HTTP.URIs.splitpath.
+        # We need to combine parts, but cant do *(parts[2:end]) because sometimes there is a "payload" at the end of parts. the
+        # notebook hash seems to end always with a "=" though, thus we can look out for this.
+
+        equalSign = findfirst(endswith.(parts[1:end],"="))
+        notebook_hash = join(parts[2:equalSign],"/") |> HTTP.unescapeuri
 
         i = findfirst(notebook_sessions) do sesh
             sesh.current_hash == notebook_hash
@@ -64,10 +70,12 @@ function make_router(
             parts = HTTP.URIs.splitpath(uri.path)
             # parts[1] == "staterequest"
             # notebook_hash = parts[2] |> HTTP.unescapeuri
+        
+            # sometimes URLS are split "wrongly" because an escaped URI is expected but the reverse proxy returns an unescaped one. Thus just using parts[end] seems safer
 
-            @assert length(parts) == 3
+            #@assert length(parts) == 3
 
-            base64decode(parts[3] |> HTTP.unescapeuri)
+            base64decode(parts[end] |> HTTP.unescapeuri)
         end
         bonds_raw = Pluto.unpack(request_body)
 
