@@ -88,7 +88,7 @@ function make_router(
                     (e, catch_backtrace())
                 return HTTP.Response(500, "Failed to deserialize bond values") |>
                        with_cors! |>
-                       with_not_cachable!
+                       with_not_cacheable!
             end
 
             @debug "Deserialized bond values" bonds
@@ -121,7 +121,7 @@ function make_router(
             topological_order === nothing && return (
                 HTTP.Response(500, "Failed to set bond values") |>
                 with_cors! |>
-                with_not_cachable!
+                with_not_cacheable!
             )
 
             ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
@@ -155,15 +155,15 @@ function make_router(
                     ),
                 ),
             ) |>
-            with_cachable! |>
+            with_cacheable! |>
             with_cors! |>
             with_msgpack!
         elseif sesh isa QueuedNotebookSession
             HTTP.Response(503, "Still loading the notebooks... check back later!") |>
             with_cors! |>
-            with_not_cachable!
+            with_not_cacheable!
         else
-            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cachable!
+            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cacheable!
         end
     end
 
@@ -173,14 +173,14 @@ function make_router(
         response = if sesh isa RunningNotebookSession
             HTTP.Response(200, Pluto.pack(sesh.run.bond_connections)) |>
             with_cors! |>
-            with_cachable! |>
+            with_cacheable! |>
             with_msgpack!
         elseif sesh isa QueuedNotebookSession
             HTTP.Response(503, "Still loading the notebooks... check back later!") |>
             with_cors! |>
-            with_not_cachable!
+            with_not_cacheable!
         else
-            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cachable!
+            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cacheable!
         end
     end
 
@@ -208,7 +208,7 @@ function make_router(
                 end
             end |>
             with_cors! |>
-            with_not_cachable!
+            with_not_cacheable!
         end
     )
 
@@ -256,7 +256,7 @@ function with_cors!(response::HTTP.Response)
     response
 end
 
-function with_cachable!(response::HTTP.Response)
+function with_cacheable!(response::HTTP.Response)
     second = 1
     minute = 60second
     hour = 60minute
@@ -267,7 +267,7 @@ function with_cachable!(response::HTTP.Response)
     response
 end
 
-function with_not_cachable!(response::HTTP.Response)
+function with_not_cacheable!(response::HTTP.Response)
     push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
     response
 end
