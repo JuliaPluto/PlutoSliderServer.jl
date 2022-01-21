@@ -46,7 +46,7 @@ function make_router(
 
             This means that the notebook file used by the web client does not precisely match any of the notebook files running in this server. 
 
-            If this is an automated setup, then this could happen inotebooketween deployments. 
+            If this is an automated setup, then this could happen inbetween deployments. 
 
             If this is a manual setup, then running the .jl notebook file might have caused a small change (e.g. the version number or a whitespace change). Copy notebooks to a temporary directory before running them using the bind server. =#
             @info "Request hash not found. See errror hint in my source code." notebook_hash
@@ -89,7 +89,7 @@ function make_router(
                     (e, catch_backtrace())
                 return HTTP.Response(500, "Failed to deserialize bond values") |>
                        with_cors! |>
-                       with_not_cachable!
+                       with_not_cacheable!
             end
 
             @debug "Deserialized bond values" bonds
@@ -105,19 +105,19 @@ function make_router(
             if result === nothing
                 HTTP.Response(500, "Failed to set bond values") |>
                 with_cors! |>
-                with_not_cachable!
+                with_not_cacheable!
             else
                 HTTP.Response(200, Pluto.pack(result)) |>
-                with_cachable! |>
+                with_cacheable! |>
                 with_cors! |>
                 with_msgpack!
             end
         elseif sesh isa QueuedNotebookSession
             HTTP.Response(503, "Still loading the notebooks... check back later!") |>
             with_cors! |>
-            with_not_cachable!
+            with_not_cacheable!
         else
-            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cachable!
+            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cacheable!
         end
     end
 
@@ -127,14 +127,14 @@ function make_router(
         response = if sesh isa RunningNotebookSession
             HTTP.Response(200, Pluto.pack(sesh.run.bond_connections)) |>
             with_cors! |>
-            with_cachable! |>
+            with_cacheable! |>
             with_msgpack!
         elseif sesh isa QueuedNotebookSession
             HTTP.Response(503, "Still loading the notebooks... check back later!") |>
             with_cors! |>
-            with_not_cachable!
+            with_not_cacheable!
         else
-            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cachable!
+            HTTP.Response(404, "Not found!") |> with_cors! |> with_not_cacheable!
         end
     end
 
@@ -162,7 +162,7 @@ function make_router(
                 end
             end |>
             with_cors! |>
-            with_not_cachable!
+            with_not_cacheable!
         end
     )
 
@@ -210,7 +210,7 @@ function with_cors!(response::HTTP.Response)
     response
 end
 
-function with_cachable!(response::HTTP.Response)
+function with_cacheable!(response::HTTP.Response)
     second = 1
     minute = 60second
     hour = 60minute
@@ -221,7 +221,7 @@ function with_cachable!(response::HTTP.Response)
     response
 end
 
-function with_not_cachable!(response::HTTP.Response)
+function with_not_cacheable!(response::HTTP.Response)
     push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
     response
 end
