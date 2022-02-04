@@ -250,12 +250,16 @@ sudo cat > /etc/systemd/system/pluto-server.service << __EOF__
 [Unit]
 After=network.service
 
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
 [Service]
 ExecStart=/usr/local/bin/pluto-slider-server.sh
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=default.target
-
 __EOF__
 ```
 
@@ -280,6 +284,8 @@ sudo systemctl daemon-reload
 sudo systemctl start pluto-server
 sudo systemctl enable pluto-server
 ```
+
+Tip: If you need to change the service file or the startup script later, re-run this step to update the daemon.
 
 ### 7. View logs
 ```shell
