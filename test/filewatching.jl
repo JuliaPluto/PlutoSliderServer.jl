@@ -24,6 +24,17 @@ select(f::Function, xs) =
         end
     end
 
+"""
+Like [`Base.cp`](@ref), but it slightly tweaks the file contents (a Julia comment is inserted into the header) to make it unique.
+"""
+function cp_nb_with_tweaks(from::String, to::String)
+    contents = read(from, String)
+
+    key = "using Markdown"
+    @assert occursin(key, contents)
+    write(to, replace(contents, key => key * " # " * string(uuid1()), count=1))
+end
+
 @testset "Folder watching" begin
     test_dir = tempname(cleanup=false)
     mkdir(test_dir)
@@ -37,7 +48,7 @@ select(f::Function, xs) =
     notebook_paths_to_copy = ["basic2.jl"]
 
     for p in notebook_paths_to_copy
-        cp(joinpath(@__DIR__, p), joinpath(test_dir, p))
+        cp_nb_with_tweaks(joinpath(@__DIR__, p), joinpath(test_dir, p))
     end
 
     port = rand(12345:65000)
@@ -77,7 +88,10 @@ select(f::Function, xs) =
 
     @testset "Adding a file" begin
 
-        cp(joinpath(test_dir, "basic2.jl"), joinpath(test_dir, "basic2 copy.jl"))
+        cp_nb_with_tweaks(
+            joinpath(test_dir, "basic2.jl"),
+            joinpath(test_dir, "basic2 copy.jl"),
+        )
 
         @test poll(10, 1 / 20) do
             length(notebook_sessions) == length(notebook_paths_to_copy) + 1
@@ -126,7 +140,10 @@ select(f::Function, xs) =
 
         mkdir(joinpath(test_dir, "subdir"))
 
-        cp(joinpath(test_dir, "basic2.jl"), joinpath(test_dir, "subdir", "cool.jl"))
+        cp_nb_with_tweaks(
+            joinpath(test_dir, "basic2.jl"),
+            joinpath(test_dir, "subdir", "cool.jl"),
+        )
 
         @test poll(60, 1 / 20) do
             isfile(joinpath(test_dir, "subdir", "cool.html"))
@@ -142,10 +159,13 @@ select(f::Function, xs) =
 
     @testset "Update an existing file" begin
 
+        coolconnectionurl(file_hash) =
+            "http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(file_hash))/"
+        coolbondsurl(file_hash) =
+            "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(file_hash))/asdf"
+
         function coolconnectionkeys()
-            response = HTTP.get(
-                "http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(coolsesh().current_hash))/",
-            )
+            response = HTTP.get(coolconnectionurl(coolsesh().current_hash))
             result = Pluto.unpack(response.body)
             keys(result) |> collect |> sort
         end
@@ -153,19 +173,44 @@ select(f::Function, xs) =
         @test coolconnectionkeys() == sort(["x", "y", "s", "s2"])
 
         old_html_contents = coolcontents()
+        old_hash = coolsesh().current_hash
 
         Pluto.readwrite(
             joinpath(@__DIR__, "parallelpaths4.jl"),
             joinpath(test_dir, "subdir", "cool.jl"),
         )
 
-        @test poll(5, 1 / 20) do
+        @test poll(5, 1 / 60) do
             coolsesh().current_hash != coolsesh().desired_hash
         end
+        @test coolsesh().current_hash == old_hash
+        @test HTTP.get(
+            coolconnectionurl(old_hash);
+            retry=false,
+            status_exception=false,
+        ).status == 404
+        @test HTTP.get(
+            coolbondsurl(old_hash);
+            retry=false,
+            status_exception=false,
+        ).status == 404
+        @test HTTP.get(
+            coolconnectionurl(coolsesh().desired_hash);
+            retry=false,
+            status_exception=false,
+        ).status == 503
         @test isfile(joinpath(test_dir, "subdir", "cool.html"))
-        @test poll(60, 1 / 20) do
+
+
+        @test poll(60, 1 / 60) do
             coolsesh().current_hash == coolsesh().desired_hash
         end
+        @test HTTP.get(
+            coolconnectionurl(coolsesh().current_hash);
+            retry=false,
+            status_exception=false,
+        ).status == 200
+
         @test isfile(joinpath(test_dir, "subdir", "cool.html"))
         @test coolcontents() != old_html_contents
 
