@@ -240,6 +240,7 @@ ln -s `pwd`/julia-1.6.4/bin/julia /usr/local/bin/julia
 #### 2. get your repository
 ```shell
 git clone https://github.com/<user>/<repo-with-notebooks>
+cd <repo-with-notebooks>
 git pull
 ```
 
@@ -279,7 +280,16 @@ sudo systemctl start pluto-server
 sudo systemctl enable pluto-server
 ```
 
-### 7. Live updates
+### 7. View logs
+```shell
+# To see quick status (running/failed and memory):
+systemctl -l status pluto-server
+
+# To browse the logs:
+sudo journalctl -u pluto-server
+```
+
+### 8. Live updates
 When you change the notebooks in the git repository, your server will automatically update (it keeps calling `git pull`)! Awesome!
 
 If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer will detect a change in configuration and shut down. Because we set up our service using `systemctl`, the server will automatically restart! (With the new settings)
