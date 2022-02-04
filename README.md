@@ -262,7 +262,8 @@ __EOF__
 ### 4. Create the startup script
 ```shell
 sudo cat > /usr/local/bin/pluto-slider-server.sh << __EOF__
-cd ~/<your-repo>  # Make sure to change folder to your repository
+#!/bin/bash
+cd /home/<your-username>/<your-repo>  # Make sure to change to the absolute path to your repository. Don't use ~.
 julia --project="pluto-slider-server-environment" -e "import Pkg; Pkg.instantiate(); import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 __EOF__
 ```
