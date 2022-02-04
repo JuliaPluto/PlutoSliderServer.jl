@@ -246,7 +246,8 @@ git pull
 
 #### 3. Create a service
 ```shell
-sudo cat > /etc/systemd/system/pluto-server.service << __EOF__
+TEMPFILE=$(mktemp)
+cat > $TEMPFILE << __EOF__
 [Unit]
 After=network.service
 
@@ -261,6 +262,8 @@ RestartSec=5
 [Install]
 WantedBy=default.target
 __EOF__
+
+sudo mv $TEMPFILE /etc/systemd/system/pluto-server.service
 ```
 
 ### 4. Create the startup script
