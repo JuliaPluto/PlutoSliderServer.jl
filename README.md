@@ -246,7 +246,8 @@ git pull
 
 #### 3. Create a service
 ```shell
-sudo cat > /etc/systemd/system/pluto-server.service << __EOF__
+TEMPFILE=$(mktemp)
+cat > $TEMPFILE << __EOF__
 [Unit]
 After=network.service
 
@@ -261,15 +262,20 @@ RestartSec=5
 [Install]
 WantedBy=default.target
 __EOF__
+
+sudo mv $TEMPFILE /etc/systemd/system/pluto-server.service
 ```
 
 ### 4. Create the startup script
 ```shell
-sudo cat > /usr/local/bin/pluto-slider-server.sh << __EOF__
+TEMPFILE=$(mktemp)
+cat > $TEMPFILE << __EOF__
 #!/bin/bash
 cd /home/<your-username>/<your-repo>  # Make sure to change to the absolute path to your repository. Don't use ~.
 julia --project="pluto-slider-server-environment" -e "import Pkg; Pkg.instantiate(); import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 __EOF__
+
+sudo mv $TEMPFILE /usr/local/bin/pluto-slider-server.sh
 ```
 
 ### 5. Permissions stuff
