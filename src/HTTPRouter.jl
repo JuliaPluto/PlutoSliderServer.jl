@@ -17,8 +17,13 @@ using Sockets
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 
-const RunningNotebookSession = NotebookSession{String,String,RunningNotebook}
-const QueuedNotebookSession = NotebookSession{Nothing,<:Any,<:Any}
+ready_for_bonds(::Any) = false
+ready_for_bonds(sesh::NotebookSession{String,String,RunningNotebook}) =
+    sesh.current_hash == sesh.desired_hash
+queued_for_bonds(::Any) = false
+queued_for_bonds(sesh::NotebookSession{<:Any,String,<:Any}) =
+    sesh.current_hash != sesh.desired_hash
+
 
 function make_router(
     notebook_sessions::AbstractVector{<:NotebookSession},
@@ -36,7 +41,7 @@ function make_router(
         notebook_hash = parts[2] |> HTTP.unescapeuri
 
         i = findfirst(notebook_sessions) do sesh
-            sesh.current_hash == notebook_hash
+            sesh.desired_hash == notebook_hash
         end
 
         if i === nothing
@@ -78,7 +83,7 @@ function make_router(
     function serve_staterequest(request::HTTP.Request)
         sesh = get_sesh(request)
 
-        response = if sesh isa RunningNotebookSession
+        response = if ready_for_bonds(sesh)
             notebook = sesh.run.notebook
 
             bonds = try
@@ -158,7 +163,7 @@ function make_router(
             with_cacheable! |>
             with_cors! |>
             with_msgpack!
-        elseif sesh isa QueuedNotebookSession
+        elseif queued_for_bonds(sesh)
             HTTP.Response(503, "Still loading the notebooks... check back later!") |>
             with_cors! |>
             with_not_cacheable!
@@ -170,12 +175,12 @@ function make_router(
     function serve_bondconnections(request::HTTP.Request)
         sesh = get_sesh(request)
 
-        response = if sesh isa RunningNotebookSession
+        response = if ready_for_bonds(sesh)
             HTTP.Response(200, Pluto.pack(sesh.run.bond_connections)) |>
             with_cors! |>
             with_cacheable! |>
             with_msgpack!
-        elseif sesh isa QueuedNotebookSession
+        elseif queued_for_bonds(sesh)
             HTTP.Response(503, "Still loading the notebooks... check back later!") |>
             with_cors! |>
             with_not_cacheable!
@@ -189,7 +194,7 @@ function make_router(
         "GET",
         "/",
         r -> let
-            done = count(x -> !(x isa QueuedNotebookSession), notebook_sessions)
+            done = count(sesh -> sesh.current_hash == sesh.desired_hash, notebook_sessions)
             if static_dir !== nothing
                 path = joinpath(static_dir, "index.html")
                 if !isfile(path)
@@ -277,9 +282,9 @@ end
 function temp_index(notebook_sessions::Vector{NotebookSession})
     generate_index_html(temp_index_item.(notebook_sessions))
 end
-function temp_index_item(s::QueuedNotebookSession)
+function temp_index_item(s::NotebookSession)
     without_pluto_file_extension(s.path) => nothing
 end
-function temp_index_item(s::NotebookSession{String,<:Any,<:Any})
+function temp_index_item(s::NotebookSession{String,String,<:Any})
     without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path) * ".html"
 end
