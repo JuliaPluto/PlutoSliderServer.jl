@@ -24,7 +24,7 @@ Now open a browser, and go to the address printed in your terminal!
 
 # What can it do?
 
-## 1. Static HTML export
+## 1. HTML export
 PlutoSliderServer can **run a notebook** and generate the **export HTML** file. This will give you the same file as the export button inside Pluto (top right), but automatically, without opening a browser.
 
 One use case is to automatically create a **GitHub Pages site form a repository with notebooks**. For this, take a look at [our template repository](https://github.com/JuliaPluto/static-export-template) that used GitHub Actions and PlutoSliderServer to generate a website on every commit.
@@ -310,6 +310,19 @@ If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer wi
 --- 
 
 TBA: There will be a simple 1.2.3. checklist to get this running on heroku for your own repository. It is designed to be used in a **containerized** environment (such as heroku, docker, digitalocean apps, ...), in a **push to deploy** setting.
+
+# What alternatives are there to this package?
+The most similar project is [PlutoStaticHTML.jl](https://github.com/rikhuijzer/PlutoStaticHTML.jl).
+That package generates pure HTML websites from Pluto notebooks whereas PlutoSliderServer generates HTML + Javascript websites.
+This means that PlutoSliderServer can support more Pluto features and, hence, is closer to running the notebook in Pluto.
+On the other hand, PlutoStaticHTML can be styled with CSS which is useful when you want to hide all code in case of a static dashboard, for example, or when you want to embed a Pluto notebook inside Documenter.jl.
+
+Other Julia packages which evaluate code and can generate HTML or PDF output are Documenter.jl, Franklin.jl, Books.jl and Weave.jl.
+Weave.jl is the most similar to this package in the sense that it can also evaluate their own notebook variant.
+The Weave notebook variant is heavily inspired by R Markdown.
+Books.jl has yet another notebook variant and is specialized in creating Books.jl.
+However, Books.jl isn't very easy to use.
+Franklin.jl is a more general site generator, but has code evaluation possibilities too; and Documenter.jl generates documentation sites and has code evaluation too.
 
 # Authentication and security
 Since this server is a new and experimental concept, we highly recommend that you run it inside an isolated environment. While visitors are not able to change the notebook code, it is possible to manipulate the API to set bound values to arbitrary objects. For example, when your notebook uses `@bind x Slider(1:10)`, the API could be used to set the `x` to `9000`, `[10,20,30]` or `"👻"`. 
