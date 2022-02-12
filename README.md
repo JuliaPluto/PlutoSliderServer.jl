@@ -240,30 +240,42 @@ ln -s `pwd`/julia-1.6.4/bin/julia /usr/local/bin/julia
 #### 2. get your repository
 ```shell
 git clone https://github.com/<user>/<repo-with-notebooks>
+cd <repo-with-notebooks>
 git pull
 ```
 
 #### 3. Create a service
 ```shell
-sudo cat > /etc/systemd/system/pluto-server.service << __EOF__
+TEMPFILE=$(mktemp)
+cat > $TEMPFILE << __EOF__
 [Unit]
 After=network.service
 
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
 [Service]
 ExecStart=/usr/local/bin/pluto-slider-server.sh
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=default.target
-
 __EOF__
+
+sudo mv $TEMPFILE /etc/systemd/system/pluto-server.service
 ```
 
 ### 4. Create the startup script
 ```shell
-sudo cat > /usr/local/bin/pluto-slider-server.sh << __EOF__
-cd ~/<your-repo>  # Make sure to change folder to your repository
+TEMPFILE=$(mktemp)
+cat > $TEMPFILE << __EOF__
+#!/bin/bash
+cd /home/<your-username>/<your-repo>  # Make sure to change to the absolute path to your repository. Don't use ~.
 julia --project="pluto-slider-server-environment" -e "import Pkg; Pkg.instantiate(); import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 __EOF__
+
+sudo mv $TEMPFILE /usr/local/bin/pluto-slider-server.sh
 ```
 
 ### 5. Permissions stuff
@@ -279,7 +291,18 @@ sudo systemctl start pluto-server
 sudo systemctl enable pluto-server
 ```
 
-### 7. Live updates
+Tip: If you need to change the service file or the startup script later, re-run this step to update the daemon.
+
+### 7. View logs
+```shell
+# To see quick status (running/failed and memory):
+systemctl -l status pluto-server
+
+# To browse the logs:
+sudo journalctl -u pluto-server
+```
+
+### 8. Live updates
 When you change the notebooks in the git repository, your server will automatically update (it keeps calling `git pull`)! Awesome!
 
 If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer will detect a change in configuration and shut down. Because we set up our service using `systemctl`, the server will automatically restart! (With the new settings)
@@ -289,7 +312,7 @@ If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer wi
 TBA: There will be a simple 1.2.3. checklist to get this running on heroku for your own repository. It is designed to be used in a **containerized** environment (such as heroku, docker, digitalocean apps, ...), in a **push to deploy** setting.
 
 # Authentication and security
-Since this server is a new and experimental concept, we highly recommend that you run it inside of an isolated environment, such as a docker container. While visitors are not able to change the notebook code, it is possible to manipulate the API to set bound values to arbitrary objects. For example, when your notebook uses `@bind x Slider(1:10)`, the API could be used to set the `x` to `9000`, `[10,20,30]` or `"👻"`. 
+Since this server is a new and experimental concept, we highly recommend that you run it inside an isolated environment. While visitors are not able to change the notebook code, it is possible to manipulate the API to set bound values to arbitrary objects. For example, when your notebook uses `@bind x Slider(1:10)`, the API could be used to set the `x` to `9000`, `[10,20,30]` or `"👻"`. 
 
 In the future, we are planning to implement a hook that allows widgets (such as `Slider`) to validate a value before it is run: [`AbstractPlutoDingetjes.Bonds.validate_value`](https://docs.juliahub.com/AbstractPlutoDingetjes/UHbnu/1.1.1/#AbstractPlutoDingetjes.Bonds.validate_value-Tuple{Any,%20Any}).
 
