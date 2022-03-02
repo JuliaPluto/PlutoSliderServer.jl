@@ -24,7 +24,7 @@ Now open a browser, and go to the address printed in your terminal!
 
 # What can it do?
 
-## 1. Static HTML export
+## 1. HTML export
 PlutoSliderServer can **run a notebook** and generate the **export HTML** file. This will give you the same file as the export button inside Pluto (top right), but automatically, without opening a browser.
 
 One use case is to automatically create a **GitHub Pages site from a repository with notebooks**. For this, take a look at [our template repository](https://github.com/JuliaPluto/static-export-template) that used GitHub Actions and PlutoSliderServer to generate a website on every commit.
@@ -310,6 +310,32 @@ If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer wi
 --- 
 
 TBA: There will be a simple 1.2.3. checklist to get this running on heroku for your own repository. It is designed to be used in a **containerized** environment (such as heroku, docker, digitalocean apps, ...), in a **push to deploy** setting.
+
+# Similar/alternative packages
+
+
+## Generating HTML exports
+There are many packages that *evaluate literate Julia documents to generate HTML or PDF output*!
+
+The most similar project is [PlutoStaticHTML.jl](https://github.com/rikhuijzer/PlutoStaticHTML.jl). This package generates **static** HTML files from Pluto notebooks, meaning that they do not require JavaScript to load: cell inputs and outputs are stored directly as HTML. (PlutoSliderServer.jl uses the same technique as the "Export to HTML" button inside Pluto: an HTML file is generated with no contents, but with an embedded data stream containing the *editor state*. This HTML file loads Pluto's JS assets and displays this state just like the editor would.)
+
+This means that the output of PlutoSliderServer.jl will look exactly the same as what you see while writing the notebook. Output from PlutoStaticHTML.jl is more minimal, which means that it loads faster, it can be styled with CSS, and it can more easily be embedded within other web pages (like Documenter.jl sections).
+
+Other Julia packages which export to HTML/PDF, but not necessarily with Pluto notebook files as input, include:
+- Documenter.jl 
+- Franklin.jl
+- Books.jl
+- Weave.jl
+
+## Slider server
+PlutoSliderServer is the only package that lets you run a *slider server* for Pluto notebooks (an interactive site to interact with a Pluto notebook through `@bind`). 
+
+There are alternatives for running a Julia-backed interactive site if your code is *not* a Pluto notebook, including [JSServe.jl](https://github.com/SimonDanisch/JSServe.jl), [Stipple.jl](https://github.com/GenieFramework/Stipple.jl) and [Dash.jl](https://github.com/plotly/Dash.jl), each with their own philosophy and ideal use case. *(Feel free to suggest others!)*
+
+## Precomputer slider server
+[PlutoStaticHTML.jl](https://github.com/rikhuijzer/PlutoStaticHTML.jl) also [has this feature](https://github.com/rikhuijzer/PlutoStaticHTML.jl/pull/39)! Currently the support is limited to a couple of PlutoUI components, but more general [AbstractPlutoDingetjes.jl integration](https://docs.juliahub.com/AbstractPlutoDingetjes/UHbnu/1.1.4/#AbstractPlutoDingetjes.Bonds.possible_values-Tuple{Any}) might come soon.
+
+If you code is *not* a Pluto notebook, then [JSServe.jl](https://github.com/SimonDanisch/JSServe.jl) also has precomputing abilities, with a different approach and philosophy. 
 
 # Authentication and security
 Since this server is a new and experimental concept, we highly recommend that you run it inside an isolated environment. While visitors are not able to change the notebook code, it is possible to manipulate the API to set bound values to arbitrary objects. For example, when your notebook uses `@bind x Slider(1:10)`, the API could be used to set the `x` to `9000`, `[10,20,30]` or `"👻"`. 
