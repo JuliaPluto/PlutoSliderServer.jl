@@ -333,8 +333,6 @@ PlutoSliderServer is the only package that lets you run a *slider server* for Pl
 There are alternatives for running a Julia-backed interactive site if your code is *not* a Pluto notebook, including [JSServe.jl](https://github.com/SimonDanisch/JSServe.jl), [Stipple.jl](https://github.com/GenieFramework/Stipple.jl) and [Dash.jl](https://github.com/plotly/Dash.jl), each with their own philosophy and ideal use case. *(Feel free to suggest others!)*
 
 ## Precomputer slider server
-[PlutoStaticHTML.jl](https://github.com/rikhuijzer/PlutoStaticHTML.jl) also [has this feature](https://github.com/rikhuijzer/PlutoStaticHTML.jl/pull/39)! Currently the support is limited to a couple of PlutoUI components, but more general [AbstractPlutoDingetjes.jl integration](https://docs.juliahub.com/AbstractPlutoDingetjes/UHbnu/1.1.4/#AbstractPlutoDingetjes.Bonds.possible_values-Tuple{Any}) might come soon.
-
 If you code is *not* a Pluto notebook, then [JSServe.jl](https://github.com/SimonDanisch/JSServe.jl) also has precomputing abilities, with a different approach and philosophy. 
 
 # Authentication and security
