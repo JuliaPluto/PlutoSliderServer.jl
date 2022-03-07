@@ -14,6 +14,7 @@ on:
 jobs:
     test:
         runs-on: ${{ matrix.os }}
+        timeout-minutes: 15
         
         # https://github.com/JuliaRegistries/General/issues/16777
         env:
@@ -23,7 +24,7 @@ jobs:
         # continue-on-error: true
         strategy:
             matrix:
-                julia-version: ["1.6"]
+                julia-version: ["1.6", "~1.8.0-0"]
                 os: [ubuntu-latest]
                 
 
