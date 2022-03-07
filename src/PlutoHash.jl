@@ -15,6 +15,8 @@ This function implements the *`base64url` algorithm*, which is like regular `bas
 See [the wiki](https://en.wikipedia.org/wiki/Base64#Variants_summary_table) or [the official spec (RFC 4648 §5)](https://datatracker.ietf.org/doc/html/rfc4648#section-5).
 """
 
+
+
 """
 ```julia
 base64urldecode(s::AbstractString)::Vector{UInt8}
@@ -23,6 +25,7 @@ base64urldecode(s::AbstractString)::Vector{UInt8}
 $base64url_docs_info
 """
 function base64urldecode(s::AbstractString)::Vector{UInt8}
+    # This is roughly 0.5 as fast as `base64decode`. See https://gist.github.com/fonsp/d2b84265012942dc40d0082b1fd405ba for benchmark and even slower alternatives. Of course, we could copy-paste the Base64 code and modify it to do base64url, but then Donald Knuth would get angry.
     cs = codeunits(s)
     io = IOBuffer(; sizehint=length(cs) + 2)
     iob64_decode = Base64DecodePipe(io)
@@ -44,6 +47,7 @@ base64urlencode(data)::String
 $base64url_docs_info
 """
 function base64urlencode(data)::String
+    # This is roughly 0.5 as fast as `base64encode`. See comment above.
     String(
         replace(
             base64encode(data) |> without_equals |> codeunits,
