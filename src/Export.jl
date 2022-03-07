@@ -1,7 +1,5 @@
 import Pluto: Pluto, ServerSession
 using HTTP
-using Base64
-using SHA
 import Pkg
 
 
