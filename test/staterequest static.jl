@@ -6,11 +6,17 @@ using OrderedCollections
 import Random
 using Test
 using UUIDs
-using Base64
 
 @testset "HTTP requests" begin
     test_dir = tempname(cleanup=false)
+
     cp(@__DIR__, test_dir)
+
+    try
+        # open the folder on macos:
+        run(`open $(test_dir)`)
+    catch
+    end
 
     notebook_paths = ["basic3.jl"]
     # notebook_paths = ["basic2.jl", "parallelpaths4.jl"]
@@ -82,8 +88,7 @@ using Base64
 
         for ending in [""]
             response = HTTP.get(
-                "http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(s.current_hash))" *
-                ending,
+                "http://localhost:$(port)/bondconnections/$(s.current_hash)" * ending,
             )
 
             result = Pluto.unpack(response.body)
@@ -109,16 +114,16 @@ using Base64
             sum_cell_id = "26025270-9b5e-4841-b295-0c47437bc7db"
 
             response = if method == "GET"
-                arg = Pluto.pack(bonds) |> base64encode |> HTTP.URIs.escapeuri
+                arg = Pluto.pack(bonds) |> PlutoSliderServer.base64urlencode
 
                 HTTP.request(
                     method,
-                    "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.current_hash))/$(arg)",
+                    "http://localhost:$(port)/staterequest/$(s.current_hash)/$(arg)",
                 )
             else
                 HTTP.request(
                     method,
-                    "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.current_hash))/",
+                    "http://localhost:$(port)/staterequest/$(s.current_hash)/",
                     [],
                     Pluto.pack(bonds),
                 )
