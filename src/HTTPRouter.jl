@@ -112,6 +112,7 @@ function make_router(
                         session=server_session,
                         notebook=notebook,
                         bound_sym_names=names,
+                        is_first_values=[false for _n in names], # because requests should be stateless. We might want to do something special for the (actual) initial request (containing every initial bond value) in the future.
                         run_async=false,
                     )::Pluto.TopologicalOrder
 
