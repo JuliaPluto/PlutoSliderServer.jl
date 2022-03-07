@@ -14,7 +14,7 @@ on:
 jobs:
     test:
         runs-on: ${{ matrix.os }}
-        timeout-minutes: 30
+        timeout-minutes: 15
         
         # https://github.com/JuliaRegistries/General/issues/16777
         env:
