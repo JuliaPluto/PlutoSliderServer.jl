@@ -16,6 +16,7 @@ if just_run_test_server
 else
     ENV["HIDE_PLUTO_EXACT_VERSION_WARNING"] = "true"
     include("./staterequest static.jl")
+    include("./plutohash.jl")
     include("./configuration.jl")
     include("./static export.jl")
     include("./staterequest.jl")

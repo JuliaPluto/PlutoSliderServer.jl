@@ -1,7 +1,6 @@
 import Pluto:
     Pluto, without_pluto_file_extension, generate_html, @asynclog, withtoken, Firebasey
 using Base64
-using SHA
 using FromFile
 import HTTP.URIs
 
@@ -11,11 +10,8 @@ import HTTP.URIs
 @from "./Configuration.jl" import PlutoDeploySettings
 @from "./FileHelpers.jl" import find_notebook_files_recursive
 @from "./precomputed/index.jl" import generate_precomputed_staterequests
+@from "./PlutoHash.jl" import plutohash
 
-myhash = base64encode ∘ sha256
-function path_hash(path)
-    myhash(read(path))
-end
 
 showall(xs) = Text(join(string.(xs), "\n"))
 
@@ -65,7 +61,7 @@ function process(
     @info "###### ◐ $(progress) Launching..." s.path
 
     jl_contents = read(abs_path, String)
-    new_hash = myhash(jl_contents)
+    new_hash = plutohash(jl_contents)
     if new_hash != s.desired_hash
         @warn "Notebook file does not have desired hash. This probably means that the file changed too quickly. Continuing and hoping for the best!" s.path new_hash s.desired_hash
     end
