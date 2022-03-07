@@ -3,7 +3,7 @@ ENV["JULIA_DEBUG"] = PlutoSliderServer
 
 # To run a test server:
 # - Change the line below to `true`.
-just_run_test_server = true
+just_run_test_server = false
 # - Pretend to run the tests: `pkg> test PlutoSliderServer`
 # 
 # This will:
