@@ -21,10 +21,11 @@ jobs:
             JULIA_PKG_SERVER: ""
         
         # Uncomment if you want to see all results for all OSses. Otherwise, the first failed test cancels all others
-        # continue-on-error: true
+        continue-on-error: true
         strategy:
+            fail-fast: false
             matrix:
-                julia-version: ["1.6", "~1.8.0-0"]
+                julia-version: ["1.6", "1"]#"~1.8.0-0"]
                 os: [ubuntu-latest]
                 
 
