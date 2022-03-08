@@ -280,7 +280,7 @@ function run_directory(
 
             params = HTTP.queryparams(HTTP.URI(request.target))
 
-            response_body = HTTP.handle(router, request)
+            response_body = Base.invokelatest(HTTP.handle, router, request)
 
             request.response::HTTP.Response = response_body
             request.response.request = request
