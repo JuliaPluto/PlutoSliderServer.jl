@@ -44,14 +44,16 @@ const logger_loaded = Ref{Bool}(false)
 function load_cool_logger()
     if !logger_loaded[]
         logger_loaded[] = true
-        if get(ENV, "GITHUB_ACTIONS", "false") == "true"
-            global_logger(GitHubActionsLogger())
-        elseif ((global_logger() isa ConsoleLogger) && !is_inside_pluto())
-            global_logger(try
-                TerminalLogger(; margin=1)
-            catch
-                TerminalLogger()
-            end)
+        if ((global_logger() isa ConsoleLogger) && !is_inside_pluto())
+            if get(ENV, "GITHUB_ACTIONS", "false") == "true"
+                global_logger(GitHubActionsLogger())
+            else
+                global_logger(try
+                    TerminalLogger(; margin=1)
+                catch
+                    TerminalLogger()
+                end)
+            end
         end
     end
 end
