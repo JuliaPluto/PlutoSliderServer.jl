@@ -30,24 +30,30 @@ using Base64
 using SHA
 using Sockets
 import BetterFileWatching: watch_folder
-using TerminalLoggers: TerminalLogger
-using Logging: global_logger
-using GitHubActions: GitHubActionsLogger
+import AbstractPlutoDingetjes
+import TerminalLoggers: TerminalLogger
+import Logging: global_logger
+import GitHubActions: GitHubActionsLogger
 
 export export_directory, run_directory, run_git_directory, github_action
 export export_notebook, run_notebook
 
 export show_sample_config_toml_file
 
-function __init__()
-    if get(ENV, "GITHUB_ACTIONS", "false") == "true"
-        global_logger(GitHubActionsLogger())
-    else
-        global_logger(try
-            TerminalLogger(; margin=1)
-        catch
-            TerminalLogger()
-        end)
+const logger_loaded = Ref{Bool}(false)
+function load_cool_logger()
+    if !logger_loaded[]
+        logger_loaded[] = true
+        if get(ENV, "GITHUB_ACTIONS", "false") == "true"
+            global_logger(GitHubActionsLogger())
+        elseif (Logging.global_logger() isa Logging.ConsoleLogger) &&
+               !AbstractPlutoDingetjes.is_inside_pluto()
+            global_logger(try
+                TerminalLogger(; margin=1)
+            catch
+                TerminalLogger()
+            end)
+        end
     end
 end
 
@@ -168,7 +174,10 @@ function run_directory(
     kwargs...,
 )
 
+
     @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet!"
+
+    load_cool_logger()
 
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
