@@ -30,9 +30,9 @@ using Base64
 using SHA
 using Sockets
 import BetterFileWatching: watch_folder
-import AbstractPlutoDingetjes
+import AbstractPlutoDingetjes: is_inside_pluto
 import TerminalLoggers: TerminalLogger
-import Logging: global_logger
+import Logging: global_logger, ConsoleLogger
 import GitHubActions: GitHubActionsLogger
 
 export export_directory, run_directory, run_git_directory, github_action
@@ -46,8 +46,7 @@ function load_cool_logger()
         logger_loaded[] = true
         if get(ENV, "GITHUB_ACTIONS", "false") == "true"
             global_logger(GitHubActionsLogger())
-        elseif (Logging.global_logger() isa Logging.ConsoleLogger) &&
-               !AbstractPlutoDingetjes.is_inside_pluto()
+        elseif ((global_logger() isa ConsoleLogger) && !is_inside_pluto())
             global_logger(try
                 TerminalLogger(; margin=1)
             catch
