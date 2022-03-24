@@ -14,6 +14,7 @@ using SHA
 using Sockets
 
 @from "./Export.jl" import generate_index_html
+@from "./IndexJSON.jl" import index_json_data
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 
