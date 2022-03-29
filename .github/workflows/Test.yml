@@ -4,30 +4,29 @@ on:
     workflow_dispatch:
     push:
         paths-ignore:
-            - "**.md"
+            - '**.md'
         branches:
             - main
     pull_request:
         paths-ignore:
-            - "**.md"
+            - '**.md'
 
 jobs:
     test:
         runs-on: ${{ matrix.os }}
         timeout-minutes: 15
-        
+
         # https://github.com/JuliaRegistries/General/issues/16777
         env:
-            JULIA_PKG_SERVER: ""
-        
+            JULIA_PKG_SERVER: ''
+
         # Uncomment if you want to see all results for all OSses. Otherwise, the first failed test cancels all others
         continue-on-error: true
         strategy:
             fail-fast: false
             matrix:
-                julia-version: ["1.6", "1", "~1.8.0-0"]
+                julia-version: ['1.6', '1', '~1.8.0-0']
                 os: [ubuntu-latest]
-                
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -36,5 +35,6 @@ jobs:
             - uses: julia-actions/setup-julia@v1
               with:
                   version: ${{ matrix.julia-version }}
+            - uses: julia-actions/cache@v1
 
             - uses: julia-actions/julia-runtest@v1
