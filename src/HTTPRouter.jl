@@ -9,14 +9,13 @@ import Pluto:
     pluto_file_extensions,
     without_pluto_file_extension
 using HTTP
-using Base64
-using SHA
 using Sockets
 
 @from "./Export.jl" import generate_index_html
 @from "./IndexJSON.jl" import index_json_data
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
+@from "./PlutoHash.jl" import base64urldecode
 
 ready_for_bonds(::Any) = false
 ready_for_bonds(sesh::NotebookSession{String,String,RunningNotebook}) =
@@ -39,7 +38,7 @@ function make_router(
 
         parts = HTTP.URIs.splitpath(uri.path)
         # parts[1] == "staterequest"
-        notebook_hash = parts[2] |> HTTP.unescapeuri
+        notebook_hash = parts[2]
 
         i = findfirst(notebook_sessions) do sesh
             sesh.desired_hash == notebook_hash
@@ -69,11 +68,11 @@ function make_router(
 
             parts = HTTP.URIs.splitpath(uri.path)
             # parts[1] == "staterequest"
-            # notebook_hash = parts[2] |> HTTP.unescapeuri
+            # notebook_hash = parts[2]
 
             @assert length(parts) == 3
 
-            base64decode(parts[3] |> HTTP.unescapeuri)
+            base64urldecode(parts[3])
         end
         bonds_raw = Pluto.unpack(request_body)
 
