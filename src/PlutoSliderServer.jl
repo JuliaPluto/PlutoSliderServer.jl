@@ -17,6 +17,9 @@ using FromFile
 @from "./HTTPRouter.jl" import make_router
 @from "./gitpull.jl" import fetch_pull
 
+@from "./PlutoHash.jl" import plutohash, base64urlencode, base64urldecode
+export plutohash, base64urlencode, base64urldecode
+
 import Pluto
 import Pluto:
     ServerSession,
@@ -26,8 +29,6 @@ import Pluto:
     pluto_file_extensions,
     without_pluto_file_extension
 using HTTP
-using Base64
-using SHA
 using Sockets
 import BetterFileWatching: watch_folder
 import AbstractPlutoDingetjes: is_inside_pluto
@@ -231,7 +232,7 @@ function run_directory(
     server_session = Pluto.ServerSession(; options=settings.Pluto)
 
     notebook_sessions = NotebookSession[]
-    # notebook_sessions = NotebookSession[QueuedNotebookSession(;path, current_hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
+    # notebook_sessions = NotebookSession[QueuedNotebookSession(;path, current_hash=plutohash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if settings.SliderServer.enabled
         static_dir =

@@ -160,9 +160,8 @@ end
     @testset "Update an existing file" begin
 
         coolconnectionurl(file_hash) =
-            "http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(file_hash))/"
-        coolbondsurl(file_hash) =
-            "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(file_hash))/asdf"
+            "http://localhost:$(port)/bondconnections/$(file_hash)/"
+        coolbondsurl(file_hash) = "http://localhost:$(port)/staterequest/$(file_hash)/asdf"
 
         function coolconnectionkeys()
             response = HTTP.get(coolconnectionurl(coolsesh().current_hash))
