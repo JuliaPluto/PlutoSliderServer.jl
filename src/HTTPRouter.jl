@@ -10,9 +10,10 @@ import Pluto:
     without_pluto_file_extension
 using HTTP
 using Sockets
+import JSON
 
-@from "./Export.jl" import generate_index_html
-@from "./IndexJSON.jl" import index_json_data
+@from "./IndexJSON.jl" import json_data
+@from "./IndexHTML.jl" import temp_index, generate_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 @from "./PlutoHash.jl" import base64urldecode
@@ -218,6 +219,19 @@ function make_router(
         end
     )
 
+
+    HTTP.@register(
+        router,
+        "GET",
+        "/pluto_export.json",
+        r -> let
+            HTTP.Response(200, JSON.json(json_data(notebook_sessions; settings))) |>
+            with_json! |>
+            with_cors! |>
+            with_not_cacheable!
+        end
+    )
+
     # !!!! IDEAAAA also have a get endpoint with the same thing but the bond data is base64 encoded in the URL
     # only use it when the amount of data is not too much :o
 
@@ -257,6 +271,11 @@ function with_msgpack!(response::HTTP.Response)
     response
 end
 
+function with_json!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/json; charset=utf-8")
+    response
+end
+
 function with_cors!(response::HTTP.Response)
     push!(response.headers, "Access-Control-Allow-Origin" => "*")
     response
@@ -276,16 +295,4 @@ end
 function with_not_cacheable!(response::HTTP.Response)
     push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
     response
-end
-
-
-
-function temp_index(notebook_sessions::Vector{NotebookSession})
-    generate_index_html(temp_index_item.(notebook_sessions))
-end
-function temp_index_item(s::NotebookSession)
-    without_pluto_file_extension(s.path) => nothing
-end
-function temp_index_item(s::NotebookSession{String,String,<:Any})
-    without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path) * ".html"
 end

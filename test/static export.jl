@@ -2,6 +2,8 @@ using PlutoSliderServer
 using PlutoSliderServer: list_files_recursive
 using Test
 using Logging
+import JSON
+import Pluto: without_pluto_file_extension
 
 original_dir1 = joinpath(@__DIR__, "dir1")
 make_test_dir() =
@@ -25,6 +27,7 @@ cache_dir = tempname(cleanup=false)
 
     @test sort(list_files_recursive()) == sort([
         "index.html",
+        "pluto_export.json",
         #
         "a.jl",
         "a.html",
@@ -89,6 +92,8 @@ end
 
     @test sort(list_files_recursive()) == sort([
         "index.html",
+        "pluto_export.json",
+        #
         "a.jl",
         "a.html",
         "a.plutostate",
@@ -129,3 +134,49 @@ end
     ])
 
 end
+
+
+@testset "Index HTML and JSON" begin
+    test_dir = make_test_dir()
+
+    @show test_dir cache_dir
+    cd(test_dir)
+    @test sort(list_files_recursive()) ==
+          sort(["a.jl", "b.pluto.jl", "notanotebook.jl", "subdir/c.plutojl"])
+
+    export_directory(Export_cache_dir=cache_dir, Export_baked_state=false)
+
+    @test sort(list_files_recursive()) == sort([
+        "index.html",
+        "pluto_export.json",
+        #
+        "a.jl",
+        "a.html",
+        "a.plutostate",
+        "b.pluto.jl",
+        "b.html",
+        "b.plutostate",
+        "notanotebook.jl",
+        "subdir/c.plutojl",
+        "subdir/c.html",
+        "subdir/c.plutostate",
+    ])
+
+    htmlstr = read("index.html", String)
+    jsonstr = read("pluto_export.json", String)
+    json = JSON.parse(jsonstr)
+
+    nbs = ["subdir/c.plutojl", "b.pluto.jl", "a.jl"]
+    for (i, p) in enumerate(nbs)
+        @test occursin(p |> without_pluto_file_extension, htmlstr)
+        @test occursin(p, jsonstr)
+
+        @test json["notebook_order"][i] == p
+        @test !isempty(json["notebooks"][p]["frontmatter"]["title"])
+    end
+
+    for key in json["notebook_order"]
+        @test haskey(json["notebooks"], key)
+    end
+end
+
