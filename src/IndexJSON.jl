@@ -8,7 +8,11 @@ import Pluto: Pluto, without_pluto_file_extension
 
 id(s::NotebookSession) = s.path
 
-function json_data(s::NotebookSession; settings::PlutoDeploySettings)
+function json_data(
+    s::NotebookSession;
+    settings::PlutoDeploySettings,
+    start_dir::AbstractString,
+)
     (
         id=id(s),
         hash=s.current_hash,
@@ -21,7 +25,7 @@ function json_data(s::NotebookSession; settings::PlutoDeploySettings)
         frontmatter=merge(
             Dict{String,Any}("title" => basename(without_pluto_file_extension(s.path))),
             try
-                Pluto.frontmatter(s.path)
+                Pluto.frontmatter(joinpath(start_dir, s.path))
             catch e
                 @error "Frontmatter error" exception = (e, catch_backtrace())
                 Dict{String,Any}()
@@ -31,9 +35,13 @@ function json_data(s::NotebookSession; settings::PlutoDeploySettings)
 end
 
 
-function json_data(sessions::Vector{NotebookSession}; settings::PlutoDeploySettings)
+function json_data(
+    sessions::Vector{NotebookSession};
+    settings::PlutoDeploySettings,
+    start_dir::AbstractString,
+)
     (
-        notebooks=Dict(id(s) => json_data(s; settings) for s in sessions),
+        notebooks=Dict(id(s) => json_data(s; settings, start_dir) for s in sessions),
         notebook_order=id.(sessions),
         collections=[],
         pluto_version=lstrip(Pluto.PLUTO_VERSION_STR, 'v'),
@@ -42,4 +50,4 @@ function json_data(sessions::Vector{NotebookSession}; settings::PlutoDeploySetti
     )
 end
 
-generate_index_json(s; settings) = JSON.json(json_data(s; settings))
+generate_index_json(s; kwargs...) = JSON.json(json_data(s; kwargs...))

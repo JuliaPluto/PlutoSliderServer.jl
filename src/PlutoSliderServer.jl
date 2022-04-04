@@ -232,7 +232,8 @@ function run_directory(
         static_dir =
             (settings.Export.enabled && settings.SliderServer.serve_static_export_folder) ?
             output_dir : nothing
-        router = make_router(notebook_sessions, server_session; settings, static_dir)
+        router =
+            make_router(notebook_sessions, server_session; settings, static_dir, start_dir)
 
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
@@ -338,7 +339,7 @@ function run_directory(
             # JSON
             write(
                 joinpath(output_dir, "pluto_export.json"),
-                generate_index_json(sessions; settings),
+                generate_index_json(sessions; settings, start_dir),
             )
         end
     end
@@ -379,6 +380,10 @@ function run_directory(
                 did_something && @info "# ALL NOTEBOOKS READY"
                 false
             end
+        end
+
+        if did_something || should_continue
+            write_index(notebook_sessions)
         end
 
         should_continue && refresh_until_synced(check_dir_on_every_step, true)

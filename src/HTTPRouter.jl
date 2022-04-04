@@ -12,7 +12,7 @@ using HTTP
 using Sockets
 import JSON
 
-@from "./IndexJSON.jl" import json_data
+@from "./IndexJSON.jl" import generate_index_json
 @from "./IndexHTML.jl" import temp_index, generate_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
@@ -30,6 +30,7 @@ function make_router(
     notebook_sessions::AbstractVector{<:NotebookSession},
     server_session::ServerSession;
     settings::PlutoDeploySettings,
+    start_dir::AbstractString,
     static_dir::Union{String,Nothing}=nothing,
 )
     router = HTTP.Router()
@@ -54,7 +55,7 @@ function make_router(
             If this is an automated setup, then this could happen inbetween deployments. 
 
             If this is a manual setup, then running the .jl notebook file might have caused a small change (e.g. the version number or a whitespace change). Copy notebooks to a temporary directory before running them using the bind server. =#
-            @info "Request hash not found. See errror hint in my source code." notebook_hash
+            @info "Request hash not found. See error hint in my source code." notebook_hash
             nothing
         else
             notebook_sessions[i]
@@ -225,7 +226,7 @@ function make_router(
         "GET",
         "/pluto_export.json",
         r -> let
-            HTTP.Response(200, JSON.json(json_data(notebook_sessions; settings))) |>
+            HTTP.Response(200, generate_index_json(notebook_sessions; settings, start_dir)) |>
             with_json! |>
             with_cors! |>
             with_not_cacheable!
