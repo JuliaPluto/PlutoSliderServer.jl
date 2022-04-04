@@ -7,7 +7,6 @@ import Pluto:
 @from "./Configuration.jl" import PlutoDeploySettings
 
 
-
 function json_data(s::NotebookSession; settings::PlutoDeploySettings)
     (
         id=s.path,
@@ -21,9 +20,17 @@ function json_data(s::NotebookSession; settings::PlutoDeploySettings)
         current_hash=s.current_hash,
         desired_hash=s.desired_hash,
         
-        frontmatter = (
-            title=basename(without_pluto_file_extension(s.path)),
-        ),
+        frontmatter = merge(
+            Dict{String,Any}(
+                "title" => basename(without_pluto_file_extension(s.path)),
+            ), 
+            try
+                Pluto.frontmatter(s.path)
+            catch e
+                @error "Frontmatter error" exception=(e,catch_backtrace())
+                Dict{String,Any}()
+            end
+        )
     )
 end
 
