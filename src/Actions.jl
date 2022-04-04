@@ -4,7 +4,7 @@ using FromFile
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./Export.jl" import try_get_exact_pluto_version, try_fromcache, try_tocache
-@from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
+@from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook, RunResult
 @from "./Configuration.jl" import PlutoDeploySettings
 @from "./FileHelpers.jl" import find_notebook_files_recursive
 @from "./PlutoHash.jl" import plutohash
@@ -101,14 +101,16 @@ function process(
         end
     end
 
-    generate_static_export(
-        path,
-        run.original_state,
-        jl_contents;
-        settings,
-        start_dir,
-        output_dir,
-    )
+    if run isa RunResult
+        generate_static_export(
+            path,
+            run.original_state,
+            jl_contents;
+            settings,
+            start_dir,
+            output_dir,
+        )
+    end
 
     @info "### ✓ $(progress) Ready" s.path new_hash
 

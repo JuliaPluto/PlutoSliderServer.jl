@@ -31,24 +31,31 @@ import Pluto:
 using HTTP
 using Sockets
 import BetterFileWatching: watch_folder
-using TerminalLoggers: TerminalLogger
-using Logging: global_logger
-using GitHubActions: GitHubActionsLogger
+import AbstractPlutoDingetjes: is_inside_pluto
+import TerminalLoggers: TerminalLogger
+import Logging: global_logger, ConsoleLogger
+import GitHubActions: GitHubActionsLogger
 
 export export_directory, run_directory, run_git_directory, github_action
 export export_notebook, run_notebook
 
 export show_sample_config_toml_file
 
-function __init__()
-    if get(ENV, "GITHUB_ACTIONS", "false") == "true"
-        global_logger(GitHubActionsLogger())
-    else
-        global_logger(try
-            TerminalLogger(; margin=1)
-        catch
-            TerminalLogger()
-        end)
+const logger_loaded = Ref{Bool}(false)
+function load_cool_logger()
+    if !logger_loaded[]
+        logger_loaded[] = true
+        if ((global_logger() isa ConsoleLogger) && !is_inside_pluto())
+            if get(ENV, "GITHUB_ACTIONS", "false") == "true"
+                global_logger(GitHubActionsLogger())
+            else
+                global_logger(try
+                    TerminalLogger(; margin=1)
+                catch
+                    TerminalLogger()
+                end)
+            end
+        end
     end
 end
 
@@ -169,7 +176,10 @@ function run_directory(
     kwargs...,
 )
 
+
     @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet!"
+
+    load_cool_logger()
 
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
@@ -281,7 +291,7 @@ function run_directory(
 
             params = HTTP.queryparams(HTTP.URI(request.target))
 
-            response_body = HTTP.handle(router, request)
+            response_body = Base.invokelatest(HTTP.handle, router, request)
 
             request.response::HTTP.Response = response_body
             request.response.request = request
