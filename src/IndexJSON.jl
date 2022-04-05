@@ -42,8 +42,7 @@ function json_data(
 )
     (
         notebooks=Dict(id(s) => json_data(s; settings, start_dir) for s in sessions),
-        notebook_order=id.(sessions),
-        collections=[],
+        collections=[], # TODO
         pluto_version=lstrip(Pluto.PLUTO_VERSION_STR, 'v'),
         julia_version=lstrip(string(VERSION), 'v'),
         format_version="1",

@@ -171,12 +171,10 @@ end
         @test occursin(p |> without_pluto_file_extension, htmlstr)
         @test occursin(p, jsonstr)
 
-        @test json["notebook_order"][i] == p
         @test !isempty(json["notebooks"][p]["frontmatter"]["title"])
+        without_pluto_file_extension
     end
 
-    for key in json["notebook_order"]
-        @test haskey(json["notebooks"], key)
-    end
+
 end
 

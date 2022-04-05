@@ -86,10 +86,17 @@ end
 
 
     notebook_sessions = ready_result[].notebook_sessions
-    json_order() =
-        JSON.parse(String(HTTP.get("http://localhost:$(port)/pluto_export.json").body))["notebook_order"]
 
-    @test json_order() == ["basic2.jl"]
+    index_json() =
+        JSON.parse(String(HTTP.get("http://localhost:$(port)/pluto_export.json").body))
+
+    json_nbs() = index_json()["notebooks"] |> keys |> collect
+
+    @test json_nbs() == ["basic2.jl"]
+
+    @test index_json()["notebooks"]["basic2.jl"]["frontmatter"]["title"] == "Pancakes"
+    @test index_json()["notebooks"]["basic2.jl"]["frontmatter"]["description"] ==
+          "are yummy 🥞"
 
     @testset "Adding a file" begin
 
@@ -122,7 +129,7 @@ end
             read(joinpath(test_dir, "basic2 copy.html"), String),
         )
 
-        @test json_order() == ["basic2.jl", "basic2 copy.jl"]
+        @test json_nbs() == ["basic2.jl", "basic2 copy.jl"]
 
     end
 
