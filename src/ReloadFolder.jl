@@ -1,5 +1,5 @@
 using FromFile
-@from "./Actions.jl" import path_hash
+@from "./PlutoHash.jl" import plutohash_contents
 @from "./Types.jl" import NotebookSession
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 @from "./FileHelpers.jl" import find_notebook_files_recursive
@@ -14,7 +14,7 @@ function d3join(notebook_sessions, new_paths; start_dir::AbstractString)
 
     new_hashes = map(old_paths) do path
         abs_path = joinpath(start_dir, path)
-        isfile(abs_path) ? path_hash(abs_path) : nothing
+        isfile(abs_path) ? plutohash_contents(abs_path) : nothing
     end
 
     (
@@ -46,7 +46,7 @@ function update_sessions!(notebook_sessions, new_paths; start_dir::AbstractStrin
                 NotebookSession(;
                     path=path,
                     current_hash=nothing,
-                    desired_hash=path_hash(joinpath(start_dir, path)),
+                    desired_hash=plutohash_contents(joinpath(start_dir, path)),
                     run=nothing,
                 ),
             )
@@ -59,7 +59,8 @@ function update_sessions!(notebook_sessions, new_paths; start_dir::AbstractStrin
                 path=path,
                 current_hash=old.current_hash,
                 desired_hash=(
-                    path ∈ removed ? nothing : path_hash(joinpath(start_dir, path))
+                    path ∈ removed ? nothing :
+                    plutohash_contents(joinpath(start_dir, path))
                 ),
                 run=old.run,
             )
