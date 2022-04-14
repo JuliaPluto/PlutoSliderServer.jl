@@ -12,6 +12,7 @@ import Markdown
 @from "../Types.jl" import NotebookSession, RunningNotebook
 @from "../Configuration.jl" import PlutoDeploySettings
 @from "../run_bonds.jl" import run_bonds_get_patches
+@from "../PlutoHash.jl" import base64urlencode
 
 @from "./types.jl" import VariableGroupPossibilities, PrecomputedSampleReport, Reason
 
@@ -158,7 +159,7 @@ function generate_precomputed_staterequests(
     foreach(groups) do group::VariableGroupPossibilities
         if group.judgement.should_precompute_all
             for (combination, bonds_dict) in combination_iterator(group)
-                filename = Pluto.pack(bonds_dict) |> base64encode |> URIs.escapeuri
+                filename = Pluto.pack(bonds_dict) |> base64urlencode
                 if length(filename) > 255
                     @warn "Filename is too long, stopping this group" group.names
                     break
