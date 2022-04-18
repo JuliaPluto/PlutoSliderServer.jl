@@ -109,16 +109,16 @@ using Base64
             sum_cell_id = "26025270-9b5e-4841-b295-0c47437bc7db"
 
             response = if method == "GET"
-                arg = Pluto.pack(bonds) |> base64encode |> HTTP.URIs.escapeuri
+                arg = Pluto.pack(bonds) |> PlutoSliderServer.base64urlencode
 
                 HTTP.request(
                     method,
-                    "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.current_hash))/$(arg)",
+                    "http://localhost:$(port)/staterequest/$(s.current_hash)/$(arg)",
                 )
             else
                 HTTP.request(
                     method,
-                    "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.current_hash))/",
+                    "http://localhost:$(port)/staterequest/$(s.current_hash)/",
                     [],
                     Pluto.pack(bonds),
                 )
