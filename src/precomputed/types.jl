@@ -112,7 +112,7 @@ function Base.show(io::IO, m::MIME"text/plain", p::PrecomputedSampleReport)
         """
 # Precomputed state summary
 
-Total size estimate: $(p.num_possibilities) files, $(
+Total size estimate (based on a radom sample): $(p.num_possibilities) files, $(
     p.file_size_sample_distribution |> format_filesize
 ) $(exceeds_limit(p.judgement, "some groups are "))
 
@@ -124,16 +124,16 @@ total_size_dist = group.file_size_sample_distribution
 
 $(if isempty(group.not_available)
     """
-    Size estimate for this group: $(
+    Size estimate for this group (based on a radom sample): $(
         group.num_possibilities
     ) files, $(
         format_filesize(total_size_dist)
     ) $(exceeds_limit(group.judgement))
 
-    | Name | Possible values | File size per value |
-    |---|---|---|
+    | Name | Possible values |
+    |---|---|
     $(map(zip(group.names, group.possible_values)) do (n, vs)
-        "| `$(n)` | **$(length(vs))** | $(format_filesize(total_size_dist / length(vs))) | \n"
+        "| `$(n)` | **$(length(vs))** | \n"
     end |> join)
     """
 else
@@ -172,7 +172,7 @@ end
 function format_filesize(x::Distribution)
     m, s = mean(x), std(x)
     if s / m > 0.05
-        format_filesize(m) * " ± " * format_filesize(s)
+        "$(format_filesize(m)) (𝜎 $(format_filesize(s)))"
     else
         format_filesize(m)
     end
