@@ -58,7 +58,7 @@ function json_data(
 end
 
 function generate_index_json(s; settings::PlutoDeploySettings, start_dir::AbstractString)
-    p = joinpath(start_dir, "pluto_export_config.json")
+    p = joinpath(start_dir, "pluto_export_configuration.json")
     config_data = if isfile(p)
         JSON.parse(read(p, String))::Dict{String,Any}
     else
