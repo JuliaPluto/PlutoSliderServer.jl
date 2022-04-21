@@ -39,14 +39,31 @@ function json_data(
     sessions::Vector{NotebookSession};
     settings::PlutoDeploySettings,
     start_dir::AbstractString,
+    config_data::Dict{String,Any},
 )
     (
         notebooks=Dict(id(s) => json_data(s; settings, start_dir) for s in sessions),
-        collections=[], # TODO
         pluto_version=lstrip(Pluto.PLUTO_VERSION_STR, 'v'),
         julia_version=lstrip(string(VERSION), 'v'),
         format_version="1",
+        # 
+        title=get(config_data, "title", nothing),
+        description=get(config_data, "description", nothing),
+        collections=get(config_data, "collections", nothing),
+        # collections=let c = settings.Export.collections
+        #     c === nothing ? nothing : [
+        #     v for (k,v) in sort(pairs(c); by=((k,v)) -> parse(Int, k))
+        # ],
     )
 end
 
-generate_index_json(s; kwargs...) = JSON.json(json_data(s; kwargs...))
+function generate_index_json(s; settings::PlutoDeploySettings, start_dir::AbstractString)
+    p = joinpath(start_dir, "pluto_export_config.json")
+    config_data = if isfile(p)
+        JSON.parse(read(p, String))::Dict{String,Any}
+    else
+        Dict{String,Any}()
+    end
+    result = json_data(s; settings, start_dir, config_data)
+    JSON.json(result)
+end
