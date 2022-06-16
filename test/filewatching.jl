@@ -5,6 +5,7 @@ import PlutoSliderServer.HTTP
 using Test
 using UUIDs
 using Base64
+import JSON
 
 function poll(query::Function, timeout::Real=Inf64, interval::Real=1 / 20)
     start = time()
@@ -86,6 +87,17 @@ end
 
     notebook_sessions = ready_result[].notebook_sessions
 
+    index_json() =
+        JSON.parse(String(HTTP.get("http://localhost:$(port)/pluto_export.json").body))
+
+    json_nbs() = index_json()["notebooks"] |> keys |> collect
+
+    @test json_nbs() == ["basic2.jl"]
+
+    @test index_json()["notebooks"]["basic2.jl"]["frontmatter"]["title"] == "Pancakes"
+    @test index_json()["notebooks"]["basic2.jl"]["frontmatter"]["description"] ==
+          "are yummy 🥞"
+
     @testset "Adding a file" begin
 
         cp_nb_with_tweaks(
@@ -116,6 +128,9 @@ end
             "slider_server_url = \".\"",
             read(joinpath(test_dir, "basic2 copy.html"), String),
         )
+
+        @test json_nbs() == ["basic2.jl", "basic2 copy.jl"]
+
     end
 
 
