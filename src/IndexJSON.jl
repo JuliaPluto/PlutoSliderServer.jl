@@ -23,13 +23,19 @@ function json_data(
         current_hash=s.current_hash,
         desired_hash=s.desired_hash,
         frontmatter=merge(
-            Dict{String,Any}("title" => basename(without_pluto_file_extension(s.path))),
-            try
-                Pluto.frontmatter(joinpath(start_dir, s.path))
-            catch e
-                @error "Frontmatter error" exception = (e, catch_backtrace())
-                Dict{String,Any}()
-            end,
+            Dict{String,Any}(
+                # default title if none given in frontmatter
+                "title" => basename(without_pluto_file_extension(s.path)),
+            ),
+            Pluto.frontmatter(
+                # Pluto.frontmatter accepts either a Notebook, or a path (in which case it will parse the file).
+                if s.run isa RunningNotebook
+                    s.run.notebook
+                else
+                    joinpath(start_dir, s.path)
+                end;
+                raise=false,
+            ),
         ),
     )
 end
