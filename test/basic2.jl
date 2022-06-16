@@ -52,8 +52,7 @@ b2 = @bind s2 html"<input>"
 b2
 
 # ╔═╡ a524ff27-a6a3-4f14-8ed4-f55700647bc4
-sleep(1);
-s2;
+sleep(1); s2
 
 # ╔═╡ Cell order:
 # ╠═635e5ebc-6567-11eb-1d9d-f98bfca7ec99
