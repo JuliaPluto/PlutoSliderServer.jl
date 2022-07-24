@@ -192,7 +192,7 @@ function make_router(
         end
     end
 
-    HTTP.@register(
+    HTTP.register!(
         router,
         "GET",
         "/",
@@ -221,7 +221,7 @@ function make_router(
     )
 
 
-    HTTP.@register(
+    HTTP.register!(
         router,
         "GET",
         "/pluto_export.json",
@@ -236,9 +236,9 @@ function make_router(
     # !!!! IDEAAAA also have a get endpoint with the same thing but the bond data is base64 encoded in the URL
     # only use it when the amount of data is not too much :o
 
-    HTTP.@register(router, "POST", "/staterequest/*/", serve_staterequest)
-    HTTP.@register(router, "GET", "/staterequest/*/*", serve_staterequest)
-    HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
+    HTTP.register!(router, "POST", "/staterequest/*/", serve_staterequest)
+    HTTP.register!(router, "GET", "/staterequest/*/*", serve_staterequest)
+    HTTP.register!(router, "GET", "/bondconnections/*/", serve_bondconnections)
 
     if static_dir !== nothing
         function serve_pluto_asset(request::HTTP.Request)
@@ -250,14 +250,14 @@ function make_router(
             )
             Pluto.asset_response(filepath)
         end
-        HTTP.@register(router, "GET", "/pluto_asset/*", serve_pluto_asset)
+        HTTP.register!(router, "GET", "/pluto_asset/*", serve_pluto_asset)
         function serve_asset(request::HTTP.Request)
             uri = HTTP.URI(request.target)
 
             filepath = joinpath(static_dir, relpath(HTTP.unescapeuri(uri.path), "/"))
             Pluto.asset_response(filepath)
         end
-        HTTP.@register(router, "GET", "/*", serve_asset)
+        HTTP.register!(router, "GET", "/*", serve_asset)
     end
 
     router

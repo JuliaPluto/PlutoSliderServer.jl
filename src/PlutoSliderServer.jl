@@ -274,7 +274,7 @@ function run_directory(
 
         # This is boilerplate HTTP code, don't read it
         # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
-        http_server_task = @async HTTP.serve(
+        http_server_task = HTTP.serve!(
             hostIP,
             UInt16(port),
             stream=true,
@@ -284,9 +284,7 @@ function run_directory(
             request.body = read(http)
             HTTP.closeread(http)
 
-            params = HTTP.queryparams(HTTP.URI(request.target))
-
-            response_body = Base.invokelatest(HTTP.handle, router, request)
+            response_body = router(request)
 
             request.response::HTTP.Response = response_body
             request.response.request = request
@@ -294,7 +292,6 @@ function run_directory(
                 HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
                 HTTP.startwrite(http)
                 write(http, request.response.body)
-                HTTP.closewrite(http)
             catch e
                 if isa(e, Base.IOError) || isa(e, ArgumentError)
                     # @warn "Attempted to write to a closed stream at $(request.target)"
@@ -418,6 +415,7 @@ function run_directory(
         wait(http_server_task)
     catch e
         @ignorefailure close(serversocket)
+        @ignorefailure close(http_server_task)
         @ignorefailure schedule(watch_dir_task, e; error=true)
         e isa InterruptException || rethrow(e)
     end
