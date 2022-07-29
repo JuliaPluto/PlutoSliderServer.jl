@@ -300,6 +300,8 @@ function run_directory(
                 end
             end
         end
+
+        @info "# Server started"
     else
         http_server_task = @async 1 + 1
         serversocket = nothing
@@ -407,7 +409,6 @@ function run_directory(
         # todo: skip first watch_folder so that we dont need this sleepo
         sleep(2)
     end
-
 
     on_ready((; serversocket, server_session, notebook_sessions))
 
