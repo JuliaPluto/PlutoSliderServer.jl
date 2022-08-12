@@ -356,3 +356,13 @@ In the future, we are planning to implement a hook that allows widgets (such as 
 
 Of course, we are not security experts, and this software does not come with any kind of security guarantee. To be completely safe, assume that someone who can visit the server can execute arbitrary code in the notebook, despite our measures to prevent it. Run PlutoSliderServer in a containerized environment.
 
+# Frequently Asked Questions
+
+### git authentication
+- Q: My git platform (e.g. CodeCommit) requires re-authentication at regular intervals, and it doesn't register new notebooks pushed
+  to my notebook repo.
+- A: The current workaround is to set the environment variable `JULIA_PKG_USE_CLI_GIT` to `true`. A good place to do that is the 
+  the startup bash script before the call to `julia`:
+  ```bash
+  export JULIA_PKG_USE_CLI_GIT=true
+  ```
