@@ -1,17 +1,14 @@
 import Pluto: Pluto, without_pluto_file_extension, generate_html, @asynclog
 using Base64
-using SHA
 using FromFile
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./Export.jl" import try_get_exact_pluto_version, try_fromcache, try_tocache
-@from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
+@from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook, RunResult
 @from "./Configuration.jl" import PlutoDeploySettings
 @from "./FileHelpers.jl" import find_notebook_files_recursive
-myhash = base64encode ∘ sha256
-function path_hash(path)
-    myhash(read(path))
-end
+@from "./PlutoHash.jl" import plutohash
+
 
 showall(xs) = Text(join(string.(xs), "\n"))
 
@@ -61,7 +58,7 @@ function process(
     @info "###### ◐ $(progress) Launching..." s.path
 
     jl_contents = read(abs_path, String)
-    new_hash = myhash(jl_contents)
+    new_hash = plutohash(jl_contents)
     if new_hash != s.desired_hash
         @warn "Notebook file does not have desired hash. This probably means that the file changed too quickly. Continuing and hoping for the best!" s.path new_hash s.desired_hash
     end
@@ -104,14 +101,16 @@ function process(
         end
     end
 
-    generate_static_export(
-        path,
-        run.original_state,
-        jl_contents;
-        settings,
-        start_dir,
-        output_dir,
-    )
+    if run isa RunResult
+        generate_static_export(
+            path,
+            run.original_state,
+            jl_contents;
+            settings,
+            start_dir,
+            output_dir,
+        )
+    end
 
     @info "### ✓ $(progress) Ready" s.path new_hash
 

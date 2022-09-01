@@ -4,7 +4,6 @@ import PlutoSliderServer.HTTP
 
 using Test
 using UUIDs
-using Base64
 
 @testset "HTTP requests" begin
     test_dir = tempname(cleanup=false)
@@ -53,9 +52,7 @@ using Base64
     @testset "Bond connections - $(name)" for (i, name) in enumerate(notebook_paths)
         s = notebook_sessions[i]
 
-        response = HTTP.get(
-            "http://localhost:$(port)/bondconnections/$(HTTP.URIs.escapeuri(s.current_hash))/",
-        )
+        response = HTTP.get("http://localhost:$(port)/bondconnections/$(s.current_hash)/")
 
         result = Pluto.unpack(response.body)
 
@@ -78,16 +75,19 @@ using Base64
             sum_cell_id = "26025270-9b5e-4841-b295-0c47437bc7db"
 
             response = if method == "GET"
-                arg = Pluto.pack(bonds) |> base64encode |> HTTP.URIs.escapeuri
+                arg = Pluto.pack(bonds) |> PlutoSliderServer.base64urlencode
+
+                # escaping should have no effect
+                @test HTTP.URIs.escapeuri(arg) == arg
 
                 HTTP.request(
                     method,
-                    "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.current_hash))/$(arg)",
+                    "http://localhost:$(port)/staterequest/$(s.current_hash)/$(arg)",
                 )
             else
                 HTTP.request(
                     method,
-                    "http://localhost:$(port)/staterequest/$(HTTP.URIs.escapeuri(s.current_hash))/",
+                    "http://localhost:$(port)/staterequest/$(s.current_hash)/",
                     [],
                     Pluto.pack(bonds),
                 )

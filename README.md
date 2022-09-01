@@ -4,7 +4,7 @@
 
 Web server to run just the @bind parts of a [Pluto.jl](https://github.com/fonsp/Pluto.jl) notebook. 
 
-See it in action at [computationalthinking.mit.edu](https://computationalthinking.mit.edu/Spring21/week1/)! Sliders, buttons and camera inputs work _instantly_, without having to wait for a Julia process. Plutoplutopluto
+See it in action at [computationalthinking.mit.edu](https://computationalthinking.mit.edu/)! Sliders, buttons and camera inputs work _instantly_, without having to wait for a Julia process. Plutoplutopluto
 
 [![](https://data.jsdelivr.com/v1/package/gh/fonsp/Pluto.jl/badge)](https://www.jsdelivr.com/package/gh/fonsp/Pluto.jl)
 
@@ -223,18 +223,34 @@ julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; 
 
 `run_git_directory` will periodically call `git pull`, which requires the `start_dir` to be a repository in which you can `git pull` without password (which means it's either public, or you have the required keys in `~/.ssh/` and your git's provider security page!) 
 
-### 4. Start PlutoSliderServer on restart
+### 4. Set up a server to run PlutoSliderServer
 For this step, we'll assume a very specific but also common setup:
 
-- Ubuntu-based machine with `apt-get`, `git`, `vim` and internet
+- Ubuntu-based server with `apt-get`, `git`, `vim` and internet
+- access through SSH
 - root access
-    
+
+#### 0. Update packages
+```shell
+sudo apt-get update
+sudo apt-get upgrade
+```
+
+You should run `systemd --version` to verify that we have version 230 or higher.
+
 #### 1. Install Julia (run as root) 
 ```shell
-wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.4-linux-x86_64.tar.gz
-tar zxvf julia-1.6.4-linux-x86_64.tar.gz
-rm julia-1.6.4-linux-x86_64.tar.gz
-ln -s `pwd`/julia-1.6.4/bin/julia /usr/local/bin/julia
+# You can edit me: The Julia version (1.7.3) split into three parts:
+JULIA_MAJOR_VERSION=1
+JULIA_MINOR_VERSION=7
+JULIA_PATCH_VERSION=3
+
+JULIA_VERSION="$(echo $JULIA_MAJOR_VERSION).$(echo $JULIA_MINOR_VERSION).$(echo $JULIA_PATCH_VERSION)"
+
+wget https://julialang-s3.julialang.org/bin/linux/x64/$(echo $JULIA_MAJOR_VERSION).$(echo $JULIA_MINOR_VERSION)/julia-$(echo $JULIA_VERSION)-linux-x86_64.tar.gz
+tar -xvzf julia-$JULIA_VERSION-linux-x86_64.tar.gz
+rm julia-$JULIA_VERSION-linux-x86_64.tar.gz
+sudo ln -s `pwd`/julia-$JULIA_VERSION/bin/julia /usr/local/bin/julia
 ```
 
 #### 2. get your repository
@@ -306,10 +322,6 @@ sudo journalctl -u pluto-server
 When you change the notebooks in the git repository, your server will automatically update (it keeps calling `git pull`)! Awesome!
 
 If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer will detect a change in configuration and shut down. Because we set up our service using `systemctl`, the server will automatically restart! (With the new settings)
-
---- 
-
-TBA: There will be a simple 1.2.3. checklist to get this running on heroku for your own repository. It is designed to be used in a **containerized** environment (such as heroku, docker, digitalocean apps, ...), in a **push to deploy** setting.
 
 # Similar/alternative packages
 

@@ -4,7 +4,8 @@ using FromFile
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./FileHelpers.jl" import find_notebook_files_recursive, list_files_recursive
-@from "./Export.jl" import generate_index_html
+@from "./IndexHTML.jl" import generate_index_html
+@from "./IndexJSON.jl" import generate_index_json
 @from "./Actions.jl" import process,
     should_shutdown, should_update, should_launch, will_process
 @from "./Types.jl" import NotebookSession
@@ -17,6 +18,9 @@ using FromFile
 @from "./HTTPRouter.jl" import make_router
 @from "./gitpull.jl" import fetch_pull
 
+@from "./PlutoHash.jl" import plutohash, base64urlencode, base64urldecode
+export plutohash, base64urlencode, base64urldecode
+
 import Pluto
 import Pluto:
     ServerSession,
@@ -26,28 +30,33 @@ import Pluto:
     pluto_file_extensions,
     without_pluto_file_extension
 using HTTP
-using Base64
-using SHA
 using Sockets
 import BetterFileWatching: watch_folder
-using TerminalLoggers: TerminalLogger
-using Logging: global_logger
-using GitHubActions: GitHubActionsLogger
+import AbstractPlutoDingetjes: is_inside_pluto
+import TerminalLoggers: TerminalLogger
+import Logging: global_logger, ConsoleLogger
+import GitHubActions: GitHubActionsLogger
 
 export export_directory, run_directory, run_git_directory, github_action
 export export_notebook, run_notebook
 
 export show_sample_config_toml_file
 
-function __init__()
-    if get(ENV, "GITHUB_ACTIONS", "false") == "true"
-        global_logger(GitHubActionsLogger())
-    else
-        global_logger(try
-            TerminalLogger(; margin=1)
-        catch
-            TerminalLogger()
-        end)
+const logger_loaded = Ref{Bool}(false)
+function load_cool_logger()
+    if !logger_loaded[]
+        logger_loaded[] = true
+        if ((global_logger() isa ConsoleLogger) && !is_inside_pluto())
+            if get(ENV, "GITHUB_ACTIONS", "false") == "true"
+                global_logger(GitHubActionsLogger())
+            else
+                global_logger(try
+                    TerminalLogger(; margin=1)
+                catch
+                    TerminalLogger()
+                end)
+            end
+        end
     end
 end
 
@@ -168,7 +177,10 @@ function run_directory(
     kwargs...,
 )
 
+
     @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet!"
+
+    load_cool_logger()
 
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
@@ -204,16 +216,10 @@ function run_directory(
         end
     end
 
-    to_run = getpaths()
-
     @info "Settings" Text(settings)
 
     settings.SliderServer.enabled &&
         @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
-
-    # if to_run != notebook_paths
-    #     @info "Excluded notebooks:" showall(setdiff(notebook_paths, to_run))
-    # end
 
     settings.Pluto.server.disable_writing_notebook_files = true
     settings.Pluto.evaluation.lazy_workspace_creation = true
@@ -221,13 +227,13 @@ function run_directory(
     server_session = Pluto.ServerSession(; options=settings.Pluto)
 
     notebook_sessions = NotebookSession[]
-    # notebook_sessions = NotebookSession[QueuedNotebookSession(;path, current_hash=myhash(read(joinpath(start_dir, path)))) for path in to_run]
 
     if settings.SliderServer.enabled
         static_dir =
             (settings.Export.enabled && settings.SliderServer.serve_static_export_folder) ?
             output_dir : nothing
-        router = make_router(notebook_sessions, server_session; settings, static_dir)
+        router =
+            make_router(notebook_sessions, server_session; settings, static_dir, start_dir)
 
         # This is boilerplate HTTP code, don't read it
         host = settings.SliderServer.host
@@ -302,37 +308,49 @@ function run_directory(
         serversocket = nothing
     end
 
-    if (
-        settings.Export.enabled &&
-        settings.Export.create_index &&
-        # If `settings.SliderServer.serve_static_export_folder`, then we serve a dynamic index page (inside HTTPRouter.jl), so we don't want to create a static index page.
-        !(settings.SliderServer.enabled && settings.SliderServer.serve_static_export_folder)
-    )
+    function write_index(sessions)
+        if (
+            settings.Export.enabled &&
+            settings.Export.create_index &&
+            # If `settings.SliderServer.serve_static_export_folder`, then we serve a dynamic index page (inside HTTPRouter.jl), so we don't want to create a static index page.
+            !(
+                settings.SliderServer.enabled &&
+                settings.SliderServer.serve_static_export_folder
+            )
+        )
+            # HTML
+            exists = any([
+                "index.html",
+                "index.md",
+                ("index" * e for e in pluto_file_extensions)...,
+            ]) do f
+                joinpath(output_dir, f) |> isfile
+            end
+            if !exists
+                write(
+                    joinpath(output_dir, "index.html"),
+                    generate_index_html((
+                        without_pluto_file_extension(s.path) =>
+                            without_pluto_file_extension(s.path) * ".html" for s in sessions
+                    )),
+                )
+            end
 
-        exists = any([
-            "index.html",
-            "index.md",
-            ("index" * e for e in pluto_file_extensions)...,
-        ]) do f
-            joinpath(output_dir, f) |> isfile
-        end
-        if !exists
+            # JSON
             write(
-                joinpath(output_dir, "index.html"),
-                generate_index_html((
-                    without_pluto_file_extension(path) =>
-                        without_pluto_file_extension(path) * ".html" for path in to_run
-                )),
+                joinpath(output_dir, "pluto_export.json"),
+                generate_index_json(sessions; settings, start_dir),
             )
         end
     end
 
-
     function refresh_until_synced(check_dir_on_every_step::Bool, did_something::Bool=false)
         should_continue = withlock(notebook_sessions) do
 
-            check_dir_on_every_step &&
+            if check_dir_on_every_step
                 update_sessions!(notebook_sessions, getpaths(); start_dir)
+                write_index(notebook_sessions)
+            end
 
             # todo: try catch to release lock?
             to_shutdown = select(should_shutdown, notebook_sessions)
@@ -364,11 +382,16 @@ function run_directory(
             end
         end
 
+        if did_something || should_continue
+            write_index(notebook_sessions)
+        end
+
         should_continue && refresh_until_synced(check_dir_on_every_step, true)
     end
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
     update_sessions!(notebook_sessions, getpaths(); start_dir)
+    write_index(notebook_sessions)
     refresh_until_synced(false)
 
     should_watch = settings.SliderServer.enabled && settings.SliderServer.watch_dir

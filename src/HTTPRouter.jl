@@ -9,13 +9,14 @@ import Pluto:
     pluto_file_extensions,
     without_pluto_file_extension
 using HTTP
-using Base64
-using SHA
 using Sockets
+import JSON
 
-@from "./Export.jl" import generate_index_html
+@from "./IndexJSON.jl" import generate_index_json
+@from "./IndexHTML.jl" import temp_index, generate_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
+@from "./PlutoHash.jl" import base64urldecode
 
 ready_for_bonds(::Any) = false
 ready_for_bonds(sesh::NotebookSession{String,String,RunningNotebook}) =
@@ -29,6 +30,7 @@ function make_router(
     notebook_sessions::AbstractVector{<:NotebookSession},
     server_session::ServerSession;
     settings::PlutoDeploySettings,
+    start_dir::AbstractString,
     static_dir::Union{String,Nothing}=nothing,
 )
     router = HTTP.Router()
@@ -38,7 +40,7 @@ function make_router(
 
         parts = HTTP.URIs.splitpath(uri.path)
         # parts[1] == "staterequest"
-        notebook_hash = parts[2] |> HTTP.unescapeuri
+        notebook_hash = parts[2]
 
         i = findfirst(notebook_sessions) do sesh
             sesh.desired_hash == notebook_hash
@@ -53,7 +55,7 @@ function make_router(
             If this is an automated setup, then this could happen inbetween deployments. 
 
             If this is a manual setup, then running the .jl notebook file might have caused a small change (e.g. the version number or a whitespace change). Copy notebooks to a temporary directory before running them using the bind server. =#
-            @info "Request hash not found. See errror hint in my source code." notebook_hash
+            @info "Request hash not found. See error hint in my source code." notebook_hash
             nothing
         else
             notebook_sessions[i]
@@ -68,11 +70,11 @@ function make_router(
 
             parts = HTTP.URIs.splitpath(uri.path)
             # parts[1] == "staterequest"
-            # notebook_hash = parts[2] |> HTTP.unescapeuri
+            # notebook_hash = parts[2]
 
             @assert length(parts) == 3
 
-            base64decode(parts[3] |> HTTP.unescapeuri)
+            base64urldecode(parts[3])
         end
         bonds_raw = Pluto.unpack(request_body)
 
@@ -218,6 +220,19 @@ function make_router(
         end
     )
 
+
+    HTTP.@register(
+        router,
+        "GET",
+        "/pluto_export.json",
+        r -> let
+            HTTP.Response(200, generate_index_json(notebook_sessions; settings, start_dir)) |>
+            with_json! |>
+            with_cors! |>
+            with_not_cacheable!
+        end
+    )
+
     # !!!! IDEAAAA also have a get endpoint with the same thing but the bond data is base64 encoded in the URL
     # only use it when the amount of data is not too much :o
 
@@ -257,6 +272,11 @@ function with_msgpack!(response::HTTP.Response)
     response
 end
 
+function with_json!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/json; charset=utf-8")
+    response
+end
+
 function with_cors!(response::HTTP.Response)
     push!(response.headers, "Access-Control-Allow-Origin" => "*")
     response
@@ -276,16 +296,4 @@ end
 function with_not_cacheable!(response::HTTP.Response)
     push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
     response
-end
-
-
-
-function temp_index(notebook_sessions::Vector{NotebookSession})
-    generate_index_html(temp_index_item.(notebook_sessions))
-end
-function temp_index_item(s::NotebookSession)
-    without_pluto_file_extension(s.path) => nothing
-end
-function temp_index_item(s::NotebookSession{String,String,<:Any})
-    without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path) * ".html"
 end
