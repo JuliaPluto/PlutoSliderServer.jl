@@ -9,7 +9,7 @@ import Random
 original_dir1 = joinpath(@__DIR__, "dir1")
 make_test_dir() =
     let
-        Random.seed!(time())
+        Random.seed!(time_ns())
         new = tempname(cleanup=false)
         cp(original_dir1, new)
         new

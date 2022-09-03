@@ -51,7 +51,7 @@ end
         cp_nb_with_tweaks(joinpath(@__DIR__, p), joinpath(test_dir, p))
     end
 
-    Random.seed!(time())
+    Random.seed!(time_ns())
     port = rand(12345:65000)
 
 
@@ -82,12 +82,10 @@ end
     index_json() =
         JSON.parse(String(HTTP.get("http://localhost:$(port)/pluto_export.json").body))
 
-    json_nbs() = @show(index_json()["notebooks"]) |> keys |> collect
+    json_nbs() = index_json()["notebooks"] |> keys |> collect
 
-    @show(readdir(test_dir))
     @test length(notebook_sessions) == 1
     @test json_nbs() == ["basic2.jl"]
-    @test length(notebook_sessions) == 1
 
     @test index_json()["notebooks"]["basic2.jl"]["frontmatter"]["title"] == "Pancakes"
     @test index_json()["notebooks"]["basic2.jl"]["frontmatter"]["description"] ==
