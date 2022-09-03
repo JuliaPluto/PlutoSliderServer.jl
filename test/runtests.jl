@@ -15,10 +15,10 @@ if just_run_test_server
     include("./runtestserver.jl")
 else
     ENV["HIDE_PLUTO_EXACT_VERSION_WARNING"] = "true"
-    include("./plutohash.jl")
-    include("./configuration.jl")
-    include("./static export.jl")
+    # include("./plutohash.jl")
+    # include("./configuration.jl")
+    # include("./static export.jl")
     include("./staterequest.jl")
-    include("./filewatching.jl")
-    include("./connections.jl")
+    # include("./filewatching.jl")
+    # include("./connections.jl")
 end

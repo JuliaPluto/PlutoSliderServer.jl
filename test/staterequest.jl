@@ -39,6 +39,7 @@ using UUIDs
 
 
     while still_booting[]
+        println("Waiting for boot to finish")
         sleep(0.1)
     end
 
