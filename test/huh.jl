@@ -1,8 +1,13 @@
 import HTTP
 import Sockets
-
+import Logging: global_logger, ConsoleLogger
+import GitHubActions: GitHubActionsLogger
 
 function hello()
+
+    global_logger(GitHubActionsLogger())
+
+
     port = rand(12345:65000)
     host = "127.0.0.1"
 
