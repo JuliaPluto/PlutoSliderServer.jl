@@ -84,6 +84,7 @@ end
 
     json_nbs() = @show(index_json()["notebooks"]) |> keys |> collect
 
+    @show(readdir(test_dir))
     @test length(notebook_sessions) == 1
     @test json_nbs() == ["basic2.jl"]
     @test length(notebook_sessions) == 1
