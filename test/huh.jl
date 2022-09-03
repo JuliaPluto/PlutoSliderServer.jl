@@ -27,8 +27,11 @@ function hello()
 end
 
 
-@async try
+t = @async try
     hello()
 catch e
     @error "Error in server" exception = (e, catch_backtrace())
 end
+
+
+wait(t)
