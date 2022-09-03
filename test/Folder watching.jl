@@ -84,7 +84,9 @@ end
 
     json_nbs() = @show(index_json()["notebooks"]) |> keys |> collect
 
+    @test length(notebook_sessions) == 1
     @test json_nbs() == ["basic2.jl"]
+    @test length(notebook_sessions) == 1
 
     @test index_json()["notebooks"]["basic2.jl"]["frontmatter"]["title"] == "Pancakes"
     @test index_json()["notebooks"]["basic2.jl"]["frontmatter"]["description"] ==

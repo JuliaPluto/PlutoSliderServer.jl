@@ -226,6 +226,7 @@ function make_router(
         "GET",
         "/pluto_export.json",
         r -> let
+            @info "huhhh" notebook_sessions
             HTTP.Response(
                 200,
                 @show(generate_index_json(notebook_sessions; settings, start_dir))
