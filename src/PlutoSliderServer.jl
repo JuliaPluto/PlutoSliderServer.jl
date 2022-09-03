@@ -273,12 +273,9 @@ function run_directory(
         @info "# Starting server..." address
 
         # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
-        http_server = HTTP.serve!(
-            router |> ReferrerMiddleware,
-            hostIP,
-            UInt16(port),
-            server=serversocket,
-        )
+        http_server = HTTP.serve!(hostIP, UInt16(port), server=serversocket) do req
+            return HTTP.Response(200)
+        end
 
         @info "# Server started"
     else
