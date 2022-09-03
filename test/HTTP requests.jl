@@ -6,6 +6,7 @@ using Test
 using UUIDs
 
 @testset "HTTP requests" begin
+    Random.seed!(time())
     test_dir = tempname(cleanup=false)
     cp(@__DIR__, test_dir)
 

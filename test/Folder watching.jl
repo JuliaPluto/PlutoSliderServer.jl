@@ -37,8 +37,7 @@ function cp_nb_with_tweaks(from::String, to::String)
 end
 
 @testset "Folder watching" begin
-    test_dir = tempname(cleanup=false)
-    mkdir(test_dir)
+    test_dir = mktempdir(cleanup=false)
 
     try
         # open the folder on macos:
@@ -52,6 +51,7 @@ end
         cp_nb_with_tweaks(joinpath(@__DIR__, p), joinpath(test_dir, p))
     end
 
+    Random.seed!(time())
     port = rand(12345:65000)
 
 

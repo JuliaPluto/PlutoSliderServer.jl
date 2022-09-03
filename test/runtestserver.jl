@@ -2,6 +2,7 @@ using PlutoSliderServer
 ENV["JULIA_DEBUG"] = PlutoSliderServer
 
 
+Random.seed!(time())
 test_dir = tempname(cleanup=false)
 cp(@__DIR__, test_dir)
 
