@@ -180,7 +180,7 @@ function run_directory(
 
     @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet!"
 
-    load_cool_logger()
+    # load_cool_logger()
 
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
