@@ -15,7 +15,7 @@ make_test_dir() =
 
 cache_dir = tempname(cleanup=false)
 
-@testset "Basic github action" begin
+@testset "static - Basic github action" begin
     test_dir = make_test_dir()
 
     @show test_dir cache_dir
@@ -60,7 +60,7 @@ cache_dir = tempname(cleanup=false)
 end
 
 
-@testset "Separate state & notebook files" begin
+@testset "static - Separate state & notebook files" begin
     test_dir = make_test_dir()
     @show test_dir
     cd(test_dir)
@@ -112,7 +112,7 @@ end
     @test occursin("appelsap", read("a.html", String))
 end
 
-@testset "Single notebook" begin
+@testset "static - Single notebook" begin
     test_dir = make_test_dir()
 
     # @show test_dir cache_dir
@@ -136,7 +136,7 @@ end
 end
 
 
-@testset "Index HTML and JSON" begin
+@testset "static - Index HTML and JSON" begin
     test_dir = make_test_dir()
 
     @show test_dir cache_dir

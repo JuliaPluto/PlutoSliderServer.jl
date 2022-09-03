@@ -2,7 +2,7 @@ using Test
 import PlutoSliderServer: plutohash, base64urlencode, base64urldecode
 import HTTP
 
-@testset "PlutoHash" begin
+@testset "plutohash" begin
     @test plutohash("Hannes") == "OI48wVWerxEEnz5lIj6CPPRB8NOwwba-LkFYTDp4aUU"
     @test base64urlencode(UInt8[0, 0, 63, 0, 0, 62, 42]) == "AAA_AAA-Kg"
 

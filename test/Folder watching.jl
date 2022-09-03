@@ -62,22 +62,14 @@ end
         still_booting[] = false
     end
 
-    t = Pluto.@asynclog begin
-        try
-            PlutoSliderServer.run_directory(
-                test_dir;
-                Export_enabled=false,
-                Export_output_dir=test_dir,
-                SliderServer_port=port,
-                SliderServer_watch_dir=true,
-                on_ready,
-            )
-        catch e
-            if !(e isa TaskFailedException)
-                showerror(stderr, e, stacktrace(catch_backtrace()))
-            end
-        end
-    end
+    t = Pluto.@asynclog PlutoSliderServer.run_directory(
+        test_dir;
+        Export_enabled=false,
+        Export_output_dir=test_dir,
+        SliderServer_port=port,
+        SliderServer_watch_dir=true,
+        on_ready,
+    )
 
 
     while still_booting[]
@@ -90,7 +82,7 @@ end
     index_json() =
         JSON.parse(String(HTTP.get("http://localhost:$(port)/pluto_export.json").body))
 
-    json_nbs() = index_json()["notebooks"] |> keys |> collect
+    json_nbs() = @show(index_json()["notebooks"]) |> keys |> collect
 
     @test json_nbs() == ["basic2.jl"]
 
