@@ -22,19 +22,13 @@ using UUIDs
     end
 
     t = Pluto.@asynclog begin
-        try
-            PlutoSliderServer.run_directory(
-                test_dir;
-                Export_enabled=false,
-                SliderServer_port=port,
-                notebook_paths,
-                on_ready,
-            )
-        catch e
-            if !(e isa TaskFailedException)
-                showerror(stderr, e, stacktrace(catch_backtrace()))
-            end
-        end
+        PlutoSliderServer.run_directory(
+            test_dir;
+            Export_enabled=false,
+            SliderServer_port=port,
+            notebook_paths,
+            on_ready,
+        )
     end
 
 

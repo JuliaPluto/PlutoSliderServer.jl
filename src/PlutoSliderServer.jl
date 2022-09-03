@@ -391,8 +391,8 @@ function run_directory(
     try
         http_server === nothing || wait(http_server)
     catch e
-        @ignorefailure serversocket === nothing || close(serversocket)
         @ignorefailure http_server === nothing || close(http_server)
+        @ignorefailure serversocket === nothing || close(serversocket)
         @ignorefailure schedule(watch_dir_task, e; error=true)
         e isa InterruptException || rethrow(e)
     end

@@ -21,7 +21,7 @@ include("huh.jl")
 #     # include("./plutohash.jl")
 #     # include("./configuration.jl")
 #     # include("./static export.jl")
-#     # include("./staterequest.jl")
+include("./staterequest.jl")
 #     # include("./filewatching.jl")
 #     # include("./connections.jl")
 # end
