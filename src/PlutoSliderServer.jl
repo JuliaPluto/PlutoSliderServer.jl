@@ -48,7 +48,9 @@ function load_cool_logger()
         logger_loaded[] = true
         if ((global_logger() isa ConsoleLogger) && !is_inside_pluto())
             if get(ENV, "GITHUB_ACTIONS", "false") == "true"
-                global_logger(GitHubActionsLogger())
+                # TODO: disabled because of https://github.com/JuliaWeb/HTTP.jl/issues/921
+
+                # global_logger(GitHubActionsLogger())
             else
                 global_logger(try
                     TerminalLogger(; margin=1)
@@ -180,7 +182,7 @@ function run_directory(
 
     @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet!"
 
-    # load_cool_logger()
+    load_cool_logger()
 
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
@@ -273,9 +275,12 @@ function run_directory(
         @info "# Starting server..." address
 
         # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
-        http_server = HTTP.serve!(hostIP, UInt16(port), server=serversocket) do req
-            return HTTP.Response(200)
-        end
+        http_server = HTTP.serve!(
+            router |> ReferrerMiddleware,
+            hostIP,
+            UInt16(port),
+            server=serversocket,
+        )
 
         @info "# Server started"
     else
