@@ -1,9 +1,9 @@
+
+
+import PlutoSliderServer
+ENV["JULIA_DEBUG"] = PlutoSliderServer
+
 include("huh.jl")
-
-
-# import PlutoSliderServer
-# ENV["JULIA_DEBUG"] = PlutoSliderServer
-
 # # To run a test server:
 # # - Change the line below to `true`.
 # just_run_test_server = false
