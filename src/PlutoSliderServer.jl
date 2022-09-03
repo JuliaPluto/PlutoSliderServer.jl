@@ -15,7 +15,7 @@ using FromFile
 @from "./ConfigurationDocs.jl" import @extract_docs,
     get_kwdocs, list_options_md, list_options_toml
 @from "./ReloadFolder.jl" import update_sessions!, select
-@from "./HTTPRouter.jl" import make_router
+@from "./HTTPRouter.jl" import make_router, ReferrerMiddleware
 @from "./gitpull.jl" import fetch_pull
 
 @from "./PlutoHash.jl" import plutohash, base64urlencode, base64urldecode
@@ -272,38 +272,17 @@ function run_directory(
 
         @info "# Starting server..." address
 
-        # This is boilerplate HTTP code, don't read it
         # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
-        http_server_task = HTTP.serve!(
+        http_server = HTTP.serve!(
+            router |> ReferrerMiddleware,
             hostIP,
             UInt16(port),
-            stream=true,
             server=serversocket,
-        ) do http::HTTP.Stream
-            request::HTTP.Request = http.message
-            request.body = read(http)
-            HTTP.closeread(http)
-
-            response_body = router(request)
-
-            request.response::HTTP.Response = response_body
-            request.response.request = request
-            try
-                HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
-                HTTP.startwrite(http)
-                write(http, request.response.body)
-            catch e
-                if isa(e, Base.IOError) || isa(e, ArgumentError)
-                    # @warn "Attempted to write to a closed stream at $(request.target)"
-                else
-                    rethrow(e)
-                end
-            end
-        end
+        )
 
         @info "# Server started"
     else
-        http_server_task = @async 1 + 1
+        http_server = nothing
         serversocket = nothing
     end
 
@@ -413,10 +392,10 @@ function run_directory(
     on_ready((; serversocket, server_session, notebook_sessions))
 
     try
-        wait(http_server_task)
+        http_server === nothing || wait(http_server)
     catch e
-        @ignorefailure close(serversocket)
-        @ignorefailure close(http_server_task)
+        @ignorefailure serversocket === nothing || close(serversocket)
+        @ignorefailure http_server === nothing || close(http_server)
         @ignorefailure schedule(watch_dir_task, e; error=true)
         e isa InterruptException || rethrow(e)
     end

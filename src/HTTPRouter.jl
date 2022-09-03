@@ -217,7 +217,7 @@ function make_router(
             end |>
             with_cors! |>
             with_not_cacheable!
-        end
+        end,
     )
 
 
@@ -230,7 +230,7 @@ function make_router(
             with_json! |>
             with_cors! |>
             with_not_cacheable!
-        end
+        end,
     )
 
     # !!!! IDEAAAA also have a get endpoint with the same thing but the bond data is base64 encoded in the URL
@@ -296,4 +296,12 @@ end
 function with_not_cacheable!(response::HTTP.Response)
     push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
     response
+end
+
+function ReferrerMiddleware(handler)
+    return function (req::HTTP.Request)
+        response = handler(req)
+        push!(response.headers, "Referrer-Policy" => "origin-when-cross-origin")
+        return response
+    end
 end
