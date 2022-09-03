@@ -226,7 +226,10 @@ function make_router(
         "GET",
         "/pluto_export.json",
         r -> let
-            HTTP.Response(200, generate_index_json(notebook_sessions; settings, start_dir)) |>
+            HTTP.Response(
+                200,
+                @show(generate_index_json(notebook_sessions; settings, start_dir))
+            ) |>
             with_json! |>
             with_cors! |>
             with_not_cacheable!
@@ -294,7 +297,7 @@ function with_cacheable!(response::HTTP.Response)
 end
 
 function with_not_cacheable!(response::HTTP.Response)
-    push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
+    push!(response.headers, "Cache-Control" => "no-store, no-cache")
     response
 end
 
