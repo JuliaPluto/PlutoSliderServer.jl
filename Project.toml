@@ -26,7 +26,7 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 [compat]
 AbstractPlutoDingetjes = "1.1"
 BetterFileWatching = "^0.1.2"
-Configurations = "0.16"
+Configurations = "0.16, 0.17"
 FromFile = "0.1"
 Git = "1"
 GitHubActions = "0.1"
