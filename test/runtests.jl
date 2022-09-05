@@ -18,7 +18,7 @@ else
     include("./plutohash.jl")
     include("./configuration.jl")
     include("./static export.jl")
-    include("./staterequest.jl")
-    include("./filewatching.jl")
-    include("./connections.jl")
+    include("./HTTP requests.jl")
+    include("./Folder watching.jl")
+    include("./Bond connections.jl")
 end

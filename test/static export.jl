@@ -4,10 +4,12 @@ using Test
 using Logging
 import JSON
 import Pluto: without_pluto_file_extension
+import Random
 
 original_dir1 = joinpath(@__DIR__, "dir1")
 make_test_dir() =
     let
+        Random.seed!(time_ns())
         new = tempname(cleanup=false)
         cp(original_dir1, new)
         new
@@ -15,7 +17,7 @@ make_test_dir() =
 
 cache_dir = tempname(cleanup=false)
 
-@testset "Basic github action" begin
+@testset "static - Basic github action" begin
     test_dir = make_test_dir()
 
     @show test_dir cache_dir
@@ -60,7 +62,7 @@ cache_dir = tempname(cleanup=false)
 end
 
 
-@testset "Separate state & notebook files" begin
+@testset "static - Separate state & notebook files" begin
     test_dir = make_test_dir()
     @show test_dir
     cd(test_dir)
@@ -112,7 +114,7 @@ end
     @test occursin("appelsap", read("a.html", String))
 end
 
-@testset "Single notebook" begin
+@testset "static - Single notebook" begin
     test_dir = make_test_dir()
 
     # @show test_dir cache_dir
@@ -136,7 +138,7 @@ end
 end
 
 
-@testset "Index HTML and JSON" begin
+@testset "static - Index HTML and JSON" begin
     test_dir = make_test_dir()
 
     @show test_dir cache_dir

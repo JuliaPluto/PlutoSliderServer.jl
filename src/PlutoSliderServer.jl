@@ -15,7 +15,7 @@ using FromFile
 @from "./ConfigurationDocs.jl" import @extract_docs,
     get_kwdocs, list_options_md, list_options_toml
 @from "./ReloadFolder.jl" import update_sessions!, select
-@from "./HTTPRouter.jl" import make_router
+@from "./HTTPRouter.jl" import make_router, ReferrerMiddleware
 @from "./gitpull.jl" import fetch_pull
 
 @from "./PlutoHash.jl" import plutohash, base64urlencode, base64urldecode
@@ -48,7 +48,9 @@ function load_cool_logger()
         logger_loaded[] = true
         if ((global_logger() isa ConsoleLogger) && !is_inside_pluto())
             if get(ENV, "GITHUB_ACTIONS", "false") == "true"
-                global_logger(GitHubActionsLogger())
+                # TODO: disabled because of https://github.com/JuliaWeb/HTTP.jl/issues/921
+
+                # global_logger(GitHubActionsLogger())
             else
                 global_logger(try
                     TerminalLogger(; margin=1)
@@ -272,39 +274,17 @@ function run_directory(
 
         @info "# Starting server..." address
 
-        # This is boilerplate HTTP code, don't read it
         # We start the HTTP server before launching notebooks so that the server responds to heroku/digitalocean garbage fast enough
-        http_server_task = @async HTTP.serve(
+        http_server = HTTP.serve!(
+            router |> ReferrerMiddleware,
             hostIP,
             UInt16(port),
-            stream=true,
             server=serversocket,
-        ) do http::HTTP.Stream
-            request::HTTP.Request = http.message
-            request.body = read(http)
-            HTTP.closeread(http)
+        )
 
-            params = HTTP.queryparams(HTTP.URI(request.target))
-
-            response_body = Base.invokelatest(HTTP.handle, router, request)
-
-            request.response::HTTP.Response = response_body
-            request.response.request = request
-            try
-                HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
-                HTTP.startwrite(http)
-                write(http, request.response.body)
-                HTTP.closewrite(http)
-            catch e
-                if isa(e, Base.IOError) || isa(e, ArgumentError)
-                    # @warn "Attempted to write to a closed stream at $(request.target)"
-                else
-                    rethrow(e)
-                end
-            end
-        end
+        @info "# Server started"
     else
-        http_server_task = @async 1 + 1
+        http_server = nothing
         serversocket = nothing
     end
 
@@ -406,20 +386,31 @@ function run_directory(
         watch_folder(debounced, start_dir)
     end
 
-    if should_watch
-        # todo: skip first watch_folder so that we dont need this sleepo
-        sleep(2)
-    end
 
 
-    on_ready((; serversocket, server_session, notebook_sessions))
+    if http_server === nothing
+        on_ready((; serversocket, http_server, server_session, notebook_sessions))
+    else
+        try
+            if should_watch
+                # todo: skip first watch_folder so that we dont need this sleepo (EDIT: i forgot why this sleep is here.. oops!)
+                sleep(2)
+            end
+            on_ready((; serversocket, http_server, server_session, notebook_sessions))
 
-    try
-        wait(http_server_task)
-    catch e
-        @ignorefailure close(serversocket)
-        @ignorefailure schedule(watch_dir_task, e; error=true)
-        e isa InterruptException || rethrow(e)
+            # blocking call, waiting for a Ctrl-C interrupt
+            wait(http_server)
+        catch e
+            @info "# Closing web server..."
+            @ignorefailure close(http_server)
+            if should_watch
+                @info "Stopping directory watching..."
+                istaskdone(watch_dir_task) ||
+                    @ignorefailure schedule(watch_dir_task, e; error=true)
+            end
+            e isa InterruptException || rethrow(e)
+            @info "Server exited ✅"
+        end
     end
 end
 

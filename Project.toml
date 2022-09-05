@@ -30,14 +30,15 @@ Configurations = "0.16, 0.17"
 FromFile = "0.1"
 Git = "1"
 GitHubActions = "0.1"
-HTTP = "^0.9.3"
+HTTP = "^1.0.2"
 JSON = "0.21"
-Pluto = "0.19.5"
+Pluto = "0.19.10"
 TerminalLoggers = "0.1"
 julia = "1.6"
 
 [extras]
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "Random"]

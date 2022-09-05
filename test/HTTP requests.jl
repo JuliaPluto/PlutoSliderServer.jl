@@ -3,9 +3,10 @@ import PlutoSliderServer.Pluto
 import PlutoSliderServer.HTTP
 
 using Test
-using UUIDs
+using UUIDs, Random
 
 @testset "HTTP requests" begin
+    Random.seed!(time_ns())
     test_dir = tempname(cleanup=false)
     cp(@__DIR__, test_dir)
 
@@ -22,19 +23,13 @@ using UUIDs
     end
 
     t = Pluto.@asynclog begin
-        try
-            PlutoSliderServer.run_directory(
-                test_dir;
-                Export_enabled=false,
-                SliderServer_port=port,
-                notebook_paths,
-                on_ready,
-            )
-        catch e
-            if !(e isa TaskFailedException)
-                showerror(stderr, e, stacktrace(catch_backtrace()))
-            end
-        end
+        PlutoSliderServer.run_directory(
+            test_dir;
+            Export_enabled=false,
+            SliderServer_port=port,
+            notebook_paths,
+            on_ready,
+        )
     end
 
 
@@ -110,7 +105,7 @@ using UUIDs
         end
     end
 
-    close(ready_result[].serversocket)
+    close(ready_result[].http_server)
 
     try
         wait(t)
