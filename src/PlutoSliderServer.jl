@@ -386,20 +386,31 @@ function run_directory(
         watch_folder(debounced, start_dir)
     end
 
-    if should_watch
-        # todo: skip first watch_folder so that we dont need this sleepo
-        sleep(2)
-    end
 
-    on_ready((; serversocket, server_session, notebook_sessions))
 
-    try
-        http_server === nothing || wait(http_server)
-    catch e
-        @ignorefailure http_server === nothing || close(http_server)
-        @ignorefailure serversocket === nothing || close(serversocket)
-        @ignorefailure schedule(watch_dir_task, e; error=true)
-        e isa InterruptException || rethrow(e)
+    if http_server === nothing
+        on_ready((; serversocket, server_session, notebook_sessions))
+    else
+        try
+            if should_watch
+                # todo: skip first watch_folder so that we dont need this sleepo (EDIT: i forgot why this sleep is here.. oops!)
+                sleep(2)
+            end
+            on_ready((; serversocket, server_session, notebook_sessions))
+
+            # blocking call, waiting for a Ctrl-C interrupt
+            sleep(typemax(UInt32))
+        catch e
+            @info "# Closing web server..."
+            @ignorefailure close(http_server)
+            if should_watch
+                @info "Stopping directory watching..."
+                istaskdone(watch_dir_task) ||
+                    @ignorefailure schedule(watch_dir_task, e; error=true)
+            end
+            e isa InterruptException || rethrow(e)
+            @info "Server exited ✅"
+        end
     end
 end
 
