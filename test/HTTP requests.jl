@@ -3,7 +3,7 @@ import PlutoSliderServer.Pluto
 import PlutoSliderServer.HTTP
 
 using Test
-using UUIDs
+using UUIDs, Random
 
 @testset "HTTP requests" begin
     Random.seed!(time_ns())
@@ -105,7 +105,7 @@ using UUIDs
         end
     end
 
-    close(ready_result[].serversocket)
+    close(ready_result[].http_server)
 
     try
         wait(t)

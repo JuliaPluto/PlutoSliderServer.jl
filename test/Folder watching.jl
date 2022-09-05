@@ -240,7 +240,7 @@ end
     end
 
     sleep(2)
-    close(ready_result[].serversocket)
+    close(ready_result[].http_server)
 
     try
         wait(t)

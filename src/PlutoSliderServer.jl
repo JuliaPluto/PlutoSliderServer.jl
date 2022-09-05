@@ -389,17 +389,17 @@ function run_directory(
 
 
     if http_server === nothing
-        on_ready((; serversocket, server_session, notebook_sessions))
+        on_ready((; serversocket, http_server, server_session, notebook_sessions))
     else
         try
             if should_watch
                 # todo: skip first watch_folder so that we dont need this sleepo (EDIT: i forgot why this sleep is here.. oops!)
                 sleep(2)
             end
-            on_ready((; serversocket, server_session, notebook_sessions))
+            on_ready((; serversocket, http_server, server_session, notebook_sessions))
 
             # blocking call, waiting for a Ctrl-C interrupt
-            sleep(typemax(UInt32))
+            wait(http_server)
         catch e
             @info "# Closing web server..."
             @ignorefailure close(http_server)
