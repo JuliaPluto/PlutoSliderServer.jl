@@ -4,7 +4,8 @@ using FromFile
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./Export.jl" import try_get_exact_pluto_version, try_fromcache, try_tocache
-@from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook, RunResult
+@from "./Types.jl" import NotebookSession,
+    RunningNotebook, FinishedNotebook, RunResult, RunMetrics
 @from "./Configuration.jl" import PlutoDeploySettings
 @from "./FileHelpers.jl" import find_notebook_files_recursive
 @from "./PlutoHash.jl" import plutohash
@@ -75,9 +76,18 @@ function process(
     else
         try
             # open and run the notebook
-            notebook = Pluto.SessionActions.open(server_session, abs_path; run_async=false)
+            start_time = time()
+            notebook =
+                Pluto.SessionActions.open(server_session, abs_path; run_async=false)
+            runtime = time() - start_time
+
             # get the state object
             original_state = Pluto.notebook_to_js(notebook)
+            run_metrics = RunMetrics(;
+                runtime,
+                runtime_cells_sum=sum(cell.runtime * 1.0e9 for cell in notebook.cells),
+            )
+
             # shut down the notebook
             if !keep_running
                 @info "Shutting down notebook process" s.path
@@ -88,9 +98,15 @@ function process(
                 bond_connections = bound_variable_connections_graph(notebook)
                 @info "Bond connections" s.path showall(collect(bond_connections))
 
-                RunningNotebook(; path, notebook, original_state, bond_connections)
+                RunningNotebook(;
+                    path,
+                    notebook,
+                    original_state,
+                    run_metrics,
+                    bond_connections,
+                )
             else
-                FinishedNotebook(; path, original_state)
+                FinishedNotebook(; path, original_state, run_metrics)
             end
         catch e
             (e isa InterruptException) || rethrow(e)
