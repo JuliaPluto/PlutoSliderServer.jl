@@ -177,17 +177,6 @@ should_launch(::NotebookSession) = false
 
 will_process(s) = should_update(s) || should_launch(s) || should_shutdown(s)
 
-
-"""
-Core Action: Generate static export for a Pluto Notebook
-
-# Arguments:
-1. slider_server_url: URL of the slider server. This will be the URL of your server, if you deploy
-2. offer_binder: Flag to enable the Binder button
-3. binder_url: URL of the binder link that will be invoked. Use a compatible pluto-enabled binder 
-4. baked_state: Whether to export pluto state within the html or in a separate file.
-5. pluto_cdn_root: URL where pluto will go to find the static frontend assets 
-"""
 function generate_static_export(
     path,
     original_state,
@@ -254,6 +243,16 @@ function generate_static_export(
         "\"data:;base64,$(statefile64)\""
     end
 
+    frontmatter = convert(
+        Pluto.FrontMatter,
+        get(
+            () -> Pluto.FrontMatter(),
+            get(() -> Dict{String,Any}(), original_state, "metadata"),
+            "frontmatter",
+        ),
+    )
+    header_html = Pluto.frontmatter_html(frontmatter)
+
     html_contents = generate_html(;
         pluto_cdn_root=settings.Export.pluto_cdn_root,
         version=pluto_version,
@@ -262,6 +261,7 @@ function generate_static_export(
         slider_server_url_js,
         binder_url_js,
         disable_ui=settings.Export.disable_ui,
+        header_html,
     )
     write(export_html_path, html_contents)
 

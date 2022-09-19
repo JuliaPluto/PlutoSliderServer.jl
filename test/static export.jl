@@ -108,10 +108,27 @@ end
         "subdir/c.plutostate",
     ])
 
-    @test occursin("a.jl", read("a.html", String))
-    @test occursin("a.plutostate", read("a.html", String))
-    @test occursin("pannenkoek", read("a.html", String))
-    @test occursin("appelsap", read("a.html", String))
+
+    htmlstr_a = replace(read("a.html", String), '\'' => '\"')
+    htmlstr_b = read("b.html", String)
+
+    # test that export settings were used in the HTML file
+    @test occursin("a.jl", htmlstr_a)
+    @test occursin("a.plutostate", htmlstr_a)
+    @test occursin("pannenkoek", htmlstr_a)
+    @test occursin("appelsap", htmlstr_a)
+
+    # test that frontmatter is used in the HTML
+    @test occursin("<title>My&lt;Title</title>", htmlstr_a)
+    @test occursin("""<meta name="description" content="ccc">""", htmlstr_a)
+    @test occursin("""<meta property="og:description" content="ccc">""", htmlstr_a)
+    @test occursin("""<meta property="og:article:tag" content="aaa">""", htmlstr_a)
+    @test occursin("""<meta property="og:article:tag" content="bbb">""", htmlstr_a)
+    @test occursin("""<meta property="og:type" content="article">""", htmlstr_a)
+
+
+    @test !occursin("<title>", htmlstr_b)
+
 end
 
 @testset "static - Single notebook" begin
@@ -177,6 +194,6 @@ end
         without_pluto_file_extension
     end
 
-
+    # TODO: use frontmatter.title here instead of the filename? or make the switch to PlutoPages?
 end
 
