@@ -183,9 +183,9 @@ make_test_dir() =
         "b.html"
         "b.pluto.jl"
         "b.plutostate"
-        # "subdir/c.html"
-        # "subdir/c.plutojl"
-        # "subdir/c.plutostate"
+        "subdir/c.html"
+        "subdir/c.plutojl"
+        "subdir/c.plutostate"
     ]
 
     @testset "Static asset - $(name)" for (i, name) in enumerate(asset_urls)
