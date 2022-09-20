@@ -257,7 +257,7 @@ function make_router(
             filepath = joinpath(static_dir, relpath(HTTP.unescapeuri(uri.path), "/"))
             Pluto.asset_response(filepath)
         end
-        HTTP.register!(router, "GET", "/*", serve_asset)
+        HTTP.register!(router, "GET", "/**", serve_asset)
     end
 
     router
