@@ -5,7 +5,7 @@ import PlutoSliderServer.HTTP
 using Test
 using UUIDs, Random
 
-@testset "HTTP requests" begin
+@testset "HTTP requests: dynamic" begin
     Random.seed!(time_ns())
     test_dir = tempname(cleanup=false)
     cp(@__DIR__, test_dir)
@@ -116,6 +116,104 @@ using UUIDs, Random
     end
     # schedule(t, InterruptException(), error=true)
     @info "DONEZO"
+end
 
-    @test true
+
+
+
+
+original_dir1 = joinpath(@__DIR__, "dir1")
+make_test_dir() =
+    let
+        Random.seed!(time_ns())
+        new = tempname(cleanup=false)
+        cp(original_dir1, new)
+        new
+    end
+
+@testset "HTTP requests: static" begin
+    test_dir = make_test_dir()
+
+    port = rand(12345:65000)
+
+
+    still_booting = Ref(true)
+    ready_result = Ref{Any}(nothing)
+    function on_ready(result)
+        ready_result[] = result
+        still_booting[] = false
+    end
+
+    t = Pluto.@asynclog begin
+        PlutoSliderServer.run_directory(
+            test_dir;
+            Export_enabled=true,
+            Export_baked_notebookfile=false,
+            Export_baked_state=false,
+            SliderServer_port=port,
+            on_ready,
+        )
+    end
+
+
+    while still_booting[]
+        sleep(0.1)
+    end
+
+
+    notebook_sessions = ready_result[].notebook_sessions
+
+
+
+    s = notebook_sessions[1]
+    response =
+        HTTP.request("GET", "http://localhost:$(port)/bondconnections/$(s.current_hash)/")
+    data = Pluto.unpack(response.body)
+
+    @test data isa Dict
+    @test isempty(data) # these notebooks don't have any bonds
+
+    asset_urls = [
+        ""
+        "pluto_export.json"
+        # 
+        "a.html"
+        "a.jl"
+        "a.plutostate"
+        "b.html"
+        "b.pluto.jl"
+        "b.plutostate"
+        # "subdir/c.html"
+        # "subdir/c.plutojl"
+        # "subdir/c.plutostate"
+    ]
+
+    @testset "Static asset - $(name)" for (i, name) in enumerate(asset_urls)
+
+        response = HTTP.request("GET", "http://localhost:$(port)/$(name)")
+
+        @show response.headers
+        @test response.status == 200
+        if endswith(name, "html")
+            @test HTTP.hasheader(response, "Content-Type", "text/html; charset=utf-8")
+        end
+        @test HTTP.hasheader(response, "Access-Control-Allow-Origin", "*")
+        @test HTTP.hasheader(response, "Referrer-Policy", "origin-when-cross-origin")
+        if i > 2
+            @test HTTP.hasheader(response, "Content-Length")
+        end
+    end
+
+    close(ready_result[].http_server)
+
+    try
+        wait(t)
+    catch e
+        if !(e isa TaskFailedException)
+            rethrow(e)
+        end
+    end
+    # schedule(t, InterruptException(), error=true)
+    @info "DONEZO"
+
 end

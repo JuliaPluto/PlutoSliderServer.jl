@@ -221,7 +221,7 @@ function run_directory(
     @info "Settings" Text(settings)
 
     settings.SliderServer.enabled &&
-        @warn "Make sure that you run this slider server inside a containerized environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
+        @warn "Make sure that you run this slider server inside an isolated environment -- it is not intended to be secure. Assume that users can execute arbitrary code inside your notebooks."
 
     settings.Pluto.server.disable_writing_notebook_files = true
     settings.Pluto.evaluation.lazy_workspace_creation = true

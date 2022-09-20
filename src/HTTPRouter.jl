@@ -268,17 +268,17 @@ end
 # HEADERS
 
 function with_msgpack!(response::HTTP.Response)
-    push!(response.headers, "Content-Type" => "application/msgpack")
+    HTTP.setheader(response, "Content-Type" => "application/msgpack")
     response
 end
 
 function with_json!(response::HTTP.Response)
-    push!(response.headers, "Content-Type" => "application/json; charset=utf-8")
+    HTTP.setheader(response, "Content-Type" => "application/json; charset=utf-8")
     response
 end
 
 function with_cors!(response::HTTP.Response)
-    push!(response.headers, "Access-Control-Allow-Origin" => "*")
+    HTTP.setheader(response, "Access-Control-Allow-Origin" => "*")
     response
 end
 
@@ -289,19 +289,19 @@ function with_cacheable!(response::HTTP.Response)
     day = 24hour
     year = 365day
 
-    push!(response.headers, "Cache-Control" => "public, max-age=$(10year), immutable")
+    HTTP.setheader(response, "Cache-Control" => "public, max-age=$(10year), immutable")
     response
 end
 
 function with_not_cacheable!(response::HTTP.Response)
-    push!(response.headers, "Cache-Control" => "no-store, no-cache")
+    HTTP.setheader(response, "Cache-Control" => "no-store, no-cache")
     response
 end
 
 function ReferrerMiddleware(handler)
     return function (req::HTTP.Request)
         response = handler(req)
-        push!(response.headers, "Referrer-Policy" => "origin-when-cross-origin")
+        HTTP.setheader(response, "Referrer-Policy" => "origin-when-cross-origin")
         return response
     end
 end
