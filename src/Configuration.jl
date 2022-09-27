@@ -31,7 +31,7 @@ end
     output_dir::Union{Nothing,String} = nothing
     "List of notebook files to skip. Provide paths relative to `start_dir`.  You can use the `*` wildcard and other [glob patterns](https://en.wikipedia.org/wiki/Glob_(programming))."
     exclude::Vector{String} = String[]
-    "List of notebook files that should always re-run, skipping the `cache_dir` system. Provide paths relative to `start_dir`."
+    "List of notebook files that should always re-run, skipping the `cache_dir` system. Provide paths relative to `start_dir`.  You can use the `*` wildcard and other [glob patterns](https://en.wikipedia.org/wiki/Glob_(programming))."
     ignore_cache::Vector = String[]
     "base64-encode the state object and write it inside the .html file. If `false`, a separate `.plutostate` file is generated. A separate statefile allows us to show a loading bar in pluto while the statefile is loading, but it can complicate setup in some environments."
     baked_state::Bool = true
@@ -82,8 +82,8 @@ merge_recursive(a::AbstractDict, b::AbstractDict) = mergewith(merge_recursive, a
 merge_recursive(a, b) = b
 
 
-is_glob_excluded(path::AbstractString, pattern::AbstractString) =
+is_glob_match(path::AbstractString, pattern::AbstractString) =
     occursin(Glob.FilenameMatch(pattern, ""), path)
-is_glob_excluded(path::AbstractString, patterns::AbstractVector{<:AbstractString}) =
-    any(p -> is_glob_excluded(path, p), patterns)
-is_glob_excluded(pattern) = path -> is_glob_excluded(path, pattern)
+is_glob_match(path::AbstractString, patterns::AbstractVector{<:AbstractString}) =
+    any(p -> is_glob_match(path, p), patterns)
+is_glob_match(pattern) = path -> is_glob_match(path, pattern)

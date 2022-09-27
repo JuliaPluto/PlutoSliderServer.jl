@@ -5,7 +5,7 @@ using FromFile
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./Export.jl" import try_get_exact_pluto_version, try_fromcache, try_tocache
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook, RunResult
-@from "./Configuration.jl" import PlutoDeploySettings
+@from "./Configuration.jl" import PlutoDeploySettings, is_glob_match
 @from "./FileHelpers.jl" import find_notebook_files_recursive
 @from "./PlutoHash.jl" import plutohash
 
@@ -64,7 +64,7 @@ function process(
     end
 
     keep_running = settings.SliderServer.enabled
-    skip_cache = keep_running || path ∈ settings.Export.ignore_cache
+    skip_cache = keep_running || is_glob_match(settings.Export.ignore_cache, path)
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
 

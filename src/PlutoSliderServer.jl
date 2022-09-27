@@ -11,7 +11,7 @@ using FromFile
 @from "./Types.jl" import NotebookSession
 @from "./Lock.jl" import withlock
 @from "./Configuration.jl" import PlutoDeploySettings,
-    ExportSettings, SliderServerSettings, get_configuration, is_glob_excluded
+    ExportSettings, SliderServerSettings, get_configuration, is_glob_match
 @from "./ConfigurationDocs.jl" import @extract_docs,
     get_kwdocs, list_options_md, list_options_toml
 @from "./ReloadFolder.jl" import update_sessions!, select
@@ -204,8 +204,8 @@ function run_directory(
             notebook_paths !== nothing ? notebook_paths :
             find_notebook_files_recursive(start_dir)
 
-        s_remaining = filter(!is_glob_excluded(settings.SliderServer.exclude), all_nbs)
-        e_remaining = filter(!is_glob_excluded(settings.Export.exclude), all_nbs)
+        s_remaining = filter(!is_glob_match(settings.SliderServer.exclude), all_nbs)
+        e_remaining = filter(!is_glob_match(settings.Export.exclude), all_nbs)
 
         if settings.Export.enabled
             if settings.SliderServer.enabled
