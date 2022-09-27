@@ -5,12 +5,13 @@ export SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configurat
 using TerminalLoggers: TerminalLogger
 using Logging: global_logger
 using FromFile
+import Glob
 @from "./ConfigurationDocs.jl" import @extract_docs, get_kwdocs, list_options_md
 
 
 @extract_docs @option struct SliderServerSettings
     enabled::Bool = true
-    "List of notebook files to skip. Provide paths relative to `start_dir`. *If `Export.enabled` is `true` (default), then only paths in `SliderServer_exclude ∩ Export_exclude` will be skipped, paths in `setdiff(SliderServer_exclude, Export_exclude)` will be shut down after exporting.*"
+    "List of notebook files to skip. Provide paths relative to `start_dir`. *If `Export.enabled` is `true` (default), then only paths in `SliderServer_exclude ∩ Export_exclude` will be skipped, paths in `setdiff(SliderServer_exclude, Export_exclude)` will be shut down after exporting. You can use the `*` wildcard and other [glob patterns](https://en.wikipedia.org/wiki/Glob_(programming))."
     exclude::Vector = String[]
     "Port to run the HTTP server on."
     port::Integer = 2345
@@ -28,7 +29,7 @@ end
     enabled::Bool = true
     "Folder to write generated HTML files to (will create directories to preserve the input folder structure). The behaviour of the default value depends on whether you are running the slider server, or just exporting. If running the slider server, we use a temporary directory; otherwise, we use `start_dir` (i.e. we generate each HTML file in the same folder as the notebook file)."
     output_dir::Union{Nothing,String} = nothing
-    "List of notebook files to skip. Provide paths relative to `start_dir`."
+    "List of notebook files to skip. Provide paths relative to `start_dir`.  You can use the `*` wildcard and other [glob patterns](https://en.wikipedia.org/wiki/Glob_(programming))."
     exclude::Vector{String} = String[]
     "List of notebook files that should always re-run, skipping the `cache_dir` system. Provide paths relative to `start_dir`."
     ignore_cache::Vector = String[]
@@ -79,3 +80,10 @@ end
 
 merge_recursive(a::AbstractDict, b::AbstractDict) = mergewith(merge_recursive, a, b)
 merge_recursive(a, b) = b
+
+
+is_glob_excluded(path::AbstractString, pattern::AbstractString) =
+    occursin(Glob.FilenameMatch(pattern, ""), path)
+is_glob_excluded(path::AbstractString, patterns::AbstractVector{<:AbstractString}) =
+    any(p -> is_glob_excluded(path, p), patterns)
+is_glob_excluded(pattern) = path -> is_glob_excluded(path, pattern)
