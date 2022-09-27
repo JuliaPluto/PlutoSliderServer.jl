@@ -64,7 +64,7 @@ function process(
     end
 
     keep_running = settings.SliderServer.enabled
-    skip_cache = keep_running || is_glob_match(settings.Export.ignore_cache, path)
+    skip_cache = keep_running || is_glob_match(path, settings.Export.ignore_cache)
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
 
