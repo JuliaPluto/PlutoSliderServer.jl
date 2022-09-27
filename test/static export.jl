@@ -74,6 +74,10 @@ end
     baked_state = false
     baked_notebookfile = false
     binder_url = "pannenkoek"
+    exclude = [
+        "subdir/*",
+        "sadfsadfdfsadsf",
+    ]
     """
 
     config_path = tempname()
@@ -104,8 +108,6 @@ end
         "b.plutostate",
         "notanotebook.jl",
         "subdir/c.plutojl",
-        "subdir/c.html",
-        "subdir/c.plutostate",
     ])
 
 
