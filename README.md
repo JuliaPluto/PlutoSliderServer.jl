@@ -224,8 +224,13 @@ julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; 
 `run_git_directory` will periodically call `git pull`, which requires the `start_dir` to be a repository in which you can `git pull` without password (which means it's either public, or you have the required keys in `~/.ssh/` and your git's provider security page!)
 
 >**Note**
->Julia by default uses `libgit2` for git operations, but that has at times proven problematic, especially in cloud environments like AWS's CodeCommit
->where re-authentication is required at regular intervals. It is thus advisable to set the `JULIA_PKG_USE_CLI_GIT` environment variable to `true`.
+>Julia by default uses `libgit2` for git operations, [which can be problematic](https://github.com/JuliaLang/Pkg.jl/issues/2679). It is also known to cause issues  in cloud environments like AWS's CodeCommit
+>where re-authentication is required at regular intervals. 
+> 
+> A simple workaround is to set the `JULIA_PKG_USE_CLI_GIT` environment variable to `true`, which will fallback to the system git (the one on the shell).
+> Make sure that this is installed! (`sudo apt-get install git` does the trick in Ubuntu).
+
+Also note that `git pull` may fail on the server if you force push the branch from your laptop, so handle history-rewriting commands, like `git push -f`, `git rebase` etc with care!
 
 ### 4. Set up a server to run PlutoSliderServer
 For this step, we'll assume a very specific but also common setup:
