@@ -2,7 +2,7 @@
 
 > _**not just sliders!**_
 
-Web server to run just the @bind parts of a [Pluto.jl](https://github.com/fonsp/Pluto.jl) notebook. 
+Web server to run just the @bind parts of a [Pluto.jl](https://github.com/fonsp/Pluto.jl) notebook.
 
 See it in action at [computationalthinking.mit.edu](https://computationalthinking.mit.edu/)! Sliders, buttons and camera inputs work _instantly_, without having to wait for a Julia process. Plutoplutopluto
 
@@ -36,7 +36,7 @@ PlutoSliderServer.export_notebook("path/to/notebook.jl")
 ```
 
 ## 2. Run a slider server
-The main functionality of PlutoSliderServer is to run a ***slider server***. This is a web server that **runs a notebook using Pluto**, and allows visitors to **change the values of `@bind`-ed variables**. 
+The main functionality of PlutoSliderServer is to run a ***slider server***. This is a web server that **runs a notebook using Pluto**, and allows visitors to **change the values of `@bind`-ed variables**.
 
 The important **differences** between running a *slider server* and running Pluto with public access are:
 - A *slider server* can only set `@bind` values, it is not possible to change the notebook's code.
@@ -52,7 +52,7 @@ PlutoSliderServer.run_notebook("path/to/notebook.jl")
 ```
 
 ## 3. _(WIP): Precomputed slider server_
-Many input elements only have a finite number of possible values, for example, `PlutoUI.Slider(5:15)` can only have 11 values. For finite inputs like the slider, PlutoSliderServer can run the slider server **in advance**, and precompute the results to all possible inputs (in other words: precompute the response to all possible requests). 
+Many input elements only have a finite number of possible values, for example, `PlutoUI.Slider(5:15)` can only have 11 values. For finite inputs like the slider, PlutoSliderServer can run the slider server **in advance**, and precompute the results to all possible inputs (in other words: precompute the response to all possible requests).
 
 This will generate a directory of subdirectories and files, each corresponding to a possible request. You can host this directory along with the generated HTML file (e.g. on GitHub pages), and Pluto will be able to use these pregenerated files as if they are a slider server! **You can get the interactivity of a slider server, without running a Julia server!**
 
@@ -71,7 +71,7 @@ See `PlutoSliderServer.export_directory` and `PlutoSliderServer.run_directory`.
 
 After scanning a directory for notebook files, you can ask Pluto to continue watching the directory for changes. When notebook files are added/removed, they are also added/removed from the server. When a notebook file changes, the notebook session is restarted.
 
-This works especially well when this directory is a git-tracked directory. When running in a git directory, PlutoSliderServer can keep `git pull`ing the directory, updating from the repository automatically. 
+This works especially well when this directory is a git-tracked directory. When running in a git directory, PlutoSliderServer can keep `git pull`ing the directory, updating from the repository automatically.
 
 See the `SliderServer_watch_dir` option and `PlutoSliderServer.run_git_directory`.
 
@@ -157,9 +157,9 @@ There are two ways to change configurations: using keywords arguments, and using
 Our functions can take keyword arguments, for example:
 
 ```julia
-run_directory("my_notebooks"; 
-    SliderServer_port=8080, 
-    SliderServer_host="0.0.0.0", 
+run_directory("my_notebooks";
+    SliderServer_port=8080,
+    SliderServer_host="0.0.0.0",
     Export_baked_notebookfile=false,
 )
 ```
@@ -215,13 +215,22 @@ touch pluto-slider-server-environment/PlutoDeployment.toml
 # edit the file...
 ```
 
-### 3. Run it 
+### 3. Run it
 Let's try running it locally before setting up our server:
 ```shell
 julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 ```
 
-`run_git_directory` will periodically call `git pull`, which requires the `start_dir` to be a repository in which you can `git pull` without password (which means it's either public, or you have the required keys in `~/.ssh/` and your git's provider security page!) 
+`run_git_directory` will periodically call `git pull`, which requires the `start_dir` to be a repository in which you can `git pull` without password (which means it's either public, or you have the required keys in `~/.ssh/` and your git's provider security page!)
+
+>**Note**
+>Julia by default uses `libgit2` for git operations, [which can be problematic](https://github.com/JuliaLang/Pkg.jl/issues/2679). It is also known to cause issues  in cloud environments like AWS's CodeCommit
+>where re-authentication is required at regular intervals. 
+> 
+> A simple workaround is to set the `JULIA_PKG_USE_CLI_GIT` environment variable to `true`, which will fallback to the system git (the one on the shell).
+> Make sure that this is installed! (`sudo apt-get install git` does the trick in Ubuntu).
+
+Also note that `git pull` may fail on the server if you force push the branch from your laptop, so handle history-rewriting commands, like `git push -f`, `git rebase` etc with care!
 
 ### 4. Set up a server to run PlutoSliderServer
 For this step, we'll assume a very specific but also common setup:
@@ -238,12 +247,12 @@ sudo apt-get upgrade
 
 You should run `systemd --version` to verify that we have version 230 or higher.
 
-#### 1. Install Julia (run as root) 
+#### 1. Install Julia (run as root)
 ```shell
-# You can edit me: The Julia version (1.7.3) split into three parts:
+# You can edit me: The Julia version (1.8.0) split into three parts:
 JULIA_MAJOR_VERSION=1
-JULIA_MINOR_VERSION=7
-JULIA_PATCH_VERSION=3
+JULIA_MINOR_VERSION=8
+JULIA_PATCH_VERSION=0
 
 JULIA_VERSION="$(echo $JULIA_MAJOR_VERSION).$(echo $JULIA_MINOR_VERSION).$(echo $JULIA_PATCH_VERSION)"
 
@@ -287,6 +296,10 @@ sudo mv $TEMPFILE /etc/systemd/system/pluto-server.service
 TEMPFILE=$(mktemp)
 cat > $TEMPFILE << __EOF__
 #!/bin/bash
+
+# this env var allows us to side step various issues with the Julia-bundled git
+export JULIA_PKG_USE_CLI_GIT=true
+
 cd /home/<your-username>/<your-repo>  # Make sure to change to the absolute path to your repository. Don't use ~.
 julia --project="pluto-slider-server-environment" -e "import Pkg; Pkg.instantiate(); import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 __EOF__
@@ -334,25 +347,24 @@ The most similar project is [PlutoStaticHTML.jl](https://github.com/rikhuijzer/P
 This means that the output of PlutoSliderServer.jl will look exactly the same as what you see while writing the notebook. Output from PlutoStaticHTML.jl is more minimal, which means that it loads faster, it can be styled with CSS, and it can more easily be embedded within other web pages (like Documenter.jl sections).
 
 Other Julia packages which export to HTML/PDF, but not necessarily with Pluto notebook files as input, include:
-- Documenter.jl 
+- Documenter.jl
 - Franklin.jl
 - Books.jl
 - Weave.jl
 
 ## Slider server
-PlutoSliderServer is the only package that lets you run a *slider server* for Pluto notebooks (an interactive site to interact with a Pluto notebook through `@bind`). 
+PlutoSliderServer is the only package that lets you run a *slider server* for Pluto notebooks (an interactive site to interact with a Pluto notebook through `@bind`).
 
 There are alternatives for running a Julia-backed interactive site if your code is *not* a Pluto notebook, including [JSServe.jl](https://github.com/SimonDanisch/JSServe.jl), [Stipple.jl](https://github.com/GenieFramework/Stipple.jl) and [Dash.jl](https://github.com/plotly/Dash.jl), each with their own philosophy and ideal use case. *(Feel free to suggest others!)*
 
 ## Precomputer slider server
 [PlutoStaticHTML.jl](https://github.com/rikhuijzer/PlutoStaticHTML.jl) should also have this feature in the future, after it is added to PlutoSliderServer (it is still [being worked on](https://github.com/JuliaPluto/PlutoSliderServer.jl/pull/29)).
 
-If you code is *not* a Pluto notebook, then [JSServe.jl](https://github.com/SimonDanisch/JSServe.jl) also has precomputing abilities, with a different approach and philosophy. 
+If you code is *not* a Pluto notebook, then [JSServe.jl](https://github.com/SimonDanisch/JSServe.jl) also has precomputing abilities, with a different approach and philosophy.
 
 # Authentication and security
-Since this server is a new and experimental concept, we highly recommend that you run it inside an isolated environment. While visitors are not able to change the notebook code, it is possible to manipulate the API to set bound values to arbitrary objects. For example, when your notebook uses `@bind x Slider(1:10)`, the API could be used to set the `x` to `9000`, `[10,20,30]` or `"👻"`. 
+Since this server is a new and experimental concept, we highly recommend that you run it inside an isolated environment. While visitors are not able to change the notebook code, it is possible to manipulate the API to set bound values to arbitrary objects. For example, when your notebook uses `@bind x Slider(1:10)`, the API could be used to set the `x` to `9000`, `[10,20,30]` or `"👻"`.
 
 In the future, we are planning to implement a hook that allows widgets (such as `Slider`) to validate a value before it is run: [`AbstractPlutoDingetjes.Bonds.validate_value`](https://docs.juliahub.com/AbstractPlutoDingetjes/UHbnu/1.1.1/#AbstractPlutoDingetjes.Bonds.validate_value-Tuple{Any,%20Any}).
 
 Of course, we are not security experts, and this software does not come with any kind of security guarantee. To be completely safe, assume that someone who can visit the server can execute arbitrary code in the notebook, despite our measures to prevent it. Run PlutoSliderServer in a containerized environment.
-
