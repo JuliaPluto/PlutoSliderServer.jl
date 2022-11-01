@@ -327,8 +327,11 @@ Tip: If you need to change the service file or the startup script later, re-run 
 # To see quick status (running/failed and memory):
 systemctl -l status pluto-server
 
-# To browse the logs:
-sudo journalctl -u pluto-server
+# To browse past logs:
+sudo journalctl --pager-end -u pluto-server
+
+# To see logs coming in live:
+sudo journalctl --follow -u pluto-server
 ```
 
 ### 8. Live updates
