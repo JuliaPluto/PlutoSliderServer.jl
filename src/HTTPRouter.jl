@@ -152,7 +152,7 @@ function make_router(
                 only_relevant(sesh.run.original_state),
                 only_relevant(new_state),
             )
-            patches_as_dicts::Array{Dict} = patches
+            patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict},patches)
 
             HTTP.Response(
                 200,
