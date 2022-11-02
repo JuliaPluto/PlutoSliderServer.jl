@@ -63,7 +63,8 @@ function process(
         @warn "Notebook file does not have desired hash. This probably means that the file changed too quickly. Continuing and hoping for the best!" s.path new_hash s.desired_hash
     end
 
-    keep_running = settings.SliderServer.enabled
+    keep_running =
+        settings.SliderServer.enabled && !is_glob_match(path, settings.SliderServer.exclude)
     skip_cache = keep_running || is_glob_match(path, settings.Export.ignore_cache)
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
@@ -114,12 +115,7 @@ function process(
 
     @info "### ✓ $(progress) Ready" s.path new_hash
 
-    NotebookSession(;
-        path=s.path,
-        current_hash=new_hash,
-        desired_hash=s.desired_hash,
-        run=run,
-    )
+    NotebookSession(; path, current_hash=new_hash, desired_hash=s.desired_hash, run)
 end
 
 ###
