@@ -14,6 +14,8 @@ just_run_test_server = false
 if just_run_test_server
     include("./runtestserver.jl")
 else
+    cache_dir = tempname(cleanup=false)
+
     ENV["HIDE_PLUTO_EXACT_VERSION_WARNING"] = "true"
     include("./plutohash.jl")
     include("./configuration.jl")

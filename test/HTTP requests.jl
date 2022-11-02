@@ -26,6 +26,7 @@ using UUIDs, Random
         PlutoSliderServer.run_directory(
             test_dir;
             Export_enabled=false,
+            Export_cache_dir=cache_dir,
             SliderServer_port=port,
             notebook_paths,
             on_ready,
@@ -119,7 +120,7 @@ using UUIDs, Random
 end
 
 
-
+find(f, xs) = xs[findfirst(f, xs)]
 
 
 original_dir1 = joinpath(@__DIR__, "dir1")
@@ -133,6 +134,15 @@ make_test_dir() =
 
 @testset "HTTP requests: static" begin
     test_dir = make_test_dir()
+    let
+        # add one more file that we will only export, but not run in the slider server
+        old = read(joinpath(test_dir, "a.jl"), String)
+        new = replace(old, "Hello" => "Hello again")
+        @assert old != new
+
+        mkpath(joinpath(test_dir, "x", "y", "z"))
+        write(joinpath(test_dir, "x", "y", "z", "export_only.jl"), new)
+    end
 
     port = rand(12345:65000)
 
@@ -150,7 +160,9 @@ make_test_dir() =
             Export_enabled=true,
             Export_baked_notebookfile=false,
             Export_baked_state=false,
+            Export_cache_dir=cache_dir,
             SliderServer_port=port,
+            SliderServer_exclude=["*/export_only*"],
             on_ready,
         )
     end
@@ -165,13 +177,25 @@ make_test_dir() =
 
 
 
-    s = notebook_sessions[1]
+    s_a = find(s -> occursin("a.jl", s.path), notebook_sessions)
+    s_export_only = find(s -> occursin("export_only", s.path), notebook_sessions)
+
     response =
-        HTTP.request("GET", "http://localhost:$(port)/bondconnections/$(s.current_hash)/")
+        HTTP.request("GET", "http://localhost:$(port)/bondconnections/$(s_a.current_hash)/")
     data = Pluto.unpack(response.body)
 
     @test data isa Dict
     @test isempty(data) # these notebooks don't have any bonds
+
+    @test s_export_only.run isa PlutoSliderServer.var"../Types.jl".FinishedNotebook
+
+    response_export_only = HTTP.request(
+        "GET",
+        "http://localhost:$(port)/bondconnections/$(s_export_only.current_hash)/";
+        status_exception=false,
+    )
+
+    @test response_export_only.status == 404 # this notebook is not in the slider server
 
     asset_urls = [
         ""

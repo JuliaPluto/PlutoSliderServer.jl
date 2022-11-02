@@ -15,8 +15,6 @@ make_test_dir() =
         new
     end
 
-cache_dir = tempname(cleanup=false)
-
 @testset "static - Basic github action" begin
     test_dir = make_test_dir()
 
