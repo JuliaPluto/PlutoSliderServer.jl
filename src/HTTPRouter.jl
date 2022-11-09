@@ -250,7 +250,7 @@ function make_router(
             )
             Pluto.asset_response(filepath)
         end
-        HTTP.register!(router, "GET", "/pluto_asset/*", serve_pluto_asset)
+        HTTP.register!(router, "GET", "/pluto_asset/**", serve_pluto_asset)
         function serve_asset(request::HTTP.Request)
             uri = HTTP.URI(request.target)
 
