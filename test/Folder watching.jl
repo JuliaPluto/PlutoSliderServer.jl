@@ -236,6 +236,7 @@ end
             "cool2",
             "world",
             "boring",
+            "custom_macro",
         ])
     end
 
