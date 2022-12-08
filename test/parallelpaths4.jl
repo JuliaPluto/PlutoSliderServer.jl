@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.20
+# v0.19.15
 
 using Markdown
 using InteractiveUtils
@@ -7,11 +7,15 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
+
+# ╔═╡ 799ae7a5-6fad-4856-84c6-e93f726a9514
+using HypertextLiteral
 
 # ╔═╡ 8aac8df3-1551-4c9f-a8bd-a62751a29b2a
 md"""
@@ -186,6 +190,54 @@ md"""
 # ╔═╡ 22659c85-700f-4dad-a22a-7aafa71225c0
 # boring is never referenced
 
+# ╔═╡ 5bea1d75-a8d5-4285-b0cf-234fcfe8122f
+md"""
+## Path 12
+"""
+
+# ╔═╡ 3d96cc48-9c73-46e9-869b-eb72231f283e
+macro bindname(name::Symbol, ex::Expr)
+    quote
+        @htl("""
+        <div style='display: flex;'>
+        <code style='font-weight: bold'>$($(String(name)))</code>: $(@bind $(name) $(esc(ex)))
+        </div>
+        """)
+    end
+end
+
+# ╔═╡ dc5d8314-d2d1-477c-9ccd-882069ee4210
+@bindname custom_macro html"<input>"
+
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+HypertextLiteral = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+
+[compat]
+HypertextLiteral = "~0.9.4"
+"""
+
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.8.2"
+manifest_format = "2.0"
+project_hash = "312e4b9e605df01eeae246a2087d05a62416059a"
+
+[[deps.HypertextLiteral]]
+deps = ["Tricks"]
+git-tree-sha1 = "c47c5fa4c5308f27ccaac35504858d8914e102f9"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.9.4"
+
+[[deps.Tricks]]
+git-tree-sha1 = "6bac775f2d42a611cdfcd1fb217ee719630c4175"
+uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
+version = "0.1.6"
+"""
+
 # ╔═╡ Cell order:
 # ╟─8aac8df3-1551-4c9f-a8bd-a62751a29b2a
 # ╠═03307e43-cb61-4321-95ac-7bbb16e0cfc6
@@ -226,3 +278,9 @@ md"""
 # ╟─c143b2de-78c5-46ad-852f-3c2a9115cb72
 # ╠═cf628a57-933b-4984-a317-63360c345534
 # ╠═22659c85-700f-4dad-a22a-7aafa71225c0
+# ╟─5bea1d75-a8d5-4285-b0cf-234fcfe8122f
+# ╠═799ae7a5-6fad-4856-84c6-e93f726a9514
+# ╠═3d96cc48-9c73-46e9-869b-eb72231f283e
+# ╠═dc5d8314-d2d1-477c-9ccd-882069ee4210
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002

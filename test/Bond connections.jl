@@ -12,9 +12,9 @@ using Test
 
     notebook = Pluto.load_notebook(newpath)
     # Run pluto's analysis. This is like opening the notebook, without actually running it
-    # s = Pluto.ServerSession()
-    # Pluto.update_save_run!(s, notebook, notebook.cells; run)
-    notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
+    s = Pluto.ServerSession()
+    Pluto.update_save_run!(s, notebook, notebook.cells; run)
+    # notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
     # bound_variables = (map(notebook.cells) do cell
     #     MoreAnalysis.find_bound_variables(cell.parsedcode)
@@ -22,25 +22,26 @@ using Test
 
     # @show bound_variables
 
-    connections = bound_variable_connections_graph(notebook)
+    connections = bound_variable_connections_graph(s, notebook)
     # @show connections
 
     @test !isempty(connections)
     wanted_connections = Dict(
-        :x         => [:y, :x],
-        :y         => [:y, :x],
+        :x => [:y, :x],
+        :y => [:y, :x],
         :show_dogs => [:show_dogs],
-        :b         => [:b],
-        :c         => [:c],
-        :five1     => [:five1],
-        :five2     => [:five2],
-        :six1      => [:six2, :six1],
-        :six2      => [:six3, :six2, :six1],
-        :six3      => [:six3, :six2],
-        :cool1     => [:cool1, :cool2],
-        :cool2     => [:cool1, :cool2],
-        :world     => [:world],
-        :boring    => [:boring],
+        :b => [:b],
+        :c => [:c],
+        :five1 => [:five1],
+        :five2 => [:five2],
+        :six1 => [:six2, :six1],
+        :six2 => [:six3, :six2, :six1],
+        :six3 => [:six3, :six2],
+        :cool1 => [:cool1, :cool2],
+        :cool2 => [:cool1, :cool2],
+        :world => [:world],
+        :boring => [:boring],
+        :custom_macro => [:custom_macro],
     )
 
     transform(d) = Dict(k => sort(v) for (k, v) in d)
