@@ -174,7 +174,7 @@ $(list_options_md(ExportSettings; prefix="Export"))
 function run_directory(
     start_dir::String=".";
     notebook_paths::Union{Nothing,Vector{String}}=nothing,
-    on_ready::Function=((args...) -> ()),
+    on_ready::Function=((args...) -> nothing),
     config_toml_path::Union{String,Nothing}=default_config_path(),
     kwargs...,
 )
@@ -418,6 +418,8 @@ function run_directory(
             @info "Server exited ✅"
         end
     end
+
+    nothing
 end
 
 """
