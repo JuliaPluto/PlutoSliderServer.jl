@@ -13,7 +13,7 @@ using Sockets
 import JSON
 
 @from "./IndexJSON.jl" import generate_index_json
-@from "./IndexHTML.jl" import temp_index, generate_index_html
+@from "./IndexHTML.jl" import temp_index, generate_basic_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 @from "./PlutoHash.jl" import base64urldecode
@@ -152,7 +152,7 @@ function make_router(
                 only_relevant(sesh.run.original_state),
                 only_relevant(new_state),
             )
-            patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict},patches)
+            patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
 
             HTTP.Response(
                 200,

@@ -63,13 +63,17 @@ function json_data(
     )
 end
 
-function generate_index_json(s; settings::PlutoDeploySettings, start_dir::AbstractString)
+function generate_index_json(
+    sessions::Vector{NotebookSession};
+    settings::PlutoDeploySettings,
+    start_dir::AbstractString,
+)
     p = joinpath(start_dir, "pluto_export_configuration.json")
     config_data = if isfile(p)
         JSON.parse(read(p, String))::Dict{String,Any}
     else
         Dict{String,Any}()
     end
-    result = json_data(s; settings, start_dir, config_data)
+    result = json_data(sessions; settings, start_dir, config_data)
     JSON.json(result)
 end
