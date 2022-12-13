@@ -86,7 +86,8 @@ function process(
             end
             try_tocache(settings.Export.cache_dir, new_hash, original_state)
             if keep_running
-                bond_connections = bound_variable_connections_graph(notebook)
+                bond_connections =
+                    bound_variable_connections_graph(server_session, notebook)
                 @info "Bond connections" s.path showall(collect(bond_connections))
 
                 RunningNotebook(; path, notebook, original_state, bond_connections)

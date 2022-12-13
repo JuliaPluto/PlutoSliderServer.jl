@@ -1,35 +1,5 @@
 import Pluto
-import Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer
-
-"Find all subexpressions of the form `@bind symbol something`, and extract the `symbol`s."
-function find_bound_variables(expr)
-    found = Set{Symbol}()
-    find_bound_variables!(
-        found,
-        ExpressionExplorer.maybe_macroexpand(expr; recursive=true, expand_bind=false),
-    )
-    found
-end
-
-function find_bound_variables!(found::Set{Symbol}, expr::Expr)
-    if expr.head === :macrocall &&
-       expr.args[1] === Symbol("@bind") &&
-       length(expr.args) == 4 &&
-       expr.args[3] isa Symbol
-        push!(found, expr.args[3])
-        find_bound_variables!(found, expr.args[4])
-    elseif expr.args === :quote
-        found
-    else
-        for a in expr.args
-            find_bound_variables!(found, a)
-        end
-    end
-end
-
-function find_bound_variables!(found::Set{Symbol}, expr::Any) end
-
-
+import Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer, ServerSession
 
 
 "Return the given cells, and all cells that depend on them (recursively)."
@@ -105,11 +75,9 @@ end
 "Return a `Dict{Symbol,Vector{Symbol}}` where the _keys_ are the bound variables of the notebook.
 
 For each key (a bound symbol), the value is the list of (other) bound variables whose values need to be known to compute the result of setting the bond."
-function bound_variable_connections_graph(notebook::Notebook)::Dict{Symbol,Vector{Symbol}}
+function bound_variable_connections_graph(session::ServerSession, notebook::Notebook)::Dict{Symbol,Vector{Symbol}}
     topology = notebook.topology
-    bound_variables = union(map(notebook.cells) do cell
-        find_bound_variables(topology.codes[cell].parsedcode)
-    end...)
+    bound_variables = Pluto.get_bond_names(session, notebook)
     Dict{Symbol,Vector{Symbol}}(
         var => let
             cells = codependents(notebook, topology, var)
