@@ -13,6 +13,7 @@ using Test
     notebook = Pluto.load_notebook(newpath)
 
     s = Pluto.ServerSession()
+    s.options.evaluation.workspace_use_distributed = false
     Pluto.update_run!(s, notebook, notebook.cells)
     # notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
