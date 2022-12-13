@@ -4,7 +4,7 @@ using FromFile
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./FileHelpers.jl" import find_notebook_files_recursive, list_files_recursive
-@from "./IndexHTML.jl" import temp_index
+@from "./IndexHTML.jl" import generate_index_html
 @from "./IndexJSON.jl" import generate_index_json
 @from "./Actions.jl" import process,
     should_shutdown, should_update, should_launch, will_process
@@ -313,7 +313,10 @@ function run_directory(
                 joinpath(output_dir, f) |> isfile
             end
             if !exists
-                write(joinpath(output_dir, "index.html"), temp_index(sessions))
+                write(
+                    joinpath(output_dir, "index.html"),
+                    generate_index_html(sessions; settings),
+                )
             end
 
             # JSON

@@ -6,6 +6,7 @@ import Pluto: Pluto, without_pluto_file_extension
 
 @from "./Configuration.jl" import PlutoDeploySettings
 @from "./Types.jl" import NotebookSession, RunningNotebook
+@from "./Export.jl" import try_get_exact_pluto_version
 
 
 function generate_basic_index_html(paths)
@@ -56,7 +57,10 @@ function generate_index_html(
             featured_sources_js="[{url:`./pluto_export.json`}]",
         )
     else
-        temp_index(sessions)
+        generate_basic_index_html((
+            without_pluto_file_extension(s.path) =>
+                without_pluto_file_extension(s.path) * ".html" for s in sessions
+        ))
     end
 end
 
