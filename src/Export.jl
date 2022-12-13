@@ -66,7 +66,9 @@ function try_get_exact_pluto_version()
             )
         else
             # ugh
-            is_probably_a_commit_thing = all(in(('0':'9') ∪ ('a':'f')), p.git_revision)
+            is_probably_a_commit_thing =
+                all(in(('0':'9') ∪ ('a':'f')), p.git_revision) &&
+                length(p.git_revision) ∈ (8, 40)
             if !is_probably_a_commit_thing
                 error(
                     "Do not add the Pluto dependency by specifying its BRANCH, but by specifying its VERSION or an exact COMMIT SHA.",
