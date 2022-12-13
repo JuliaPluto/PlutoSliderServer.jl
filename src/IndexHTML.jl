@@ -52,7 +52,6 @@ function generate_index_html(
         Pluto.generate_index_html(;
             pluto_cdn_root=settings.Export.pluto_cdn_root,
             version=try_get_exact_pluto_version(),
-            featured_static=true,
             featured_direct_html_links=true,
             featured_sources_js="[{url:`./pluto_export.json`}]",
         )
