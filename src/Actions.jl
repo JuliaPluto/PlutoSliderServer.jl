@@ -250,7 +250,7 @@ function generate_static_export(
     )
     header_html = Pluto.frontmatter_html(frontmatter)
 
-    html_contents = generate_html(;
+    html_contents = Pluto.generate_html(;
         pluto_cdn_root=settings.Export.pluto_cdn_root,
         version=pluto_version,
         notebookfile_js,

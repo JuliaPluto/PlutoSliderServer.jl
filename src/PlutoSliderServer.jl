@@ -315,10 +315,7 @@ function run_directory(
             if !exists
                 write(
                     joinpath(output_dir, "index.html"),
-                    generate_index_html((
-                        without_pluto_file_extension(s.path) =>
-                            without_pluto_file_extension(s.path) * ".html" for s in sessions
-                    )),
+                    generate_index_html(sessions; settings),
                 )
             end
 

@@ -46,6 +46,8 @@ end
     cache_dir::Union{Nothing,String} = nothing
     "Automatically generate an `index.html` file, listing all the exported notebooks (only if no `index.jl` or `index.html` file exists already)."
     create_index::Bool = true
+    "Use the Pluto Featured GUI to display the notebooks on the auto-generated index page, using frontmatter for title, description, image, and more. The default is currently `false`, but it might change in the future. Set to `true` or `false` explicitly to fix a value."
+    create_pluto_featured_index::Union{Nothing,Bool} = nothing
     """ADVANCED: URL of the binder repository to load when you click the "Run on binder" button in the top right, this will be set automatically if you leave it at the default value. This setting is quite advanced, and only makes sense if you have a fork of `https://github.com/fonsp/pluto-on-binder/` (because you want to control the binder launch, or because you are using your own fork of Pluto). If so, the setting should be of the form `"https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v0.17.2"`, where `fonsp/pluto-on-binder` is the name of your repository, and `v0.17.2` is a tag or commit hash."""
     binder_url::Union{Nothing,String} = nothing
     pluto_cdn_root::Union{Nothing,String} = nothing

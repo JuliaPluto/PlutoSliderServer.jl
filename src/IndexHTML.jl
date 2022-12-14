@@ -6,9 +6,10 @@ import Pluto: Pluto, without_pluto_file_extension
 
 @from "./Configuration.jl" import PlutoDeploySettings
 @from "./Types.jl" import NotebookSession, RunningNotebook
+@from "./Export.jl" import try_get_exact_pluto_version
 
 
-function generate_index_html(paths)
+function generate_basic_index_html(paths)
     """
     <!DOCTYPE html>
     <html lang="en">
@@ -43,10 +44,29 @@ function generate_index_html(paths)
     """
 end
 
+function generate_index_html(
+    sessions::Vector{NotebookSession};
+    settings::PlutoDeploySettings,
+)
+    if something(settings.Export.create_pluto_featured_index, false)
+        Pluto.generate_index_html(;
+            pluto_cdn_root=settings.Export.pluto_cdn_root,
+            version=try_get_exact_pluto_version(),
+            featured_direct_html_links=true,
+            featured_sources_js="[{url:`./pluto_export.json`}]",
+        )
+    else
+        generate_basic_index_html((
+            without_pluto_file_extension(s.path) =>
+                without_pluto_file_extension(s.path) * ".html" for s in sessions
+        ))
+    end
+end
+
 
 
 function temp_index(notebook_sessions::Vector{NotebookSession})
-    generate_index_html(temp_index_item.(notebook_sessions))
+    generate_basic_index_html(Iterators.map(temp_index_item, notebook_sessions))
 end
 function temp_index_item(s::NotebookSession)
     without_pluto_file_extension(s.path) => nothing
