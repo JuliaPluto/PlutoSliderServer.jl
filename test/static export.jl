@@ -155,7 +155,7 @@ end
 end
 
 
-@testset "static - Index HTML and JSON" begin
+@testset "static - Index HTML and JSON – fancy=$(fancy)" for fancy ∈ (false, true)
     test_dir = make_test_dir()
 
     @show test_dir cache_dir
@@ -163,7 +163,11 @@ end
     @test sort(list_files_recursive()) ==
           sort(["a.jl", "b.pluto.jl", "notanotebook.jl", "subdir/c.plutojl"])
 
-    export_directory(Export_cache_dir=cache_dir, Export_baked_state=false)
+    export_directory(
+        Export_cache_dir=cache_dir,
+        Export_baked_state=false,
+        Export_create_pluto_featured_index=fancy,
+    )
 
     @test sort(list_files_recursive()) == sort([
         "index.html",
@@ -185,10 +189,17 @@ end
     jsonstr = read("pluto_export.json", String)
     json = JSON.parse(jsonstr)
 
+    if fancy
+        @test occursin("</html>", htmlstr)
+        @test occursin("pluto_export.json", htmlstr)
+    end
+
     nbs = ["subdir/c.plutojl", "b.pluto.jl", "a.jl"]
     for (i, p) in enumerate(nbs)
-        @test occursin(p |> without_pluto_file_extension, htmlstr)
         @test occursin(p, jsonstr)
+        if !fancy
+            @test occursin(p |> without_pluto_file_extension, htmlstr)
+        end
 
         @test !isempty(json["notebooks"][p]["frontmatter"]["title"])
         without_pluto_file_extension
