@@ -11,9 +11,6 @@ See it in action at [computationalthinking.mit.edu](https://computationalthinkin
 # Try it out
 
 ```julia
-import Pkg
-Pkg.add("PlutoSliderServer")
-
 using PlutoSliderServer
 path_to_notebook = download("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.17.2/sample/Interactivity.jl") # fill in your own notebook path here!
 
