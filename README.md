@@ -195,6 +195,8 @@ These instructions set up a slider server on a dedicated server, which automatic
 
 > _Disclaimer: This is work in progress, there might be holes!_
 
+## Part 1: setup and running locally
+
 ### 1. Initialize
 Create a folder called `pluto-slider-server-environment` with the `Project.toml` and `Manifest.toml` for the `PlutoSliderServer`: (Not the notebooks - the notebooks should contain their own package environment.)
 ```shell
@@ -229,14 +231,24 @@ julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; 
 
 Also note that `git pull` may fail on the server if you force push the branch from your laptop, so handle history-rewriting commands, like `git push -f`, `git rebase` etc with care!
 
-### 4. Set up a server to run PlutoSliderServer
+## Part 2: setting up the web server
 For this step, we'll assume a very specific but also common setup:
 
 - Ubuntu-based server with `apt-get`, `git`, `vim` and internet
 - access through SSH
 - root access
+- port 80 is open to the web
 
-#### 0. Update packages
+The easiest way to get this is to **rent a server** from digitalocean.com, AWS, Google Cloud, etc. This setup was tested with digitalocean.com, which has the easiest interface for beginners.
+
+> ### Required memory, disk space, CPU power
+> When renting a server, you need to decide which "droplet size" you want. The bottleneck is memory – CPU power and disk space will always be sufficient. As minimum, you need `500MB + 300MB * length(notebooks)`. But if you use large packages, like Plots or DifferentialEquations, a notebook might need 1000MB memory. 
+> 
+> There is no minimum requirement on CPU power, but it does have a big impact on *launch time* and *responsiveness*. We found that DigitalOcean "dedicated CPU" is noticably faster (more than 2x) in both areas than "shared CPU".
+> 
+> It is really important to make sure that you will be able to **resize your server later**, adding/removing memory as needed, to minimize your costs. For DigitalOcean, we have a specific tip: *always **start** with the smallest possible droplet (512MB or 1000MB), and then resize memory/CPU to fit your needs, without resizing the disk*. When resizing, DigitalOcean does not allow *shrinking* the disk size.
+
+### 0. Update packages
 ```shell
 sudo apt-get update
 sudo apt-get upgrade
@@ -244,7 +256,7 @@ sudo apt-get upgrade
 
 You should run `systemd --version` to verify that we have version 230 or higher.
 
-#### 1. Install Julia (run as root)
+### 1. Install Julia (run as root)
 ```shell
 # You can edit me: The Julia version (1.8.0) split into three parts:
 JULIA_MAJOR_VERSION=1
@@ -259,14 +271,14 @@ rm julia-$JULIA_VERSION-linux-x86_64.tar.gz
 sudo ln -s `pwd`/julia-$JULIA_VERSION/bin/julia /usr/local/bin/julia
 ```
 
-#### 2. get your repository
+### 2. get your repository
 ```shell
 git clone https://github.com/<user>/<repo-with-notebooks>
 cd <repo-with-notebooks>
 git pull
 ```
 
-#### 3. Create a service
+### 3. Create a service
 ```shell
 TEMPFILE=$(mktemp)
 cat > $TEMPFILE << __EOF__
