@@ -228,9 +228,7 @@ function generate_static_export(
         "undefined"
     end
     statefile_js = if !settings.Export.baked_state
-        open(export_statefile_path, "w") do io
-            Pluto.pack(io, original_state)
-        end
+        write_statefile(export_statefile_path, original_state)
         repr(basename(export_statefile_path))
     else
         statefile64 = base64encode() do io
@@ -268,6 +266,12 @@ function generate_static_export(
     end
 
     @debug "Written to $(export_html_path)"
+end
+
+function write_statefile(path, state)
+    data = Pluto.pack(state)
+    write(path, data)
+    @assert read(path) == data
 end
 
 tryrm(x) = isfile(x) && rm(x)
