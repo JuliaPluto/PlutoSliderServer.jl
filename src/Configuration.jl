@@ -33,23 +33,24 @@ end
     exclude::Vector{String} = String[]
     "List of notebook files that should always re-run, skipping the `cache_dir` system. Provide paths relative to `start_dir`.  You can use the `*` wildcard and other [glob patterns](https://en.wikipedia.org/wiki/Glob_(programming))."
     ignore_cache::Vector = String[]
+    "If provided, use this directory to read and write cached notebook states. Caches will be indexed by the hash of the notebook file, but you need to take care to invalidate the cache when Pluto or this export script updates. Useful in combination with https://github.com/actions/cache, see https://github.com/JuliaPluto/static-export-template for an example."
+    cache_dir::Union{Nothing,String} = nothing
     "base64-encode the state object and write it inside the .html file. If `false`, a separate `.plutostate` file is generated. A separate statefile allows us to show a loading bar in pluto while the statefile is loading, but it can complicate setup in some environments."
     baked_state::Bool = true
+    """base64-encode the .jl notebook source and write it inside the .html file. If `false`, a separate `.jl` file is generated (or the original is used). The main difference is in the "Edit or run this notebook > On your computer" flow on the HTML file: with a separate notebook file (default), it will be a URL that you can copy and open with Pluto. With a baked notebook file, it will be a download button, and visitors need to save the notebook on their local drive, which can be more complicated."""
     baked_notebookfile::Bool = true
     "Hide all buttons and toolbars in Pluto to make it look like an article."
     disable_ui::Bool = true
     """Show a "Run on Binder" button on the notebooks."""
     offer_binder::Bool = true
+    """ADVANCED: URL of the binder repository to load when you click the "Run on binder" button in the top right, this will be set automatically if you leave it at the default value. This setting is quite advanced, and only makes sense if you have a fork of `https://github.com/fonsp/pluto-on-binder/` (because you want to control the binder launch, or because you are using your own fork of Pluto). If so, the setting should be of the form `"https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v0.17.2"`, where `fonsp/pluto-on-binder` is the name of your repository, and `v0.17.2` is a tag or commit hash."""
+    binder_url::Union{Nothing,String} = nothing
     """If 1) you are using this setup to export HTML files for notebooks, AND 2) you are running the slider server **on another setup/computer**, then this setting should be the URL pointing to the slider server, e.g. `"https://sliderserver.mycoolproject.org/"`. For example, you need this if you use GitHub Actions and GitHub Pages to generate HTML files, with a slider server on DigitalOcean. === If you only have *one* server for both the static exports and the slider server, and people will read notebooks directly on your server, then the default value `nothing` will work: it will automatically make the HTML files use their current domain for the slider server."""
     slider_server_url::Union{Nothing,String} = nothing
-    "If provided, use this directory to read and write cached notebook states. Caches will be indexed by the hash of the notebook file, but you need to take care to invalidate the cache when Pluto or this export script updates. Useful in combination with https://github.com/actions/cache, see https://github.com/JuliaPluto/static-export-template for an example."
-    cache_dir::Union{Nothing,String} = nothing
     "Automatically generate an `index.html` file, listing all the exported notebooks (only if no `index.jl` or `index.html` file exists already)."
     create_index::Bool = true
     "Use the Pluto Featured GUI to display the notebooks on the auto-generated index page, using frontmatter for title, description, image, and more. The default is currently `false`, but it might change in the future. Set to `true` or `false` explicitly to fix a value."
     create_pluto_featured_index::Union{Nothing,Bool} = nothing
-    """ADVANCED: URL of the binder repository to load when you click the "Run on binder" button in the top right, this will be set automatically if you leave it at the default value. This setting is quite advanced, and only makes sense if you have a fork of `https://github.com/fonsp/pluto-on-binder/` (because you want to control the binder launch, or because you are using your own fork of Pluto). If so, the setting should be of the form `"https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v0.17.2"`, where `fonsp/pluto-on-binder` is the name of your repository, and `v0.17.2` is a tag or commit hash."""
-    binder_url::Union{Nothing,String} = nothing
     pluto_cdn_root::Union{Nothing,String} = nothing
 end
 
