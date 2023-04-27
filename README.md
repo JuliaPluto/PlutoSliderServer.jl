@@ -103,15 +103,15 @@ x + y
 "Hello $(z)!"
 ```
 
-We have three **bound variables**: `x`, `y` and `z`. When analyzed by Pluto, we find the dependecies between cels: `1 -> 3`, `2 -> 3`, `4 -> 5`. This means that, as a graph, the last two cells are completely disconnected from the rest of the graph. Our *bond connections graph* will capture this idea.
+We have three **bound variables**: `x`, `y` and `z`. When analyzed by Pluto, we find the dependecies between cells: `1 -> 3`, `2 -> 3`, `4 -> 5`. This means that, as a graph, the last two cells are completely disconnected from the rest of the graph. Our *bond connections graph* will capture this idea.
 
 ### Procedure
 For each bound variable, we use Pluto's reactivity graph to know:
 1. Which cells depend on the bound variable?
-2. Which *other* bound variables are dependencies of a cell from (1)? These are called the co-dependencies of the bound variable.
+2. Which bound variables are (indirect) dependencies of any cell from (1)? These are called the co-dependencies of the bound variable.
 
 
-In our example, `x` influences the result of `x + y`, which depends on `y`. So `x` and `y` are codependent. `z` is disconnected from `x` and `y`, so it forms its own group.
+In our example, `x` influences the result of `x + y`, which depends on `y`. So `x` and `y` are the co-dependencies of `x`. Variable `z` influences `"Hello $(z)!"`, which is does not have `x` or `y` as dependencies. So `z` is *not* codependent with `x` or with `y`.
 
 This forms a dictionary, which looks like:
 ```julia
