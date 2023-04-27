@@ -31,6 +31,7 @@ import Pluto:
     without_pluto_file_extension
 using HTTP
 using Sockets
+import Pkg
 import BetterFileWatching: watch_folder
 import AbstractPlutoDingetjes: is_inside_pluto
 import TerminalLoggers: TerminalLogger
