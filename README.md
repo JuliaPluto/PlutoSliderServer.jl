@@ -208,11 +208,21 @@ pkg> add Pluto PlutoSliderServer
 ```
 
 ### 2. Configuration file
-Optionally, create a configuration file in the same folder as `Project.toml`, see the section about `PlutoDeployment.toml` above.
+Create a configuration file in the same folder as `Project.toml`, see the section about `PlutoDeployment.toml` above.
 ```shell
-touch pluto-slider-server-environment/PlutoDeployment.toml
-# edit the file...
+TEMPFILE=$(mktemp)
+cat > $TEMPFILE << __EOF__
+[SliderServer]
+port = 8080
+host = "0.0.0.0"
+
+# more configuration can go here!
+__EOF__
+
+sudo mv $TEMPFILE pluto-slider-server-environment/PlutoDeployment.toml
 ```
+
+This configuration sets the port to `8080` (not `80`, this requires sudo), and the host to `"0.0.0.0"` (which allows traffic from outside the computer, unlike the default `"127.0.0.1"`).
 
 ### 3. Run it
 Let's try running it locally before setting up our server:
@@ -292,6 +302,8 @@ StartLimitBurst=5
 ExecStart=/usr/local/bin/pluto-slider-server.sh
 Restart=always
 RestartSec=5
+User=$(whoami)
+Group=$(id -gn)
 
 [Install]
 WantedBy=default.target
@@ -299,6 +311,8 @@ __EOF__
 
 sudo mv $TEMPFILE /etc/systemd/system/pluto-server.service
 ```
+
+This script uses `whoami` and `id -gn` to automatically insert your username an group name into the configuration file. We want to run the PlutoSliderServer as your user, not as root.
 
 ### 4. Create the startup script
 ```shell
@@ -343,10 +357,74 @@ sudo journalctl --pager-end -u pluto-server
 sudo journalctl --follow -u pluto-server
 ```
 
-### 8. Live updates
+### 8. Server available
+
+TODO
+
+### 9. Live updates
 When you change the notebooks in the git repository, your server will automatically update (it keeps calling `git pull`)! Awesome!
 
 If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer will detect a change in configuration and shut down. Because we set up our service using `systemctl`, the server will automatically restart! (With the new settings)
+
+
+## Part 3: port, domain name, https
+
+The default settings will serve Pluto on the IP address of your server, on `http` (not `https`), on port 8080 (not 80 or 443).
+
+Normally, websites are available on a domain name, on https, on the default port (80 for http, 443 for https) (e.g. `https://plutojl.org/`). Here's how you get there!
+
+If you use a server managed by your university/company, ask your system administrator how to achieve these steps.
+
+### 1. Domain name
+
+You need to buy a domain name, and get access to the DNS settings. Set an "A record" that points to your IP address. 
+
+You can now access your PlutoSliderServer at `http://mydomain.org:8080/`. Nice!
+
+### 2. Port 80
+
+We don't want everyone to add `:8080` to the URL! The default port for http is 80, so we want our website to be available at port 80.
+
+The tricky thing is: we don't want to run PlutoSliderServer directly on port 80, because this requires `sudo` privileges for running `julia`. We want to avoid this because we don't want `julia` to read/write files as `root` (this would mess up your git directory). 
+
+The solution is to run PlutoSliderServer on port 8080, and use a separate server (running as root) to redirect traffic from port 80 to port 8080. We use `nginx` for that!
+
+```shell
+sudo apt install nginx
+```
+nginx is now installed and it is configured to run at startup.
+
+Let's configure nginx as a redirect from port 80 to port 8080.
+
+```shell
+TEMPFILE=$(mktemp)
+cat > $TEMPFILE << __EOF__
+server {
+	listen 80 default_server;
+	listen [::]:80 default_server;
+
+	location / {
+		proxy_pass http://localhost:8080;
+	}
+}
+__EOF__
+
+sudo mv $TEMPFILE /etc/nginx/sites-available/default
+```
+
+After changing configuration, restart nginx:
+
+```shell
+sudo systemctl restart nginx
+```
+
+### 3. HTTPS
+
+The easiest way to get https is to use cloudflare. Register an account, set up your domain, use their DNS, and enable the "Always HTTPS" service. (Cloudflare is also very useful for caching! This will make your PlutoSliderServer faster.)
+
+Alternatively, you can set up HTTPS yourself with `nginx` and Let's Encrypt, but this is beyond the scope of this tutorial. 💛
+
+Now, your service should be available at `https://yourdomain.org/`. Nice!
 
 # Similar/alternative packages
 
