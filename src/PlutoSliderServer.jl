@@ -469,7 +469,11 @@ function run_git_directory(
         end
 
         sleep(5)
-        fetch_pull(start_dir)
+        try
+            fetch_pull(start_dir)
+        catch e
+            @warn "git: Error in poll_pull_loop" exception = (e, catch_backtrace())
+        end
     end
 
     waitall([run_dir_task, pull_loop_task])
