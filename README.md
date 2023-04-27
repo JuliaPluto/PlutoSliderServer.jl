@@ -366,6 +366,7 @@ When you change the notebooks in the git repository, your server will automatica
 
 If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer will detect a change in configuration and shut down. Because we set up our service using `systemctl`, the server will automatically restart! (With the new settings)
 
+
 ## Part 3: port, domain name, https
 
 The default settings will serve Pluto on the IP address of your server, on `http` (not `https`), on port 8080 (not 80 or 443).
