@@ -143,8 +143,10 @@ function make_router(
                 new["cell_results"] = filter(state["cell_results"]) do (id, cell_state)
                     id ∈ ids_of_cells_that_ran
                 end
-                # ... nothing about bond values, because we don't want to synchronize among clients.
-                new["bonds"] = Dict{String,Dict{String,Any}}()
+                # ... nothing about bond values, because we don't want to synchronize among clients. and...
+                delete!(new, "bonds")
+                # ... we ignore changes to the status tree caused by a running bonds.
+                delete!(new, "status_tree")
                 new
             end
 

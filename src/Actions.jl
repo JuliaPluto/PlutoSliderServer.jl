@@ -79,6 +79,7 @@ function process(
             notebook = Pluto.SessionActions.open(server_session, abs_path; run_async=false)
             # get the state object
             original_state = Pluto.notebook_to_js(notebook)
+            delete!(original_state, "status_tree")
             # shut down the notebook
             if !keep_running
                 @info "Shutting down notebook process" s.path
