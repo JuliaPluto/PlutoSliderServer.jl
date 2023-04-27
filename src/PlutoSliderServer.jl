@@ -452,8 +452,10 @@ function run_git_directory(
             kwargs...,
         )
     end
+    old_deps = Pkg.dependencies()
     pull_loop_task = Pluto.@asynclog while true
         new_settings = get_settings()
+        new_deps = Pkg.dependencies()
 
         if old_settings != new_settings
             @error "Configuration changed. Shutting down!"
@@ -464,8 +466,11 @@ function run_git_directory(
             println(stderr, "New settings:")
             println(stderr, repr(new_settings))
 
-            # @ignorefailure schedule(run_dir_task[], InterruptException(); error=true)
-            exit()
+            exit() # this should trigger a restart, using the new settings
+        end
+        if old_deps != new_deps
+            @error "Package environment changed. Shutting down!"
+            exit() # this should trigger a restart, using the new settings
         end
 
         sleep(5)
