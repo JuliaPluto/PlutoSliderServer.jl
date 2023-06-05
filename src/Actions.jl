@@ -90,8 +90,14 @@ function process(
                 bond_connections =
                     bound_variable_connections_graph(server_session, notebook)
                 @info "Bond connections" s.path showall(collect(bond_connections))
-
-                RunningNotebook(; path, notebook, original_state, bond_connections)
+                
+                if isempty(bond_connections)
+                    @info "No bond connections! Shutting down notebook process" s.path
+                    Pluto.SessionActions.shutdown(server_session, notebook)
+                    FinishedNotebook(; path, original_state)
+                else
+                    RunningNotebook(; path, notebook, original_state, bond_connections)
+                end
             else
                 FinishedNotebook(; path, original_state)
             end
