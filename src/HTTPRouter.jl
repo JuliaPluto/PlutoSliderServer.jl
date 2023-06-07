@@ -14,7 +14,7 @@ import JSON
 
 @from "./IndexJSON.jl" import generate_index_json
 @from "./IndexHTML.jl" import temp_index, generate_basic_index_html
-@from "./Types.jl" import NotebookSession, RunningNotebook
+@from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 @from "./PlutoHash.jl" import base64urldecode
 
@@ -187,6 +187,10 @@ function make_router(
             with_msgpack!
         elseif queued_for_bonds(sesh)
             HTTP.Response(503, "Still loading the notebooks... check back later!") |>
+            with_cors! |>
+            with_not_cacheable!
+        elseif sesh.run isa FinishedNotebook
+            HTTP.Response(422, "Notebook is no longer running") |>
             with_cors! |>
             with_not_cacheable!
         else

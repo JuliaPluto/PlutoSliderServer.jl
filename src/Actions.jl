@@ -64,7 +64,9 @@ function process(
     end
 
     keep_running =
-        settings.SliderServer.enabled && !is_glob_match(path, settings.SliderServer.exclude)
+        settings.SliderServer.enabled &&
+        !is_glob_match(path, settings.SliderServer.exclude) &&
+        occursin("@bind", jl_contents)
     skip_cache = keep_running || is_glob_match(path, settings.Export.ignore_cache)
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
@@ -90,14 +92,8 @@ function process(
                 bond_connections =
                     bound_variable_connections_graph(server_session, notebook)
                 @info "Bond connections" s.path showall(collect(bond_connections))
-                
-                if isempty(bond_connections)
-                    @info "No bond connections! Shutting down notebook process" s.path
-                    Pluto.SessionActions.shutdown(server_session, notebook)
-                    FinishedNotebook(; path, original_state)
-                else
-                    RunningNotebook(; path, notebook, original_state, bond_connections)
-                end
+
+                RunningNotebook(; path, notebook, original_state, bond_connections)
             else
                 FinishedNotebook(; path, original_state)
             end
