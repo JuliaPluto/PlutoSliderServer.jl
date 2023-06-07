@@ -185,7 +185,7 @@ make_test_dir() =
         "http://localhost:$(port)/bondconnections/$(s_a.current_hash)/";
         status_exception=false,
     )
-    @test response.status == 422 # notebook is no longer running since it had no bonds
+    @test response.status == 422 # notebook is no longer running since it has no bonds
 
     @test s_export_only.run isa PlutoSliderServer.var"../Types.jl".FinishedNotebook
 
@@ -195,7 +195,15 @@ make_test_dir() =
         status_exception=false,
     )
 
-    @test response_export_only.status == 404 # this notebook is not in the slider server
+    @test response_export_only.status == 422 # this notebook is not in the slider server but was exported
+
+    response_no_notebook = HTTP.request(
+        "GET",
+        "http://localhost:$(port)/bondconnections/$(plutohash("abc"))/";
+        status_exception=false,
+    )
+
+    @test response_no_notebook.status == 404 # this notebook is not in the slider server
 
     asset_urls = [
         ""

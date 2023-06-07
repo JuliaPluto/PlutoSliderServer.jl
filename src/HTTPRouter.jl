@@ -189,7 +189,7 @@ function make_router(
             HTTP.Response(503, "Still loading the notebooks... check back later!") |>
             with_cors! |>
             with_not_cacheable!
-        elseif sesh.run isa FinishedNotebook
+        elseif sesh isa NotebookSession{<:Any,String,FinishedNotebook}
             HTTP.Response(422, "Notebook is no longer running") |>
             with_cors! |>
             with_not_cacheable!
