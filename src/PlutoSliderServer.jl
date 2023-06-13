@@ -17,6 +17,7 @@ using FromFile
 @from "./ReloadFolder.jl" import update_sessions!, select
 @from "./HTTPRouter.jl" import make_router, ReferrerMiddleware
 @from "./gitpull.jl" import fetch_pull
+@from "./precomputed/debug.jl" import start_debugging
 
 @from "./PlutoHash.jl" import plutohash, base64urlencode, base64urldecode
 export plutohash, base64urlencode, base64urldecode
@@ -526,6 +527,7 @@ function kind_of_debounced(f)
 
     return go
 end
+
 
 
 end

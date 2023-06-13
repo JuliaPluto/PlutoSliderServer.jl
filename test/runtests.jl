@@ -17,6 +17,7 @@ else
     cache_dir = tempname(cleanup=false)
 
     ENV["HIDE_PLUTO_EXACT_VERSION_WARNING"] = "true"
+    include("./staterequest static.jl")
     include("./plutohash.jl")
     include("./configuration.jl")
     include("./static export.jl")

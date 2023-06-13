@@ -1,12 +1,15 @@
-import Pluto: Pluto, without_pluto_file_extension, generate_html, @asynclog
+import Pluto:
+    Pluto, without_pluto_file_extension, generate_html, @asynclog, withtoken, Firebasey
 using Base64
 using FromFile
+import HTTP.URIs
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./Export.jl" import try_get_exact_pluto_version, try_fromcache, try_tocache
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook, RunResult
 @from "./Configuration.jl" import PlutoDeploySettings, is_glob_match
 @from "./FileHelpers.jl" import find_notebook_files_recursive
+@from "./precomputed/index.jl" import generate_precomputed_staterequests
 @from "./PlutoHash.jl" import plutohash
 
 
@@ -64,8 +67,12 @@ function process(
     end
 
     keep_running =
-        settings.SliderServer.enabled && !is_glob_match(path, settings.SliderServer.exclude)
-    skip_cache = keep_running || is_glob_match(path, settings.Export.ignore_cache)
+        (settings.SliderServer.enabled || settings.Precompute.enabled) &&
+        !is_glob_match(path, settings.SliderServer.exclude)
+    skip_cache =
+        keep_running ||
+        is_glob_match(path, settings.Export.ignore_cache) ||
+        path ∈ settings.Export.ignore_cache
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
 
@@ -115,9 +122,25 @@ function process(
         )
     end
 
+    new_session = NotebookSession(;
+        path=s.path,
+        current_hash=new_hash,
+        desired_hash=s.desired_hash,
+        run=run,
+    )
+    if settings.Precompute.enabled
+        generate_precomputed_staterequests(
+            new_session;
+            settings,
+            pluto_session=server_session,
+            output_dir,
+        )
+        # TODO shutdown
+    end
+
     @info "### ✓ $(progress) Ready" s.path new_hash
 
-    NotebookSession(; path, current_hash=new_hash, desired_hash=s.desired_hash, run)
+    new_session
 end
 
 ###
@@ -205,7 +228,11 @@ function generate_static_export(
 
     slider_server_running_somewhere =
         settings.Export.slider_server_url !== nothing ||
-        (settings.SliderServer.serve_static_export_folder && settings.SliderServer.enabled)
+        (
+            settings.SliderServer.serve_static_export_folder &&
+            settings.SliderServer.enabled
+        ) ||
+        settings.Precompute.enabled
 
     notebookfile_js = if settings.Export.offer_binder || slider_server_running_somewhere
         if settings.Export.baked_notebookfile
@@ -300,4 +327,7 @@ function remove_static_export(path; settings, output_dir)
        !settings.Export.baked_notebookfile
         tryrm(export_jl_path)
     end
+
+
+
 end

@@ -1,7 +1,8 @@
 using Configurations
 import TOML
 import Pluto
-export SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration
+export SliderServerSettings,
+    ExportSettings, PrecomputeSettings, PlutoDeploySettings, get_configuration
 using TerminalLoggers: TerminalLogger
 using Logging: global_logger
 using FromFile
@@ -22,6 +23,15 @@ import Glob
     "Besides handling slider server request, should we also run a static file server of the export output folder? Set to `false` if you are serving the HTML files in another way, e.g. using GitHub Pages, and, for some reason, you do not want to *also* serve the HTML files using this serve."
     serve_static_export_folder::Bool = true
     simulated_lag::Real = 0
+end
+
+
+@extract_docs @option struct PrecomputeSettings
+    "Precompute slider server requests?"
+    enabled::Bool = false
+    "List of notebook files to skip precomputation. Provide paths relative to `start_dir`."
+    exclude::Vector{String} = String[]
+    max_filesize_per_group::Integer = 1_000_000
 end
 
 @extract_docs @option struct ExportSettings
@@ -57,6 +67,7 @@ end
 @option struct PlutoDeploySettings
     SliderServer::SliderServerSettings = SliderServerSettings()
     Export::ExportSettings = ExportSettings()
+    Precompute::PrecomputeSettings = PrecomputeSettings()
     Pluto::Pluto.Configuration.Options = Pluto.Configuration.Options()
 end
 
