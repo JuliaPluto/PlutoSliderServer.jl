@@ -7,7 +7,7 @@ import HTTP.URIs
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./Export.jl" import try_get_exact_pluto_version, try_fromcache, try_tocache
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook, RunResult
-@from "./Configuration.jl" import PlutoDeploySettings
+@from "./Configuration.jl" import PlutoDeploySettings, is_glob_match
 @from "./FileHelpers.jl" import find_notebook_files_recursive
 @from "./precomputed/index.jl" import generate_precomputed_staterequests
 @from "./PlutoHash.jl" import plutohash
@@ -66,8 +66,13 @@ function process(
         @warn "Notebook file does not have desired hash. This probably means that the file changed too quickly. Continuing and hoping for the best!" s.path new_hash s.desired_hash
     end
 
-    keep_running = settings.SliderServer.enabled || settings.Precompute.enabled
-    skip_cache = keep_running || path ∈ settings.Export.ignore_cache
+    keep_running =
+        (settings.SliderServer.enabled || settings.Precompute.enabled) &&
+        !is_glob_match(path, settings.SliderServer.exclude)
+    skip_cache =
+        keep_running ||
+        is_glob_match(path, settings.Export.ignore_cache) ||
+        path ∈ settings.Export.ignore_cache
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
 
@@ -81,6 +86,7 @@ function process(
             notebook = Pluto.SessionActions.open(server_session, abs_path; run_async=false)
             # get the state object
             original_state = Pluto.notebook_to_js(notebook)
+            delete!(original_state, "status_tree")
             # shut down the notebook
             if !keep_running
                 @info "Shutting down notebook process" s.path
@@ -88,7 +94,8 @@ function process(
             end
             try_tocache(settings.Export.cache_dir, new_hash, original_state)
             if keep_running
-                bond_connections = bound_variable_connections_graph(notebook)
+                bond_connections =
+                    bound_variable_connections_graph(server_session, notebook)
                 @info "Bond connections" s.path showall(collect(bond_connections))
 
                 RunningNotebook(; path, notebook, original_state, bond_connections)
@@ -191,17 +198,6 @@ should_launch(::NotebookSession) = false
 
 will_process(s) = should_update(s) || should_launch(s) || should_shutdown(s)
 
-
-"""
-Core Action: Generate static export for a Pluto Notebook
-
-# Arguments:
-1. slider_server_url: URL of the slider server. This will be the URL of your server, if you deploy
-2. offer_binder: Flag to enable the Binder button
-3. binder_url: URL of the binder link that will be invoked. Use a compatible pluto-enabled binder 
-4. baked_state: Whether to export pluto state within the html or in a separate file.
-5. pluto_cdn_root: URL where pluto will go to find the static frontend assets 
-"""
 function generate_static_export(
     path,
     original_state,
@@ -260,9 +256,7 @@ function generate_static_export(
         "undefined"
     end
     statefile_js = if !settings.Export.baked_state
-        open(export_statefile_path, "w") do io
-            Pluto.pack(io, original_state)
-        end
+        write_statefile(export_statefile_path, original_state)
         repr(basename(export_statefile_path))
     else
         statefile64 = base64encode() do io
@@ -272,7 +266,17 @@ function generate_static_export(
         "\"data:;base64,$(statefile64)\""
     end
 
-    html_contents = generate_html(;
+    frontmatter = convert(
+        Pluto.FrontMatter,
+        get(
+            () -> Pluto.FrontMatter(),
+            get(() -> Dict{String,Any}(), original_state, "metadata"),
+            "frontmatter",
+        ),
+    )
+    header_html = Pluto.frontmatter_html(frontmatter)
+
+    html_contents = Pluto.generate_html(;
         pluto_cdn_root=settings.Export.pluto_cdn_root,
         version=pluto_version,
         notebookfile_js,
@@ -280,6 +284,7 @@ function generate_static_export(
         slider_server_url_js,
         binder_url_js,
         disable_ui=settings.Export.disable_ui,
+        header_html,
     )
     write(export_html_path, html_contents)
 
@@ -289,6 +294,12 @@ function generate_static_export(
     end
 
     @debug "Written to $(export_html_path)"
+end
+
+function write_statefile(path, state)
+    data = Pluto.pack(state)
+    write(path, data)
+    @assert read(path) == data
 end
 
 tryrm(x) = isfile(x) && rm(x)

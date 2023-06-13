@@ -5,6 +5,7 @@ import PlutoSliderServer.HTTP
 using Test
 using UUIDs
 using Base64
+import JSON
 
 function poll(query::Function, timeout::Real=Inf64, interval::Real=1 / 20)
     start = time()
@@ -36,8 +37,7 @@ function cp_nb_with_tweaks(from::String, to::String)
 end
 
 @testset "Folder watching" begin
-    test_dir = tempname(cleanup=false)
-    mkdir(test_dir)
+    test_dir = mktempdir(cleanup=false)
 
     try
         # open the folder on macos:
@@ -51,6 +51,7 @@ end
         cp_nb_with_tweaks(joinpath(@__DIR__, p), joinpath(test_dir, p))
     end
 
+    Random.seed!(time_ns())
     port = rand(12345:65000)
 
 
@@ -61,22 +62,14 @@ end
         still_booting[] = false
     end
 
-    t = Pluto.@asynclog begin
-        try
-            PlutoSliderServer.run_directory(
-                test_dir;
-                Export_enabled=false,
-                Export_output_dir=test_dir,
-                SliderServer_port=port,
-                SliderServer_watch_dir=true,
-                on_ready,
-            )
-        catch e
-            if !(e isa TaskFailedException)
-                showerror(stderr, e, stacktrace(catch_backtrace()))
-            end
-        end
-    end
+    t = Pluto.@asynclog PlutoSliderServer.run_directory(
+        test_dir;
+        Export_enabled=false,
+        Export_output_dir=test_dir,
+        SliderServer_port=port,
+        SliderServer_watch_dir=true,
+        on_ready,
+    )
 
 
     while still_booting[]
@@ -85,6 +78,18 @@ end
 
 
     notebook_sessions = ready_result[].notebook_sessions
+
+    index_json() =
+        JSON.parse(String(HTTP.get("http://localhost:$(port)/pluto_export.json").body))
+
+    json_nbs() = index_json()["notebooks"] |> keys |> collect
+
+    @test length(notebook_sessions) == 1
+    @test json_nbs() == ["basic2.jl"]
+
+    @test index_json()["notebooks"]["basic2.jl"]["frontmatter"]["title"] == "Pancakes"
+    @test index_json()["notebooks"]["basic2.jl"]["frontmatter"]["description"] ==
+          "are yummy 🥞"
 
     @testset "Adding a file" begin
 
@@ -116,6 +121,9 @@ end
             "slider_server_url = \".\"",
             read(joinpath(test_dir, "basic2 copy.html"), String),
         )
+
+        @test json_nbs() == ["basic2.jl", "basic2 copy.jl"]
+
     end
 
 
@@ -228,11 +236,12 @@ end
             "cool2",
             "world",
             "boring",
+            "custom_macro",
         ])
     end
 
     sleep(2)
-    close(ready_result[].serversocket)
+    close(ready_result[].http_server)
 
     try
         wait(t)

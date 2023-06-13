@@ -14,12 +14,14 @@ just_run_test_server = false
 if just_run_test_server
     include("./runtestserver.jl")
 else
+    cache_dir = tempname(cleanup=false)
+
     ENV["HIDE_PLUTO_EXACT_VERSION_WARNING"] = "true"
     include("./staterequest static.jl")
     include("./plutohash.jl")
     include("./configuration.jl")
     include("./static export.jl")
-    include("./staterequest.jl")
-    include("./filewatching.jl")
-    include("./connections.jl")
+    include("./HTTP requests.jl")
+    include("./Folder watching.jl")
+    include("./Bond connections.jl")
 end

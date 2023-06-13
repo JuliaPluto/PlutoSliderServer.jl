@@ -46,7 +46,11 @@ end
 
 function poll_pull_loop(dir="."; interval=5)
     while true
-        fetch_pull(dir)
+        try
+            fetch_pull(dir)
+        catch e
+            @error "Error in poll_pull_loop" exception=(e, catch_backtrace())
+        end
         sleep(interval)
     end
 end

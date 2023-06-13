@@ -66,7 +66,9 @@ function try_get_exact_pluto_version()
             )
         else
             # ugh
-            is_probably_a_commit_thing = all(in(('0':'9') ∪ ('a':'f')), p.git_revision)
+            is_probably_a_commit_thing =
+                all(in(('0':'9') ∪ ('a':'f')), p.git_revision) &&
+                length(p.git_revision) ∈ (8, 40)
             if !is_probably_a_commit_thing
                 error(
                     "Do not add the Pluto dependency by specifying its BRANCH, but by specifying its VERSION or an exact COMMIT SHA.",
@@ -78,44 +80,9 @@ function try_get_exact_pluto_version()
     catch e
         if get(ENV, "HIDE_PLUTO_EXACT_VERSION_WARNING", "false") == "false"
             @error "Failed to get exact Pluto version from dependency. Your website is not guaranteed to work forever." exception =
-                (e, catch_backtrace())
+                (e, catch_backtrace()) maxlog = 1
         end
         Pluto.PLUTO_VERSION
     end
 end
 
-
-function generate_index_html(paths)#=::Vector{Pair}=#
-    """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-
-        <style>
-        body {
-            font-family: sans-serif;
-        }
-        </style>
-
-        <link rel="stylesheet" href="index.css">
-        <script src="index.js" type="module" defer></script>
-    </head>  
-    <body>
-        <h1>Notebooks</h1>
-        
-        <ul>
-        $(join(
-            if link === nothing
-                """<li>$(name) <em style="opacity: .5;">(Loading...)</em></li>"""
-            else
-                """<li><a href="$(link)">$(name)</a></li>"""
-            end
-            for (name,link) in paths
-        ))
-        </ul>
-    </body>
-    </html>
-    """
-end

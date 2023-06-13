@@ -1,6 +1,11 @@
 ### A Pluto.jl notebook ###
 # v0.12.20
 
+#> [frontmatter]
+#> title = "Pancakes"
+#> description = "are yummy 🥞"
+#> tags = ["pancake", "hungry", "snack"]
+
 using Markdown
 using InteractiveUtils
 
@@ -12,6 +17,9 @@ macro bind(def, element)
         el
     end
 end
+
+# ╔═╡ 635e5ebc-6567-11eb-1d9d-f98bfca7ec99
+
 
 # ╔═╡ 635e5ebc-6567-11eb-1d9d-f98bfca7ec27
 @bind x html"<input type=range>"
@@ -47,6 +55,7 @@ b2
 sleep(1); s2
 
 # ╔═╡ Cell order:
+# ╠═635e5ebc-6567-11eb-1d9d-f98bfca7ec99
 # ╠═635e5ebc-6567-11eb-1d9d-f98bfca7ec27
 # ╠═ad853ac9-a8a0-44ef-8d41-c8cea165ad57
 # ╠═26025270-9b5e-4841-b295-0c47437bc7db

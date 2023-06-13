@@ -10,9 +10,11 @@ import Pluto:
     without_pluto_file_extension
 using HTTP
 using Sockets
+import JSON
 
 @from "./run_bonds.jl" import run_bonds_get_patches
-@from "./Export.jl" import generate_index_html
+@from "./IndexJSON.jl" import generate_index_json
+@from "./IndexHTML.jl" import temp_index, generate_basic_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 @from "./PlutoHash.jl" import base64urldecode
@@ -29,6 +31,7 @@ function make_router(
     notebook_sessions::AbstractVector{<:NotebookSession},
     server_session::ServerSession;
     settings::PlutoDeploySettings,
+    start_dir::AbstractString,
     static_dir::Union{String,Nothing}=nothing,
 )
     router = HTTP.Router()
@@ -53,7 +56,7 @@ function make_router(
             If this is an automated setup, then this could happen inbetween deployments. 
 
             If this is a manual setup, then running the .jl notebook file might have caused a small change (e.g. the version number or a whitespace change). Copy notebooks to a temporary directory before running them using the bind server. =#
-            @info "Request hash not found. See errror hint in my source code." notebook_hash
+            @info "Request hash not found. See error hint in my source code." notebook_hash
             nothing
         else
             notebook_sessions[i]
@@ -110,12 +113,44 @@ function make_router(
                 HTTP.Response(500, "Failed to set bond values") |>
                 with_cors! |>
                 with_not_cacheable!
-            else
-                HTTP.Response(200, Pluto.pack(result)) |>
-                with_cacheable! |>
-                with_cors! |>
-                with_msgpack!
             end
+
+            ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
+
+            @debug "Finished running!" length(ids_of_cells_that_ran)
+
+            # We only want to send state updates about...
+            function only_relevant(state)
+                new = copy(state)
+                # ... the cells that just ran and ...
+                new["cell_results"] = filter(state["cell_results"]) do (id, cell_state)
+                    id ∈ ids_of_cells_that_ran
+                end
+                # ... nothing about bond values, because we don't want to synchronize among clients. and...
+                delete!(new, "bonds")
+                # ... we ignore changes to the status tree caused by a running bonds.
+                delete!(new, "status_tree")
+                new
+            end
+
+            patches = Firebasey.diff(
+                only_relevant(sesh.run.original_state),
+                only_relevant(new_state),
+            )
+            patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
+
+            HTTP.Response(
+                200,
+                Pluto.pack(
+                    Dict{String,Any}(
+                        "patches" => patches_as_dicts,
+                        "ids_of_cells_that_ran" => ids_of_cells_that_ran,
+                    ),
+                ),
+            ) |>
+            with_cacheable! |>
+            with_cors! |>
+            with_msgpack!
         elseif queued_for_bonds(sesh)
             HTTP.Response(503, "Still loading the notebooks... check back later!") |>
             with_cors! |>
@@ -142,7 +177,7 @@ function make_router(
         end
     end
 
-    HTTP.@register(
+    HTTP.register!(
         router,
         "GET",
         "/",
@@ -167,15 +202,28 @@ function make_router(
             end |>
             with_cors! |>
             with_not_cacheable!
-        end
+        end,
+    )
+
+
+    HTTP.register!(
+        router,
+        "GET",
+        "/pluto_export.json",
+        r -> let
+            HTTP.Response(200, generate_index_json(notebook_sessions; settings, start_dir)) |>
+            with_json! |>
+            with_cors! |>
+            with_not_cacheable!
+        end,
     )
 
     # !!!! IDEAAAA also have a get endpoint with the same thing but the bond data is base64 encoded in the URL
     # only use it when the amount of data is not too much :o
 
-    HTTP.@register(router, "POST", "/staterequest/*/", serve_staterequest)
-    HTTP.@register(router, "GET", "/staterequest/*/*", serve_staterequest)
-    HTTP.@register(router, "GET", "/bondconnections/*/", serve_bondconnections)
+    HTTP.register!(router, "POST", "/staterequest/*/", serve_staterequest)
+    HTTP.register!(router, "GET", "/staterequest/*/*", serve_staterequest)
+    HTTP.register!(router, "GET", "/bondconnections/*/", serve_bondconnections)
 
     if static_dir !== nothing
         function serve_pluto_asset(request::HTTP.Request)
@@ -187,14 +235,14 @@ function make_router(
             )
             Pluto.asset_response(filepath)
         end
-        HTTP.@register(router, "GET", "/pluto_asset/*", serve_pluto_asset)
+        HTTP.register!(router, "GET", "/pluto_asset/**", serve_pluto_asset)
         function serve_asset(request::HTTP.Request)
             uri = HTTP.URI(request.target)
 
             filepath = joinpath(static_dir, relpath(HTTP.unescapeuri(uri.path), "/"))
             Pluto.asset_response(filepath)
         end
-        HTTP.@register(router, "GET", "/*", serve_asset)
+        HTTP.register!(router, "GET", "/**", serve_asset)
     end
 
     router
@@ -205,12 +253,17 @@ end
 # HEADERS
 
 function with_msgpack!(response::HTTP.Response)
-    push!(response.headers, "Content-Type" => "application/msgpack")
+    HTTP.setheader(response, "Content-Type" => "application/msgpack")
+    response
+end
+
+function with_json!(response::HTTP.Response)
+    HTTP.setheader(response, "Content-Type" => "application/json; charset=utf-8")
     response
 end
 
 function with_cors!(response::HTTP.Response)
-    push!(response.headers, "Access-Control-Allow-Origin" => "*")
+    HTTP.setheader(response, "Access-Control-Allow-Origin" => "*")
     response
 end
 
@@ -221,23 +274,19 @@ function with_cacheable!(response::HTTP.Response)
     day = 24hour
     year = 365day
 
-    push!(response.headers, "Cache-Control" => "public, max-age=$(10year), immutable")
+    HTTP.setheader(response, "Cache-Control" => "public, max-age=$(10year), immutable")
     response
 end
 
 function with_not_cacheable!(response::HTTP.Response)
-    push!(response.headers, "Cache-Control" => "no-store, no-cache, max-age=5")
+    HTTP.setheader(response, "Cache-Control" => "no-store, no-cache")
     response
 end
 
-
-
-function temp_index(notebook_sessions::Vector{NotebookSession})
-    generate_index_html(temp_index_item.(notebook_sessions))
-end
-function temp_index_item(s::NotebookSession)
-    without_pluto_file_extension(s.path) => nothing
-end
-function temp_index_item(s::NotebookSession{String,String,<:Any})
-    without_pluto_file_extension(s.path) => without_pluto_file_extension(s.path) * ".html"
+function ReferrerMiddleware(handler)
+    return function (req::HTTP.Request)
+        response = handler(req)
+        HTTP.setheader(response, "Referrer-Policy" => "origin-when-cross-origin")
+        return response
+    end
 end

@@ -1,7 +1,8 @@
 using PlutoSliderServer
 ENV["JULIA_DEBUG"] = PlutoSliderServer
+import Random
 
-
+Random.seed!(time_ns())
 test_dir = tempname(cleanup=false)
 cp(@__DIR__, test_dir)
 

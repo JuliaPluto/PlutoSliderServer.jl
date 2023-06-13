@@ -2,18 +2,15 @@
 
 > _**not just sliders!**_
 
-Web server to run just the @bind parts of a [Pluto.jl](https://github.com/fonsp/Pluto.jl) notebook. 
+Web server to run just the @bind parts of a [Pluto.jl](https://github.com/fonsp/Pluto.jl) notebook.
 
-See it in action at [computationalthinking.mit.edu](https://computationalthinking.mit.edu/Spring21/week1/)! Sliders, buttons and camera inputs work _instantly_, without having to wait for a Julia process. Plutoplutopluto
+See it in action at [computationalthinking.mit.edu](https://computationalthinking.mit.edu/)! Sliders, buttons and camera inputs work _instantly_, without having to wait for a Julia process. Plutoplutopluto
 
 [![](https://data.jsdelivr.com/v1/package/gh/fonsp/Pluto.jl/badge)](https://www.jsdelivr.com/package/gh/fonsp/Pluto.jl)
 
 # Try it out
 
 ```julia
-import Pkg
-Pkg.add("PlutoSliderServer")
-
 using PlutoSliderServer
 path_to_notebook = download("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.17.2/sample/Interactivity.jl") # fill in your own notebook path here!
 
@@ -36,7 +33,7 @@ PlutoSliderServer.export_notebook("path/to/notebook.jl")
 ```
 
 ## 2. Run a slider server
-The main functionality of PlutoSliderServer is to run a ***slider server***. This is a web server that **runs a notebook using Pluto**, and allows visitors to **change the values of `@bind`-ed variables**. 
+The main functionality of PlutoSliderServer is to run a ***slider server***. This is a web server that **runs a notebook using Pluto**, and allows visitors to **change the values of `@bind`-ed variables**.
 
 The important **differences** between running a *slider server* and running Pluto with public access are:
 - A *slider server* can only set `@bind` values, it is not possible to change the notebook's code.
@@ -52,7 +49,7 @@ PlutoSliderServer.run_notebook("path/to/notebook.jl")
 ```
 
 ## 3. _(WIP): Precomputed slider server_
-Many input elements only have a finite number of possible values, for example, `PlutoUI.Slider(5:15)` can only have 11 values. For finite inputs like the slider, PlutoSliderServer can run the slider server **in advance**, and precompute the results to all possible inputs (in other words: precompute the response to all possible requests). 
+Many input elements only have a finite number of possible values, for example, `PlutoUI.Slider(5:15)` can only have 11 values. For finite inputs like the slider, PlutoSliderServer can run the slider server **in advance**, and precompute the results to all possible inputs (in other words: precompute the response to all possible requests).
 
 This will generate a directory of subdirectories and files, each corresponding to a possible request. You can host this directory along with the generated HTML file (e.g. on GitHub pages), and Pluto will be able to use these pregenerated files as if they are a slider server! **You can get the interactivity of a slider server, without running a Julia server!**
 
@@ -71,7 +68,7 @@ See `PlutoSliderServer.export_directory` and `PlutoSliderServer.run_directory`.
 
 After scanning a directory for notebook files, you can ask Pluto to continue watching the directory for changes. When notebook files are added/removed, they are also added/removed from the server. When a notebook file changes, the notebook session is restarted.
 
-This works especially well when this directory is a git-tracked directory. When running in a git directory, PlutoSliderServer can keep `git pull`ing the directory, updating from the repository automatically. 
+This works especially well when this directory is a git-tracked directory. When running in a git directory, PlutoSliderServer can keep `git pull`ing the directory, updating from the repository automatically.
 
 See the `SliderServer_watch_dir` option and `PlutoSliderServer.run_git_directory`.
 
@@ -106,15 +103,15 @@ x + y
 "Hello $(z)!"
 ```
 
-We have three **bound variables**: `x`, `y` and `z`. When analyzed by Pluto, we find the dependecies between cels: `1 -> 3`, `2 -> 3`, `4 -> 5`. This means that, as a graph, the last two cells are completely disconnected from the rest of the graph. Our *bond connections graph* will capture this idea.
+We have three **bound variables**: `x`, `y` and `z`. When analyzed by Pluto, we find the dependecies between cells: `1 -> 3`, `2 -> 3`, `4 -> 5`. This means that, as a graph, the last two cells are completely disconnected from the rest of the graph. Our *bond connections graph* will capture this idea.
 
 ### Procedure
 For each bound variable, we use Pluto's reactivity graph to know:
 1. Which cells depend on the bound variable?
-2. Which *other* bound variables are dependencies of a cell from (1)? These are called the co-dependencies of the bound variable.
+2. Which bound variables are (indirect) dependencies of any cell from (1)? These are called the co-dependencies of the bound variable.
 
 
-In our example, `x` influences the result of `x + y`, which depends on `y`. So `x` and `y` are codependent. `z` is disconnected from `x` and `y`, so it forms its own group.
+In our example, `x` influences the result of `x + y`, which depends on `y`. So `x` and `y` are the co-dependencies of `x`. Variable `z` influences `"Hello $(z)!"`, which is does not have `x` or `y` as dependencies. So `z` is *not* codependent with `x` or with `y`.
 
 This forms a dictionary, which looks like:
 ```julia
@@ -157,9 +154,9 @@ There are two ways to change configurations: using keywords arguments, and using
 Our functions can take keyword arguments, for example:
 
 ```julia
-run_directory("my_notebooks"; 
-    SliderServer_port=8080, 
-    SliderServer_host="0.0.0.0", 
+run_directory("my_notebooks";
+    SliderServer_port=8080,
+    SliderServer_host="0.0.0.0",
     Export_baked_notebookfile=false,
 )
 ```
@@ -198,6 +195,8 @@ These instructions set up a slider server on a dedicated server, which automatic
 
 > _Disclaimer: This is work in progress, there might be holes!_
 
+## Part 1: setup and running locally
+
 ### 1. Initialize
 Create a folder called `pluto-slider-server-environment` with the `Project.toml` and `Manifest.toml` for the `PlutoSliderServer`: (Not the notebooks - the notebooks should contain their own package environment.)
 ```shell
@@ -209,42 +208,87 @@ pkg> add Pluto PlutoSliderServer
 ```
 
 ### 2. Configuration file
-Optionally, create a configuration file in the same folder as `Project.toml`, see the section about `PlutoDeployment.toml` above.
+Create a configuration file in the same folder as `Project.toml`, see the section about `PlutoDeployment.toml` above.
 ```shell
-touch pluto-slider-server-environment/PlutoDeployment.toml
-# edit the file...
+TEMPFILE=$(mktemp)
+cat > $TEMPFILE << __EOF__
+[SliderServer]
+port = 8080
+host = "0.0.0.0"
+
+# more configuration can go here!
+__EOF__
+
+sudo mv $TEMPFILE pluto-slider-server-environment/PlutoDeployment.toml
 ```
 
-### 3. Run it 
+This configuration sets the port to `8080` (not `80`, this requires sudo), and the host to `"0.0.0.0"` (which allows traffic from outside the computer, unlike the default `"127.0.0.1"`).
+
+### 3. Run it
 Let's try running it locally before setting up our server:
 ```shell
 julia --project="pluto-slider-server-environment" -e "import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 ```
 
-`run_git_directory` will periodically call `git pull`, which requires the `start_dir` to be a repository in which you can `git pull` without password (which means it's either public, or you have the required keys in `~/.ssh/` and your git's provider security page!) 
+`run_git_directory` will periodically call `git pull`, which requires the `start_dir` to be a repository in which you can `git pull` without password (which means it's either public, or you have the required keys in `~/.ssh/` and your git's provider security page!)
 
-### 4. Start PlutoSliderServer on restart
+>**Note**
+>Julia by default uses `libgit2` for git operations, [which can be problematic](https://github.com/JuliaLang/Pkg.jl/issues/2679). It is also known to cause issues  in cloud environments like AWS's CodeCommit
+>where re-authentication is required at regular intervals. 
+> 
+> A simple workaround is to set the `JULIA_PKG_USE_CLI_GIT` environment variable to `true`, which will fallback to the system git (the one on the shell).
+> Make sure that this is installed! (`sudo apt-get install git` does the trick in Ubuntu).
+
+Also note that `git pull` may fail on the server if you force push the branch from your laptop, so handle history-rewriting commands, like `git push -f`, `git rebase` etc with care!
+
+## Part 2: setting up the web server
 For this step, we'll assume a very specific but also common setup:
 
-- Ubuntu-based machine with `apt-get`, `git`, `vim` and internet
+- Ubuntu-based server with `apt-get`, `git`, `vim` and internet
+- access through SSH
 - root access
-    
-#### 1. Install Julia (run as root) 
+- port 80 is open to the web
+
+The easiest way to get this is to **rent a server** from digitalocean.com, AWS, Google Cloud, etc. This setup was tested with digitalocean.com, which has the easiest interface for beginners.
+
+> ### Required memory, disk space, CPU power
+> When renting a server, you need to decide which "droplet size" you want. The bottleneck is memory – CPU power and disk space will always be sufficient. As minimum, you need `500MB + 300MB * length(notebooks)`. But if you use large packages, like Plots or DifferentialEquations, a notebook might need 1000MB memory. 
+> 
+> There is no minimum requirement on CPU power, but it does have a big impact on *launch time* and *responsiveness*. We found that DigitalOcean "dedicated CPU" is noticably faster (more than 2x) in both areas than "shared CPU".
+> 
+> It is really important to make sure that you will be able to **resize your server later**, adding/removing memory as needed, to minimize your costs. For DigitalOcean, we have a specific tip: *always **start** with the smallest possible droplet (512MB or 1000MB), and then resize memory/CPU to fit your needs, without resizing the disk*. When resizing, DigitalOcean does not allow *shrinking* the disk size.
+
+### 0. Update packages
 ```shell
-wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.4-linux-x86_64.tar.gz
-tar zxvf julia-1.6.4-linux-x86_64.tar.gz
-rm julia-1.6.4-linux-x86_64.tar.gz
-ln -s `pwd`/julia-1.6.4/bin/julia /usr/local/bin/julia
+sudo apt-get update
+sudo apt-get upgrade
 ```
 
-#### 2. get your repository
+You should run `systemd --version` to verify that we have version 230 or higher.
+
+### 1. Install Julia (run as root)
+```shell
+# You can edit me: The Julia version (1.8.0) split into three parts:
+JULIA_MAJOR_VERSION=1
+JULIA_MINOR_VERSION=8
+JULIA_PATCH_VERSION=0
+
+JULIA_VERSION="$(echo $JULIA_MAJOR_VERSION).$(echo $JULIA_MINOR_VERSION).$(echo $JULIA_PATCH_VERSION)"
+
+wget https://julialang-s3.julialang.org/bin/linux/x64/$(echo $JULIA_MAJOR_VERSION).$(echo $JULIA_MINOR_VERSION)/julia-$(echo $JULIA_VERSION)-linux-x86_64.tar.gz
+tar -xvzf julia-$JULIA_VERSION-linux-x86_64.tar.gz
+rm julia-$JULIA_VERSION-linux-x86_64.tar.gz
+sudo ln -s `pwd`/julia-$JULIA_VERSION/bin/julia /usr/local/bin/julia
+```
+
+### 2. get your repository
 ```shell
 git clone https://github.com/<user>/<repo-with-notebooks>
 cd <repo-with-notebooks>
 git pull
 ```
 
-#### 3. Create a service
+### 3. Create a service
 ```shell
 TEMPFILE=$(mktemp)
 cat > $TEMPFILE << __EOF__
@@ -258,6 +302,8 @@ StartLimitBurst=5
 ExecStart=/usr/local/bin/pluto-slider-server.sh
 Restart=always
 RestartSec=5
+User=$(whoami)
+Group=$(id -gn)
 
 [Install]
 WantedBy=default.target
@@ -266,11 +312,17 @@ __EOF__
 sudo mv $TEMPFILE /etc/systemd/system/pluto-server.service
 ```
 
+This script uses `whoami` and `id -gn` to automatically insert your username an group name into the configuration file. We want to run the PlutoSliderServer as your user, not as root.
+
 ### 4. Create the startup script
 ```shell
 TEMPFILE=$(mktemp)
 cat > $TEMPFILE << __EOF__
 #!/bin/bash
+
+# this env var allows us to side step various issues with the Julia-bundled git
+export JULIA_PKG_USE_CLI_GIT=true
+
 cd /home/<your-username>/<your-repo>  # Make sure to change to the absolute path to your repository. Don't use ~.
 julia --project="pluto-slider-server-environment" -e "import Pkg; Pkg.instantiate(); import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 __EOF__
@@ -298,18 +350,81 @@ Tip: If you need to change the service file or the startup script later, re-run 
 # To see quick status (running/failed and memory):
 systemctl -l status pluto-server
 
-# To browse the logs:
-sudo journalctl -u pluto-server
+# To browse past logs:
+sudo journalctl --pager-end -u pluto-server
+
+# To see logs coming in live:
+sudo journalctl --follow -u pluto-server
 ```
 
-### 8. Live updates
+### 8. Server available
+
+TODO
+
+### 9. Live updates
 When you change the notebooks in the git repository, your server will automatically update (it keeps calling `git pull`)! Awesome!
 
 If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer will detect a change in configuration and shut down. Because we set up our service using `systemctl`, the server will automatically restart! (With the new settings)
 
---- 
 
-TBA: There will be a simple 1.2.3. checklist to get this running on heroku for your own repository. It is designed to be used in a **containerized** environment (such as heroku, docker, digitalocean apps, ...), in a **push to deploy** setting.
+## Part 3: port, domain name, https
+
+The default settings will serve Pluto on the IP address of your server, on `http` (not `https`), on port 8080 (not 80 or 443).
+
+Normally, websites are available on a domain name, on https, on the default port (80 for http, 443 for https) (e.g. `https://plutojl.org/`). Here's how you get there!
+
+If you use a server managed by your university/company, ask your system administrator how to achieve these steps.
+
+### 1. Domain name
+
+You need to buy a domain name, and get access to the DNS settings. Set an "A record" that points to your IP address. 
+
+You can now access your PlutoSliderServer at `http://mydomain.org:8080/`. Nice!
+
+### 2. Port 80
+
+We don't want everyone to add `:8080` to the URL! The default port for http is 80, so we want our website to be available at port 80.
+
+The tricky thing is: we don't want to run PlutoSliderServer directly on port 80, because this requires `sudo` privileges for running `julia`. We want to avoid this because we don't want `julia` to read/write files as `root` (this would mess up your git directory). 
+
+The solution is to run PlutoSliderServer on port 8080, and use a separate server (running as root) to redirect traffic from port 80 to port 8080. We use `nginx` for that!
+
+```shell
+sudo apt install nginx
+```
+nginx is now installed and it is configured to run at startup.
+
+Let's configure nginx as a redirect from port 80 to port 8080.
+
+```shell
+TEMPFILE=$(mktemp)
+cat > $TEMPFILE << __EOF__
+server {
+	listen 80 default_server;
+	listen [::]:80 default_server;
+
+	location / {
+		proxy_pass http://localhost:8080;
+	}
+}
+__EOF__
+
+sudo mv $TEMPFILE /etc/nginx/sites-available/default
+```
+
+After changing configuration, restart nginx:
+
+```shell
+sudo systemctl restart nginx
+```
+
+### 3. HTTPS
+
+The easiest way to get https is to use cloudflare. Register an account, set up your domain, use their DNS, and enable the "Always HTTPS" service. (Cloudflare is also very useful for caching! This will make your PlutoSliderServer faster.)
+
+Alternatively, you can set up HTTPS yourself with `nginx` and Let's Encrypt, but this is beyond the scope of this tutorial. 💛
+
+Now, your service should be available at `https://yourdomain.org/`. Nice!
 
 # Similar/alternative packages
 
@@ -322,25 +437,24 @@ The most similar project is [PlutoStaticHTML.jl](https://github.com/rikhuijzer/P
 This means that the output of PlutoSliderServer.jl will look exactly the same as what you see while writing the notebook. Output from PlutoStaticHTML.jl is more minimal, which means that it loads faster, it can be styled with CSS, and it can more easily be embedded within other web pages (like Documenter.jl sections).
 
 Other Julia packages which export to HTML/PDF, but not necessarily with Pluto notebook files as input, include:
-- Documenter.jl 
+- Documenter.jl
 - Franklin.jl
 - Books.jl
 - Weave.jl
 
 ## Slider server
-PlutoSliderServer is the only package that lets you run a *slider server* for Pluto notebooks (an interactive site to interact with a Pluto notebook through `@bind`). 
+PlutoSliderServer is the only package that lets you run a *slider server* for Pluto notebooks (an interactive site to interact with a Pluto notebook through `@bind`).
 
 There are alternatives for running a Julia-backed interactive site if your code is *not* a Pluto notebook, including [JSServe.jl](https://github.com/SimonDanisch/JSServe.jl), [Stipple.jl](https://github.com/GenieFramework/Stipple.jl) and [Dash.jl](https://github.com/plotly/Dash.jl), each with their own philosophy and ideal use case. *(Feel free to suggest others!)*
 
 ## Precomputer slider server
 [PlutoStaticHTML.jl](https://github.com/rikhuijzer/PlutoStaticHTML.jl) should also have this feature in the future, after it is added to PlutoSliderServer (it is still [being worked on](https://github.com/JuliaPluto/PlutoSliderServer.jl/pull/29)).
 
-If you code is *not* a Pluto notebook, then [JSServe.jl](https://github.com/SimonDanisch/JSServe.jl) also has precomputing abilities, with a different approach and philosophy. 
+If you code is *not* a Pluto notebook, then [JSServe.jl](https://github.com/SimonDanisch/JSServe.jl) also has precomputing abilities, with a different approach and philosophy.
 
 # Authentication and security
-Since this server is a new and experimental concept, we highly recommend that you run it inside an isolated environment. While visitors are not able to change the notebook code, it is possible to manipulate the API to set bound values to arbitrary objects. For example, when your notebook uses `@bind x Slider(1:10)`, the API could be used to set the `x` to `9000`, `[10,20,30]` or `"👻"`. 
+Since this server is a new and experimental concept, we highly recommend that you run it inside an isolated environment. While visitors are not able to change the notebook code, it is possible to manipulate the API to set bound values to arbitrary objects. For example, when your notebook uses `@bind x Slider(1:10)`, the API could be used to set the `x` to `9000`, `[10,20,30]` or `"👻"`.
 
 In the future, we are planning to implement a hook that allows widgets (such as `Slider`) to validate a value before it is run: [`AbstractPlutoDingetjes.Bonds.validate_value`](https://docs.juliahub.com/AbstractPlutoDingetjes/UHbnu/1.1.1/#AbstractPlutoDingetjes.Bonds.validate_value-Tuple{Any,%20Any}).
 
 Of course, we are not security experts, and this software does not come with any kind of security guarantee. To be completely safe, assume that someone who can visit the server can execute arbitrary code in the notebook, despite our measures to prevent it. Run PlutoSliderServer in a containerized environment.
-
