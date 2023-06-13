@@ -55,7 +55,8 @@ using Base64
         x = 10
         y = 20
         z = 15
-        x * y + z
+        a1, a2 = 10, 10
+        x * y + z + a1 * a2
     end
 
     while !occursin(

@@ -7,7 +7,6 @@ import Configurations
 using FromFile
 
 @from "./index.jl" import variable_groups, generate_precomputed_staterequests_report
-@from "../Actions.jl" import path_hash
 @from "../Types.jl" import RunningNotebook
 @from "../Configuration.jl" import PlutoDeploySettings
 @from "../MoreAnalysis.jl" import bound_variable_connections_graph
@@ -33,7 +32,6 @@ function start_debugging(notebook_path::String; kwargs...)
 
     repeat = true
     while repeat
-        # current_hash = path_hash(notebook_path)
         connections = bound_variable_connections_graph(notebook)
 
         run = RunningNotebook(;

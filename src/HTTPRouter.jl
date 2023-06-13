@@ -115,39 +115,7 @@ function make_router(
                 with_not_cacheable!
             end
 
-            ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
-
-            @debug "Finished running!" length(ids_of_cells_that_ran)
-
-            # We only want to send state updates about...
-            function only_relevant(state)
-                new = copy(state)
-                # ... the cells that just ran and ...
-                new["cell_results"] = filter(state["cell_results"]) do (id, cell_state)
-                    id ∈ ids_of_cells_that_ran
-                end
-                # ... nothing about bond values, because we don't want to synchronize among clients. and...
-                delete!(new, "bonds")
-                # ... we ignore changes to the status tree caused by a running bonds.
-                delete!(new, "status_tree")
-                new
-            end
-
-            patches = Firebasey.diff(
-                only_relevant(sesh.run.original_state),
-                only_relevant(new_state),
-            )
-            patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
-
-            HTTP.Response(
-                200,
-                Pluto.pack(
-                    Dict{String,Any}(
-                        "patches" => patches_as_dicts,
-                        "ids_of_cells_that_ran" => ids_of_cells_that_ran,
-                    ),
-                ),
-            ) |>
+            HTTP.Response(200, Pluto.pack(result)) |>
             with_cacheable! |>
             with_cors! |>
             with_msgpack!

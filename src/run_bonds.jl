@@ -57,7 +57,7 @@ function run_bonds_get_patches(
     end
 
     patches = Firebasey.diff(only_relevant(run.original_state), only_relevant(new_state))
-    patches_as_dicts::Array{Dict} = patches
+    patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
 
     Dict{String,Any}(
         "patches" => patches_as_dicts,
