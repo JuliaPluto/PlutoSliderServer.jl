@@ -71,8 +71,7 @@ function process(
         !is_glob_match(path, settings.SliderServer.exclude)
     skip_cache =
         keep_running ||
-        is_glob_match(path, settings.Export.ignore_cache) ||
-        path ∈ settings.Export.ignore_cache
+        is_glob_match(path, settings.Export.ignore_cache)
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
 
@@ -136,6 +135,7 @@ function process(
             output_dir,
         )
         # TODO shutdown
+        # TODO cache
     end
 
     @info "### ✓ $(progress) Ready" s.path new_hash

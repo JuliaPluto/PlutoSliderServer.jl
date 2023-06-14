@@ -11,6 +11,7 @@ const Reason = Symbol
 
 Base.@kwdef struct Judgement
     should_precompute_all::Bool = false
+    can_fully_bundle::Bool = false
     not_available::Bool = false
     close_to_filesize_limit::Bool = false
     exceeds_filesize_limit::Bool = false
@@ -42,17 +43,21 @@ function VariableGroupPossibilities(;
         @assert settings isa PlutoDeploySettings
 
         limit = settings.Precompute.max_filesize_per_group
+        bundle_limit = settings.Precompute.max_full_bundle_size
         current = mean(file_size_sample_distribution)
 
         exceeds_filesize_limit = current > limit
+        exceeds_bundle_size_limit = current > bundle_limit
         close_to_filesize_limit = current > limit * 0.7
     else
-        exceeds_filesize_limit = close_to_filesize_limit = false
+
+        exceeds_filesize_limit = exceeds_bundle_size_limit = close_to_filesize_limit = false
+
     end
 
     j = Judgement(;
         should_precompute_all=!is_not_available && !exceeds_filesize_limit,
-        exceeds_filesize_limit,
+        can_fully_bundle=!exceeds_bundle_size_limit,
         close_to_filesize_limit,
         not_available=is_not_available,
     )
@@ -203,9 +208,15 @@ sum_distributions(ds; init=Normal(0, 0)) =
     any(isnothing, ds) ? nothing : reduce(convolve, ds; init=init)
 
 
-pretty(j::Judgement) =
-    if j.should_precompute_all
+pretty(j::Judgement) = begin
+    s = ""
+    s *= if j.should_precompute_all
         j.close_to_filesize_limit ? "⚠️" : "✓"
     else
         "❌"
     end
+    if j.can_fully_bundle
+        s *= " 📦"
+    end
+    s
+end
