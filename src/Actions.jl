@@ -64,7 +64,9 @@ function process(
     end
 
     keep_running =
-        settings.SliderServer.enabled && !is_glob_match(path, settings.SliderServer.exclude)
+        settings.SliderServer.enabled &&
+        !is_glob_match(path, settings.SliderServer.exclude) &&
+        occursin("@bind", jl_contents)
     skip_cache = keep_running || is_glob_match(path, settings.Export.ignore_cache)
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)

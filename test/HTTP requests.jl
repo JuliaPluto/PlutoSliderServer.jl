@@ -180,12 +180,12 @@ make_test_dir() =
     s_a = find(s -> occursin("a.jl", s.path), notebook_sessions)
     s_export_only = find(s -> occursin("export_only", s.path), notebook_sessions)
 
-    response =
-        HTTP.request("GET", "http://localhost:$(port)/bondconnections/$(s_a.current_hash)/")
-    data = Pluto.unpack(response.body)
-
-    @test data isa Dict
-    @test isempty(data) # these notebooks don't have any bonds
+    response = HTTP.request(
+        "GET",
+        "http://localhost:$(port)/bondconnections/$(s_a.current_hash)/";
+        status_exception=false,
+    )
+    @test response.status == 422 # notebook is no longer running since it has no bonds
 
     @test s_export_only.run isa PlutoSliderServer.var"../Types.jl".FinishedNotebook
 
@@ -195,7 +195,15 @@ make_test_dir() =
         status_exception=false,
     )
 
-    @test response_export_only.status == 404 # this notebook is not in the slider server
+    @test response_export_only.status == 422 # this notebook is not in the slider server but was exported
+
+    response_no_notebook = HTTP.request(
+        "GET",
+        "http://localhost:$(port)/bondconnections/$(plutohash("abc"))/";
+        status_exception=false,
+    )
+
+    @test response_no_notebook.status == 404 # this notebook is not in the slider server
 
     asset_urls = [
         ""
