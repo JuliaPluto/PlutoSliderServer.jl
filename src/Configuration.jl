@@ -2,8 +2,6 @@ using Configurations
 import TOML
 import Pluto
 export SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration
-using TerminalLoggers: TerminalLogger
-using Logging: global_logger
 using FromFile
 import Glob
 @from "./ConfigurationDocs.jl" import @extract_docs, get_kwdocs, list_options_md
