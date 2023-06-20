@@ -55,7 +55,7 @@ function make_router(
             If this is an automated setup, then this could happen inbetween deployments. 
 
             If this is a manual setup, then running the .jl notebook file might have caused a small change (e.g. the version number or a whitespace change). Copy notebooks to a temporary directory before running them using the bind server. =#
-            @info "Request hash not found. See error hint in my source code." notebook_hash
+            @info "Request hash not found. See error hint in my source code." notebook_hash maxlog=50
             nothing
         else
             notebook_sessions[i]
