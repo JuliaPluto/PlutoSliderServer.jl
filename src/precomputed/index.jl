@@ -152,6 +152,9 @@ function generate_precomputed_staterequests(
 
     if report.judgement.should_precompute_all
         @info "Notebook can be fully precomputed!" report
+    elseif settings.Precompute.only_fully
+        @warn "Notebook cannot be fully precomputed - skipping it!" report
+        return
     else
         @warn "Notebook cannot be (fully) precomputed" report
     end

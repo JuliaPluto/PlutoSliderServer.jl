@@ -31,6 +31,8 @@ end
     enabled::Bool = false
     "List of notebook files to skip precomputation. Provide paths relative to `start_dir`."
     exclude::Vector{String} = String[]
+    "Whether or not to partially precompute notebooks. If `true`, notebooks will only be precomputed if **all** their sliders can be precomputed"
+    only_fully::Bool = false
     max_filesize_per_group::Integer = 1_000_000
 end
 
