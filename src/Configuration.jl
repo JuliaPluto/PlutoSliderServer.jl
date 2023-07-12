@@ -21,7 +21,7 @@ import Glob
     serve_static_export_folder::Bool = true
     simulated_lag::Real = 0
     "Maximum number of seconds to keep cached slider responses fresh in the browser cache. Setting this to `0` disables caching"
-    cache_max_age::Int = 60 * 60 * 24 * 365 * 10
+    cache_max_age::Int = 315360000  # 10 years
 end
 
 @extract_docs @option struct ExportSettings
