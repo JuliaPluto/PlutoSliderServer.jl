@@ -35,6 +35,8 @@ function make_router(
 )
     router = HTTP.Router()
 
+    with_cacheable_configured! = with_cacheable!(settings.SliderServer.cache_control)
+
     function get_sesh(request::HTTP.Request)
         uri = HTTP.URI(request.target)
 
@@ -55,7 +57,8 @@ function make_router(
             If this is an automated setup, then this could happen inbetween deployments. 
 
             If this is a manual setup, then running the .jl notebook file might have caused a small change (e.g. the version number or a whitespace change). Copy notebooks to a temporary directory before running them using the bind server. =#
-            @info "Request hash not found. See error hint in my source code." notebook_hash maxlog=50
+            @info "Request hash not found. See error hint in my source code." notebook_hash maxlog =
+                50
             nothing
         else
             notebook_sessions[i]
@@ -165,7 +168,7 @@ function make_router(
                     ),
                 ),
             ) |>
-            with_cacheable! |>
+            with_cacheable_configured! |>
             with_cors! |>
             with_msgpack!
         elseif queued_for_bonds(sesh)
@@ -183,7 +186,7 @@ function make_router(
         response = if ready_for_bonds(sesh)
             HTTP.Response(200, Pluto.pack(sesh.run.bond_connections)) |>
             with_cors! |>
-            with_cacheable! |>
+            with_cacheable_configured! |>
             with_msgpack!
         elseif queued_for_bonds(sesh)
             HTTP.Response(503, "Still loading the notebooks... check back later!") |>
@@ -288,15 +291,11 @@ function with_cors!(response::HTTP.Response)
     response
 end
 
-function with_cacheable!(response::HTTP.Response)
-    second = 1
-    minute = 60second
-    hour = 60minute
-    day = 24hour
-    year = 365day
-
-    HTTP.setheader(response, "Cache-Control" => "public, max-age=$(10year), immutable")
-    response
+function with_cacheable!(cache_control::String)
+    return (response::HTTP.Response) -> begin
+        HTTP.setheader(response, "Cache-Control" => cache_control)
+        response
+    end
 end
 
 function with_not_cacheable!(response::HTTP.Response)
