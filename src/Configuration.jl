@@ -20,8 +20,8 @@ import Glob
     "Besides handling slider server request, should we also run a static file server of the export output folder? Set to `false` if you are serving the HTML files in another way, e.g. using GitHub Pages, and, for some reason, you do not want to *also* serve the HTML files using this serve."
     serve_static_export_folder::Bool = true
     simulated_lag::Real = 0
-    "Maximum number of seconds to keep cached slider responses fresh in the browser cache. Setting this to `0` disables caching"
-    cache_max_age::Int = 315360000  # 10 years
+    "Cache-Control header sent on requests in which caching is enabled. Set to `no-store, no-cache` to completely disable caching"
+    cache_control::String = "public, max-age=315600000, immutable"
 end
 
 @extract_docs @option struct ExportSettings

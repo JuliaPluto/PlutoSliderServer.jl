@@ -35,7 +35,7 @@ function make_router(
 )
     router = HTTP.Router()
 
-    with_cacheable_configured! = with_cacheable!(settings.SliderServer.cache_max_age)
+    with_cacheable_configured! = with_cacheable!(settings.SliderServer.cache_control)
 
     function get_sesh(request::HTTP.Request)
         uri = HTTP.URI(request.target)
@@ -291,14 +291,10 @@ function with_cors!(response::HTTP.Response)
     response
 end
 
-function with_cacheable!(max_age::Int)
+function with_cacheable!(cache_control::String)
     return (response::HTTP.Response) -> begin
-        if max_age > 0
-            HTTP.setheader(response, "Cache-Control" => "public, max-age=$(max_age), immutable")
-            response
-        else
-            with_not_cacheable!(response)
-        end
+        HTTP.setheader(response, "Cache-Control" => cache_control)
+        response
     end
 end
 
