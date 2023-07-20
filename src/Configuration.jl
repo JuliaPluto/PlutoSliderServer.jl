@@ -34,6 +34,11 @@ end
     "Whether or not to partially precompute notebooks. If `true`, notebooks will only be precomputed if **all** their sliders can be precomputed"
     only_fully::Bool = false
     max_filesize_per_group::Integer = 1_000_000
+
+    "Combines multiple bind state precomputations into a single file"
+    bundling_enabled::Bool = false
+    "Maximum filesize of a full bundle including all group bond updates. Since these files are sent in full over the internet, their size must be small"
+    max_full_bundle_size::Integer = 500_000
 end
 
 @extract_docs @option struct ExportSettings

@@ -130,10 +130,14 @@ function generate_precomputed_staterequests(
     connections = run.bond_connections
     current_hash = sesh.current_hash
 
+    should_bundle = settings.Precompute.bundling_enabled
+
     @assert run isa RunningNotebook
 
     mkpath(joinpath(output_dir, "bondconnections"))
+    mkpath(joinpath(output_dir, "bundles"))
     mkpath(joinpath(output_dir, "staterequest", URIs.escapeuri(current_hash)))
+    mkpath(joinpath(output_dir, "staterequest-bundled", URIs.escapeuri(current_hash)))
 
     bondconnections_path =
         joinpath(output_dir, "bondconnections", URIs.escapeuri(current_hash))
@@ -159,8 +163,12 @@ function generate_precomputed_staterequests(
         @warn "Notebook cannot be (fully) precomputed" report
     end
 
+    bundle_index = String[]
     foreach(groups) do group::VariableGroupPossibilities
         if group.judgement.should_precompute_all
+            should_bundle_group = should_bundle && group.judgement.can_fully_bundle
+
+            bundle = Dict{String,Any}()
             for (combination, bonds_dict) in combination_iterator(group)
                 filename = Pluto.pack(bonds_dict) |> base64urlencode
                 if length(filename) > 255
@@ -179,10 +187,32 @@ function generate_precomputed_staterequests(
 
                     write(write_path, Pluto.pack(result))
 
+                    if should_bundle_group
+                        bundle[filename] = result
+                    end
+
                     @debug "Written state request to " write_path values =
                         (; (zip(group.names, combination))...)
                 end
             end
+
+            if should_bundle_group
+                bundle_signature = Pluto.pack(sort(group.names)) |> base64urlencode
+                push!(bundle_index, bundle_signature)
+                bundle_path = joinpath(
+                    output_dir,
+                    "staterequest-bundled",
+                    URIs.escapeuri(current_hash),
+                    bundle_signature,
+                )
+                write(bundle_path, Pluto.pack(bundle))
+
+                @debug "Written bundled states to " bundle_path bundle_signature
+            end
         end
     end
+    write(
+        joinpath(output_dir, "bundles", URIs.escapeuri(current_hash)),
+        Pluto.pack(bundle_index),
+    )
 end
