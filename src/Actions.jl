@@ -188,14 +188,14 @@ function generate_static_export(
     pluto_version = try_get_exact_pluto_version()
     relative_to_notebooks_dir = without_pluto_file_extension(path)
     export_jl_path = let
-        joinpath(output_dir, relative_to_notebooks_dir, filename(path))
+        joinpath(output_dir, relative_to_notebooks_dir, basename(path))
     end
     export_html_path = let
         joinpath(output_dir, relative_to_notebooks_dir, "index.html")
     end
     export_statefile_path = let
         joinpath(output_dir, relative_to_notebooks_dir,
-		 without_pluto_file_extension(filename(path)) * ".plutostate")
+		 without_pluto_file_extension(basename(path)) * ".plutostate")
     end
 
 
