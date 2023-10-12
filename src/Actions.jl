@@ -195,7 +195,7 @@ function generate_static_export(
     end
     export_statefile_path = let
         joinpath(output_dir, relative_to_notebooks_dir,
-            without_pluto_file_extension(filename(path)) * ".plutostate"
+		 without_pluto_file_extension(filename(path)) * ".plutostate")
     end
 
 
