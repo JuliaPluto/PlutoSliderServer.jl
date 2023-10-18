@@ -167,6 +167,7 @@ end
         Export_cache_dir=cache_dir,
         Export_baked_state=false,
         Export_create_pluto_featured_index=fancy,
+        Export_slider_server_url="krat",
     )
 
     @test sort(list_files_recursive()) == sort([
@@ -193,6 +194,7 @@ end
         @test occursin("</html>", htmlstr)
         @test occursin("pluto_export.json", htmlstr)
     end
+    @test json["slider_server_url"] == "krat"
 
     nbs = ["subdir/c.plutojl", "b.pluto.jl", "a.jl"]
     for (i, p) in enumerate(nbs)
