@@ -57,6 +57,10 @@ make_test_dir() =
     @test second_runtime < 1.0
 
     @test occursin("slider_server_url = undefined", read("a.html", String))
+
+    jsonstr = read("pluto_export.json", String)
+    json = JSON.parse(jsonstr)
+    @test json["slider_server_url"] === nothing
 end
 
 
