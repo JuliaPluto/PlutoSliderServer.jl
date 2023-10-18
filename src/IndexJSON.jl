@@ -60,6 +60,13 @@ function json_data(
         #     c === nothing ? nothing : [
         #     v for (k,v) in sort(pairs(c); by=((k,v)) -> parse(Int, k))
         # ],
+        binder_url=settings.Export.offer_binder ?
+                   something(settings.Export.binder_url, Pluto.default_binder_url) :
+                   nothing,
+        slider_server_url=something(
+            settings.Export.slider_server_url,
+            settings.SliderServer.enabled ? "." : nothing,
+        ),
     )
 end
 
