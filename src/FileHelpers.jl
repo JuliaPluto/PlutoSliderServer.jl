@@ -2,13 +2,12 @@ import Pluto: is_pluto_notebook
 
 flatmap(args...) = vcat(map(args...)...)
 
-list_files_recursive(dir=".") =
-    let
-        paths = flatmap(walkdir(dir)) do (root, dirs, files)
-            joinpath.([root], files)
-        end
-        relpath.(paths, [dir])
+function list_files_recursive(dir=".")
+    paths = flatmap(walkdir(dir)) do (root, dirs, files)
+        joinpath.([root], files)
     end
+    relpath.(paths, [dir])
+end
 
 """
 Search recursively for Pluto notebook files.
