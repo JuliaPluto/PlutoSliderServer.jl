@@ -60,6 +60,13 @@ function json_data(
         #     c === nothing ? nothing : [
         #     v for (k,v) in sort(pairs(c); by=((k,v)) -> parse(Int, k))
         # ],
+        binder_url=settings.Export.offer_binder ?
+                   something(settings.Export.binder_url, Pluto.default_binder_url) :
+                   nothing,
+        slider_server_url=somethingornothing(
+            settings.Export.slider_server_url,
+            settings.SliderServer.enabled ? "." : nothing,
+        ),
     )
 end
 
@@ -77,3 +84,7 @@ function generate_index_json(
     result = json_data(sessions; settings, start_dir, config_data)
     JSON.json(result)
 end
+
+somethingornothing() = nothing
+somethingornothing(x::Nothing, y...) = somethingornothing(y...)
+somethingornothing(x::Any, y...) = x

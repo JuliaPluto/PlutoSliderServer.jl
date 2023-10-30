@@ -57,6 +57,10 @@ make_test_dir() =
     @test second_runtime < 1.0
 
     @test occursin("slider_server_url = undefined", read("a.html", String))
+
+    jsonstr = read("pluto_export.json", String)
+    json = JSON.parse(jsonstr)
+    @test json["slider_server_url"] === nothing
 end
 
 
@@ -167,6 +171,7 @@ end
         Export_cache_dir=cache_dir,
         Export_baked_state=false,
         Export_create_pluto_featured_index=fancy,
+        Export_slider_server_url="krat",
     )
 
     @test sort(list_files_recursive()) == sort([
@@ -193,6 +198,7 @@ end
         @test occursin("</html>", htmlstr)
         @test occursin("pluto_export.json", htmlstr)
     end
+    @test json["slider_server_url"] == "krat"
 
     nbs = ["subdir/c.plutojl", "b.pluto.jl", "a.jl"]
     for (i, p) in enumerate(nbs)
