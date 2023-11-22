@@ -2,7 +2,6 @@ import satori from "npm:satori@0.10";
 import React from "npm:react@18.2";
 import { Resvg } from "npm:@resvg/resvg-js@2.6";
 
-import { encodeBase64 } from "https://deno.land/std@0.207.0/encoding/base64.ts";
 import { walk } from "https://deno.land/std@0.202.0/fs/walk.ts";
 import { join } from "https://deno.land/std@0.202.0/path/mod.ts";
 
@@ -195,22 +194,24 @@ const generateOgImage = async (pathToNotebook) => {
   const statefileBuf = await Deno.readFile(pathToNotebook + ".plutostate");
   const statefile = unpack(statefileBuf);
 
-  let authorName = statefile.metadata.frontmatter.author_name;
-  let authorImage = statefile.metadata.frontmatter.author_image;
+  const frontmatter = statefile.metadata.frontmatter;
+
+  let authorName = frontmatter.author_name;
+  let authorImage = frontmatter.author_image;
 
   if (authorName === undefined) {
-    authorName = statefile.metadata.frontmatter.author.map(({ name }) => name)
+    authorName = frontmatter.author.map(({ name }) => name)
       .join(", ", " and ");
   }
 
   if (authorImage === undefined) {
-    authorImage = statefile.metadata.frontmatter.author.map(({ image }) =>
+    authorImage = frontmatter.author.map(({ image }) =>
       image
     ).findLast(() => true);
   }
 
   if (!authorImage) {
-    authorImage = statefile.metadata.frontmatter.author.find(() => true)?.url +
+    authorImage = frontmatter.author.find(() => true)?.url +
       ".png?size=48";
   }
 
@@ -218,10 +219,10 @@ const generateOgImage = async (pathToNotebook) => {
     <HeaderComponent
       author={authorName}
       authorImage={authorImage}
-      title={statefile.metadata.frontmatter.title ??
+      title={frontmatter.title ??
         pathToNotebook.split("/").findLast(() => true)}
-      description={statefile.metadata.frontmatter.description}
-      imageUrl={statefile.metadata.frontmatter.image}
+      description={frontmatter.description}
+      imageUrl={frontmatter.image}
     />,
     {
       width: 600,
@@ -238,6 +239,11 @@ const generateOgImage = async (pathToNotebook) => {
       loadAdditionalAsset: loadDynamicAsset,
     },
   );
+
+  // Toggle this comment to see the output Svg
+  // await Deno.writeTextFile("satori.svg", svg);
+
+  // PNG rendering from the svg string
   const opts = {
     background: "rgba(238, 235, 230, .9)",
     fitTo: {
@@ -246,14 +252,9 @@ const generateOgImage = async (pathToNotebook) => {
     },
   };
 
-  // await Deno.writeTextFile("satori.svg", svg);
-
   const resvg = new Resvg(svg, opts);
   const pngData = resvg.render();
   const pngBuffer = pngData.asPng();
-
-  const b64 = encodeBase64(pngBuffer);
-  const dataUrl = `data:image/png;base64,${b64}`;
 
   const pngPath = pathToNotebook + ".og-image.png";
   await Deno.writeFile(pngPath, pngBuffer);
