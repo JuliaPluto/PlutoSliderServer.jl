@@ -2,8 +2,9 @@ import satori from "npm:satori@0.10";
 import React from "npm:react@18.2";
 import { Resvg } from "npm:@resvg/resvg-js@2.6";
 
-import { walk } from "https://deno.land/std@0.202.0/fs/walk.ts";
-import { join } from "https://deno.land/std@0.202.0/path/mod.ts";
+import { walk } from "https://deno.land/std@0.208.0/fs/walk.ts";
+import { join } from "https://deno.land/std@0.208.0/path/mod.ts";
+import { encodeBase64 } from "https://deno.land/std@0.208.0/encoding/base64.ts";
 
 // ES6 import for msgpack-lite, we use the fonsp/msgpack-lite fork to make it ES6-importable (without nodejs)
 import msgpack from "https://cdn.jsdelivr.net/gh/fonsp/msgpack-lite@0.1.27-es.1/dist/msgpack-es.min.mjs";
