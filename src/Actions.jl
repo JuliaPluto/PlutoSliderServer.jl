@@ -71,7 +71,7 @@ function process(
 
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
 
-    run = if cached_state !== nothing
+    t_elapsed = @elapsed run = if cached_state !== nothing
         @info "Loaded from cache, skipping notebook run" s.path new_hash
         original_state = cached_state
         FinishedNotebook(; path, original_state)
@@ -117,7 +117,7 @@ function process(
         )
     end
 
-    @info "### ✓ $(progress) Ready" s.path new_hash
+    @info "### ✓ $(progress) Ready" s.path new_hash t_elapsed
 
     NotebookSession(; path, current_hash=new_hash, desired_hash=s.desired_hash, run)
 end
