@@ -25,4 +25,5 @@ PlutoSliderServer.run_directory(
     SliderServer_host="127.0.0.1",
     SliderServer_watch_dir=true,
     Export_pluto_cdn_root=cdn,
+    Export_baked_state=false,
 )
