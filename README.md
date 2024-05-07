@@ -19,6 +19,8 @@ PlutoSliderServer.run_notebook(path_to_notebook)
 
 Now open a browser, and go to the address printed in your terminal!
 
+Later when you are using PlutoSliderServer on a public website, `PlutoSliderServer.run_notebook` is a good way to test your notebook locally before putting it online.
+
 # What can it do?
 
 ## 1. HTML export
@@ -81,8 +83,14 @@ The alternative is to redeploy the entire server every time a notebook changes. 
 See `PlutoSliderServer.run_git_directory`.
 
 # How does it work?
+PlutoSliderServer is **not just Pluto with editing disabled** – it works quite differently. This section explains why it has to be different, how it works, and what the advantages and disadvantages are.
 
 > [PlutoCon 2020 presentation about how PlutoSliderServer works](https://www.youtube.com/watch?v=QZ3xlKm92tk)
+
+## Different from Pluto
+When I created this package for computationalthinking.mit.edu, the goal was to serve notebook HTMLs publicly online, with working interactivity, for a large number of visitors. 
+
+The simplest approach is to just run Pluto on a public server and disable editing. (Try it: open a notebook in Pluto, copy the URL, and open it in multiple windows next to each other. Add `&disable_ui=true` to the URL to simulate disabled editing.) The problem with this is that all sessions are synchronised: moving a slider in one window moves it everywhere. And updates to other cells (values and plots) show in all windows. You could simply disable this synchronisation between windows, but then you would still "feel" effects from other users. You might not see other sliders moving, but they are still changing values in your shared session, influencing results.
 
 ## Bond connections graph
 A crucial idea in the PlutoSliderServer is the *bond connections graph*. This is a bit of a mathematical adventure, I tried my best to explain it **in the [PlutoCon 2020 presentation about how PlutoSliderServer works](https://www.youtube.com/watch?v=QZ3xlKm92tk)**. Here is another explanation in text:
