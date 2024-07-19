@@ -338,6 +338,12 @@ __EOF__
 sudo mv $TEMPFILE /usr/local/bin/pluto-slider-server.sh
 ```
 
+> #### GLMakie support
+> To better support GLMakie, it might be necessary to set a display. In the script above, replace `julia` with
+> ```
+> DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia
+> ```
+
 ### 5. Permissions stuff
 ```shell
 sudo chmod 744 /usr/local/bin/pluto-slider-server.sh
