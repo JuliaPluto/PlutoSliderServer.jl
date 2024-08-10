@@ -65,10 +65,14 @@ make_test_dir() =
     @test PlutoSliderServer.try_get_exact_pluto_version() !== nothing
     ijd = PlutoSliderServer.index_json_data(
         PlutoSliderServer.NotebookSession[];
-        settings=PlutoSliderServer.PlutoDeploySettings(),
+        settings=Pluto.Configuration.Configurations.from_kwargs(
+            PlutoSliderServer.PlutoDeploySettings, 
+            Export_slider_server_url="yoyoyo"
+        ),
         start_dir="doesnotmatter", 
-        config_data=Dict{String,Any}("fofofo" => 123),
+        config_data=Dict{String,Any}("title" => "fofofo"),
     )
+    @test occursin("yoyoyo", JSON.json(ijd))
     @test occursin("fofofo", JSON.json(ijd))
 end
 
