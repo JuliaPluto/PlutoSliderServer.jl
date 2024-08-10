@@ -8,7 +8,7 @@ import Pluto: Pluto, without_pluto_file_extension
 
 id(s::NotebookSession) = s.path
 
-function json_data(
+function index_json_data(
     s::NotebookSession;
     settings::PlutoDeploySettings,
     start_dir::AbstractString,
@@ -41,14 +41,14 @@ function json_data(
 end
 
 
-function json_data(
+function index_json_data(
     sessions::Vector{NotebookSession};
     settings::PlutoDeploySettings,
     start_dir::AbstractString,
     config_data::Dict{String,Any},
 )
     (
-        notebooks=Dict(id(s) => json_data(s; settings, start_dir) for s in sessions),
+        notebooks=Dict(id(s) => index_json_data(s; settings, start_dir) for s in sessions),
         pluto_version=lstrip(Pluto.PLUTO_VERSION_STR, 'v'),
         julia_version=lstrip(string(VERSION), 'v'),
         format_version="1",
@@ -81,7 +81,7 @@ function generate_index_json(
     else
         Dict{String,Any}()
     end
-    result = json_data(sessions; settings, start_dir, config_data)
+    result = index_json_data(sessions; settings, start_dir, config_data)
     JSON.json(result)
 end
 

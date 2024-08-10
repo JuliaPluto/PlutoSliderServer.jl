@@ -61,6 +61,15 @@ make_test_dir() =
     jsonstr = read("pluto_export.json", String)
     json = JSON.parse(jsonstr)
     @test json["slider_server_url"] === nothing
+    
+    @test PlutoSliderServer.try_get_exact_pluto_version() !== nothing
+    ijd = PlutoSliderServer.index_json_data(
+        PlutoSliderServer.NotebookSession[];
+        settings=PlutoSliderServer.PlutoDeploySettings(),
+        start_dir="doesnotmatter", 
+        config_data=Dict{String,Any}("fofofo" => 123),
+    )
+    @test occursin("fofofo", JSON.json(ijd))
 end
 
 
