@@ -1,7 +1,7 @@
 name = "PlutoSliderServer"
 uuid = "2fc8631c-6f24-4c5b-bca7-cbb509c42db4"
 authors = ["Fons van der Plas <fons@plutojl.org>"]
-version = "0.3.29"
+version = "0.3.30"
 
 [deps]
 AbstractPlutoDingetjes = "6e696c72-6542-2067-7265-42206c756150"
