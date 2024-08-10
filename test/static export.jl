@@ -61,6 +61,8 @@ make_test_dir() =
     jsonstr = read("pluto_export.json", String)
     json = JSON.parse(jsonstr)
     @test json["slider_server_url"] === nothing
+    
+    @test PlutoSliderServer.try_get_exact_pluto_version() !== nothing
 end
 
 
