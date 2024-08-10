@@ -5,6 +5,7 @@ using Logging
 import JSON
 import Pluto: without_pluto_file_extension
 import Random
+import Pluto
 
 original_dir1 = joinpath(@__DIR__, "dir1")
 make_test_dir() =
