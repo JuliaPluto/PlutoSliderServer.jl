@@ -50,9 +50,7 @@ function load_cool_logger()
         logger_loaded[] = true
         if ((global_logger() isa ConsoleLogger) && !is_inside_pluto())
             if get(ENV, "GITHUB_ACTIONS", "false") == "true"
-                # TODO: disabled because of https://github.com/JuliaWeb/HTTP.jl/issues/921
-
-                # global_logger(GitHubActionsLogger())
+                global_logger(GitHubActionsLogger())
             else
                 global_logger(try
                     TerminalLogger(; margin=1)
@@ -226,6 +224,7 @@ function run_directory(
         end
     end
 
+    @info "Versions" julia=VERSION pluto=Pluto.PLUTO_VERSION plutosliderserver=(VERSION >= v"1.9" ? pkgversion(@__MODULE__) : nothing)
     @info "Settings" Text(settings)
 
     settings.SliderServer.enabled &&
