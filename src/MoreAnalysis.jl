@@ -1,5 +1,6 @@
 import Pluto
 import Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer, ServerSession
+import PlutoDependencyExplorer
 
 
 "Return the given cells, and all cells that depend on them (recursively)."
@@ -20,7 +21,7 @@ function downstream_recursive!(
     from::Vector{Cell},
 )
     for cell in from
-        one_down = Pluto.where_referenced(notebook, topology, cell)
+        one_down = PlutoDependencyExplorer.where_referenced(topology, cell)
         for next in one_down
             if next ∉ found
                 push!(found, next)
@@ -52,7 +53,7 @@ function upstream_recursive!(
 )
     for cell in from
         references = topology.nodes[cell].references
-        for upstream in Pluto.where_assigned(notebook, topology, references)
+        for upstream in PlutoDependencyExplorer.where_assigned(topology, references)
             if upstream ∉ found
                 push!(found, upstream)
                 upstream_recursive!(found, notebook, topology, Cell[upstream])
