@@ -380,12 +380,19 @@ When you change the notebooks in the git repository, your server will automatica
 
 If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer will detect a change in configuration and shut down. Because we set up our service using `systemctl`, the server will automatically restart! (With the new settings)
 
+### 10. 🌟 Conclusion
+Yay! If everything went well, we now set up a web server with PlutoSliderServer. To see the result, you open a browser and go to the URL of your server. This looks like:
+
+```
+http://12.34.56.78:8080/
+```
+
+where `12.34.56.78` is the IP address of your server. You should see an index of your notebooks, and clicking on a notebook should give an interactive page!
 
 ## Part 3: port, domain name, https
+The default settings will serve Pluto on the IP address of your server, on `http` (not `https`), at the IP address, on port 8080 (not 80 or 443).
 
-The default settings will serve Pluto on the IP address of your server, on `http` (not `https`), on port 8080 (not 80 or 443).
-
-Normally, websites are available on a domain name, on https, on the default port (80 for http, 443 for https) (e.g. `https://plutojl.org/`). Here's how you get there!
+Normally, websites are available on https, on a domain name (example.com) and on the default port (80 for http, 443 for https) (e.g. `https://plutojl.org/`). Here's how you get there!
 
 If you use a server managed by your university/company, ask your system administrator how to achieve these steps.
 
