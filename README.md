@@ -255,7 +255,7 @@ For this step, we'll assume a very specific but also common setup:
 - Ubuntu-based server with `apt-get`, `git`, `vim` and internet
 - access through SSH
 - root access
-- port 80 is open to the web
+- port 80 and 8080 are open to the web
 
 The easiest way to get this is to **rent a server** from digitalocean.com, AWS, Google Cloud, etc. This setup was tested with digitalocean.com, which has the easiest interface for beginners.
 
@@ -275,11 +275,13 @@ sudo apt-get upgrade
 You should run `systemd --version` to verify that we have version 230 or higher.
 
 ### 1. Install Julia (run as root)
+This script assumes that you have a 64-bit x86 computer. If not, edit the script where necessary, or install Julia in another way.
+
 ```shell
-# You can edit me: The Julia version (1.8.0) split into three parts:
+# You can edit me: The Julia version (1.10.5) split into three parts:
 JULIA_MAJOR_VERSION=1
-JULIA_MINOR_VERSION=8
-JULIA_PATCH_VERSION=0
+JULIA_MINOR_VERSION=10
+JULIA_PATCH_VERSION=5
 
 JULIA_VERSION="$(echo $JULIA_MAJOR_VERSION).$(echo $JULIA_MINOR_VERSION).$(echo $JULIA_PATCH_VERSION)"
 
@@ -289,8 +291,11 @@ rm julia-$JULIA_VERSION-linux-x86_64.tar.gz
 sudo ln -s `pwd`/julia-$JULIA_VERSION/bin/julia /usr/local/bin/julia
 ```
 
+Now, the `julia` command should be available. Log out and log in, and type `julia --version` in the terminal, and you should see something!
+
 ### 2. get your repository
 ```shell
+cd ~
 git clone https://github.com/<user>/<repo-with-notebooks>
 cd <repo-with-notebooks>
 git pull
@@ -338,8 +343,8 @@ __EOF__
 sudo mv $TEMPFILE /usr/local/bin/pluto-slider-server.sh
 ```
 
-> #### GLMakie support
-> To better support GLMakie, it might be necessary to set a display. In the script above, replace `julia` with
+> [!TIP]
+> If you want to use **GLMakie**, it might be necessary to set a display. In the script above, replace `julia` with
 > ```
 > DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia
 > ```
@@ -357,7 +362,10 @@ sudo systemctl start pluto-server
 sudo systemctl enable pluto-server
 ```
 
-Tip: If you need to change the service file or the startup script later, re-run this step to update the daemon.
+> [!TIP]
+> If you need to change the service file or the startup script later, re-run this step to update the daemon.
+
+Your server should be running now!! The next steps will explain how to monitor your server, and where to see the notebooks in action.
 
 ### 7. View logs
 ```shell
@@ -371,14 +379,19 @@ sudo journalctl --pager-end -u pluto-server
 sudo journalctl --follow -u pluto-server
 ```
 
+> [!IMPORTANT]
+> These three commands are important! Write them down somewhere.
+
 ### 8. Server available
 
 TODO
 
 ### 9. Live updates
-When you change the notebooks in the git repository, your server will automatically update (it keeps calling `git pull`)! Awesome!
+When you change the notebooks in the git repository, your server will automatically update (PlutoSliderServer keeps calling `git pull` every couple of seconds)! 
 
-If the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer will detect a change in configuration and shut down. Because we set up our service using `systemctl`, the server will automatically restart! (With the new settings)
+When a notebook file changes, PlutoSliderServer will shut down the old version of that notebook, and start the new one. When notebook files are added or removed, they are added or removed from the server. If you have a lot of notebooks, this is a big speedup compared to always having to restart the entire server when a notebook file changes.
+
+When the configuration file (`PlutoDeployment.toml`) changes, PlutoSliderServer will detect a change in configuration and shut down. Because we set up our service using `systemctl`, the server will automatically restart. (With the new settings)
 
 ### 10. 🌟 Conclusion
 Yay! If everything went well, we now set up a web server with PlutoSliderServer. To see the result, you open a browser and go to the URL of your server. This looks like:
