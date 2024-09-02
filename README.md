@@ -389,12 +389,12 @@ http://12.34.56.78:8080/
 
 where `12.34.56.78` is the IP address of your server. You should see an index of your notebooks, and clicking on a notebook should give an interactive page!
 
-## Part 3: port, domain name, https
+## Part 3: port, domain name, https *(optional)*
 The default settings will serve Pluto on `http://12.34.56.78:8080/`: with `http` (not `https`), at the IP address (not a domain like `example.com`), on port 8080 (not 80 or 443). 
 
-This Part 3 explains how to get https, domain and port 80. But you don't always need this! If `http://12.34.56.78:8080/` works for your application, then you are done, and the proud owner of a new PlutoSliderServer! Following Part 3 might add unnecessary complexity.
+This Part 3 explains how to get https, domain and port 80. **But you don't always need this!** If `http://12.34.56.78:8080/` works for your application, then you are done, and the proud owner of a new PlutoSliderServer! Following Part 3 might add unnecessary complexity.
 
-The main reason why these steps can be useful is to get `https`. This is necessary when:
+The main reason why these steps can be useful is to get **https**. This is necessary when:
 - Using camera, microphone or GPS inputs in your notebook (e.g. `PlutoUI.WebcamInput`).
 - You have an advanced setup: a static PlutoSliderServer that deploys to Netlify/GHPages, combined with a dynamic PlutoSliderServer that only does the bonds, and they are linked together. Your static site is only allowed to make requests to the dynamic server if both are on `https` (this is CORS).
 
