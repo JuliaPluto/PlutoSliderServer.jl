@@ -390,11 +390,18 @@ http://12.34.56.78:8080/
 where `12.34.56.78` is the IP address of your server. You should see an index of your notebooks, and clicking on a notebook should give an interactive page!
 
 ## Part 3: port, domain name, https
-The default settings will serve Pluto on the IP address of your server, on `http` (not `https`), at the IP address, on port 8080 (not 80 or 443).
+The default settings will serve Pluto on `http://12.34.56.78:8080/`: with `http` (not `https`), at the IP address (not a domain like `example.com`), on port 8080 (not 80 or 443). 
 
-Normally, websites are available on https, on a domain name (example.com) and on the default port (80 for http, 443 for https) (e.g. `https://plutojl.org/`). Here's how you get there!
+This Part 3 explains how to get https, domain and port 80. But you don't always need this! If `http://12.34.56.78:8080/` works for your application, then you are done, and the proud owner of a new PlutoSliderServer! Following Part 3 might add unnecessary complexity.
 
-If you use a server managed by your university/company, ask your system administrator how to achieve these steps.
+The main reason why these steps can be useful is to get `https`. This is necessary when:
+- Using camera, microphone or GPS inputs in your notebook (e.g. `PlutoUI.WebcamInput`).
+- You have an advanced setup: a static PlutoSliderServer that deploys to Netlify/GHPages, combined with a dynamic PlutoSliderServer that only does the bonds, and they are linked together. Your static site is only allowed to make requests to the dynamic server if both are on `https` (this is CORS).
+
+The easiest way to get `https` is with cloudflare, and you can only get cloudflare if you have a domain, and a server on port 80.
+
+> [!NOTE]
+> If you use a server managed by your university/company, ask your system administrator how to achieve these steps. You can probably get a domain like `https://myproject.mit.edu/`.
 
 ### 1. Domain name
 
