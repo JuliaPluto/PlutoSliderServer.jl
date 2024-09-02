@@ -391,9 +391,15 @@ If you use a server managed by your university/company, ask your system administ
 
 ### 1. Domain name
 
-You need to buy a domain name, and get access to the DNS settings. Set an "A record" that points to your IP address. 
+You need to buy a domain name (like `mycoolwebsite.org`). The easiest place to buy a domain name is njal.la, but most registrars will work (namecheap.com works). 
+
+On the website of your registrar (where you bought the domain), go to the DNS settings. Set an "A record" that points to your IP address. 
 
 You can now access your PlutoSliderServer at `http://mydomain.org:8080/`. Nice!
+
+> [!TIP]
+> In step 3 we set up https with cloudflare. If this is what you want, then you could set this up directly. That means that you don't set the A record on your registrar site, but you tell your registrar to use Cloudflare DNS, and you set the A record in cloudflare.
+
 
 ### 2. Port 80
 
@@ -434,7 +440,7 @@ sudo systemctl restart nginx
 
 ### 3. HTTPS
 
-The easiest way to get https is to use cloudflare. Register an account, set up your domain, use their DNS, and enable the "Always HTTPS" service. (Cloudflare is also very useful for caching! This will make your PlutoSliderServer faster.)
+The easiest way to get https is to use cloudflare. Register an account, set up your domain to use their DNS (check the cloudflare docs), make sure the A record is there, and enable the "Always HTTPS" service. (Cloudflare is also very useful for caching! This will make your PlutoSliderServer faster.)
 
 Alternatively, you can set up HTTPS yourself with `nginx` and Let's Encrypt, but this is beyond the scope of this tutorial. 💛
 
