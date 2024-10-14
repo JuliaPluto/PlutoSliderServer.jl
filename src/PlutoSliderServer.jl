@@ -376,11 +376,11 @@ function run_directory(
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
     update_sessions!(notebook_sessions, getpaths(); start_dir)
     write_index(notebook_sessions)
-    refresh_until_synced(false)
+    wait(@spawnlog refresh_until_synced(false))
 
     should_watch = settings.SliderServer.enabled && settings.SliderServer.watch_dir
 
-    watch_dir_task = Pluto.@asynclog if should_watch
+    watch_dir_task = @spawnlog if should_watch
         @info "Watching directory for changes..."
         debounced = kind_of_debounced() do _
             @debug "File change detected!"
@@ -443,7 +443,7 @@ function run_git_directory(
         get_configuration(config_toml_path; SliderServer_watch_dir=true, kwargs...)
     old_settings = get_settings()
 
-    run_dir_task = Pluto.@asynclog begin
+    run_dir_task = @spawnlog begin
         run_directory(
             start_dir;
             notebook_paths,
@@ -454,7 +454,7 @@ function run_git_directory(
         )
     end
     old_deps = Pkg.dependencies()
-    pull_loop_task = Pluto.@asynclog while true
+    pull_loop_task = @spawnlog while true
         new_settings = get_settings()
         new_deps = Pkg.dependencies()
 
@@ -525,6 +525,24 @@ function kind_of_debounced(f)
     end
 
     return go
+end
+
+
+
+"Like Threads.@spawn except it prints errors to the terminal. 👶"
+macro spawnlog(expr...)
+	quote
+		Threads.@spawn begin
+			# because this is being run asynchronously, we need to catch exceptions manually
+			try
+				$((esc(e) for e in expr)...)
+			catch ex
+				bt = stacktrace(catch_backtrace())
+				showerror(stderr, ex, bt)
+				rethrow(ex)
+			end
+		end
+	end
 end
 
 
