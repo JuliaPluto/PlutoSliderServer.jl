@@ -257,7 +257,7 @@ For this step, we'll assume a very specific but also common setup:
 - root access
 - port 80 and 8080 are open to the web
 
-The easiest way to get this is to **rent a server** from digitalocean.com, AWS, Google Cloud, etc. This setup was tested with digitalocean.com, which has the easiest interface for beginners.
+The easiest way to get this is to **rent a server** from digitalocean, AWS, Google Cloud, hetzner, etc. This setup was tested with digitalocean.com, which has an easy interface for beginners.
 
 > ### Required memory, disk space, CPU power
 > When renting a server, you need to decide which "droplet size" you want. The bottleneck is memory – CPU power and disk space will always be sufficient. As minimum, you need `500MB + 300MB * length(notebooks)`. But if you use large packages, like Plots or DifferentialEquations, a notebook might need 1000MB memory. 
