@@ -62,6 +62,27 @@ function load_cool_logger()
     end
 end
 
+
+
+
+"Like Threads.@spawn except it prints errors to the terminal. 👶"
+macro spawnlog(expr...)
+	quote
+		Threads.@spawn begin
+			# because this is being run asynchronously, we need to catch exceptions manually
+			try
+				$((esc(e) for e in expr)...)
+			catch ex
+				bt = stacktrace(catch_backtrace())
+				showerror(stderr, ex, bt)
+				rethrow(ex)
+			end
+		end
+	end
+end
+
+
+
 const sample_config_toml_file = """
 # WARNING: this sample configuration file contains settings for **all options**, to demonstrate what is possible. For most users, we recommend keeping the configuration file small, and letting PlutoSliderServer choose the default settings automatically. 
 
@@ -528,22 +549,6 @@ function kind_of_debounced(f)
 end
 
 
-
-"Like Threads.@spawn except it prints errors to the terminal. 👶"
-macro spawnlog(expr...)
-	quote
-		Threads.@spawn begin
-			# because this is being run asynchronously, we need to catch exceptions manually
-			try
-				$((esc(e) for e in expr)...)
-			catch ex
-				bt = stacktrace(catch_backtrace())
-				showerror(stderr, ex, bt)
-				rethrow(ex)
-			end
-		end
-	end
-end
 
 
 end
