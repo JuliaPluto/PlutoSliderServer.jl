@@ -66,12 +66,12 @@ end
 
 
 "Like Threads.@spawn except it prints errors to the terminal. 👶"
-macro spawnlog(expr...)
+macro spawnlog(expr)
 	quote
 		Threads.@spawn begin
 			# because this is being run asynchronously, we need to catch exceptions manually
 			try
-				$((esc(e) for e in expr)...)
+				$(esc(expr))
 			catch ex
 				bt = stacktrace(catch_backtrace())
 				showerror(stderr, ex, bt)
@@ -358,25 +358,31 @@ function run_directory(
             end
 
             # todo: try catch to release lock?
-            to_shutdown = select(should_shutdown, notebook_sessions)
-            to_update = select(should_update, notebook_sessions)
-            to_launch = select(should_launch, notebook_sessions)
+            to_shutdown = filter(should_shutdown, notebook_sessions)
+            to_update = filter(should_update, notebook_sessions)
+            to_launch = filter(should_launch, notebook_sessions)
 
             s = something(to_shutdown, to_update, to_launch, "not found")
+            
+            do_now = union(to_shutdown, Iterators.take(union(to_update, to_launch), 4))
+            
+            num_done_before = count(!will_process, notebook_sessions)
 
-            if s != "not found"
+            if !isempty(do_now)
 
-                progress = "[$(
-                    count(!will_process, notebook_sessions) + 1
-                )/$(length(notebook_sessions))]"
+                Threads.@threads for (i, s) in enumerate(do_now)
+                    progress = "[$(
+                        num_done_before + i
+                    )/$(length(notebook_sessions))]"
 
-                new = process(s; server_session, settings, output_dir, start_dir, progress)
-                if new !== s
-                    if new isa NotebookSession{Nothing,Nothing,<:Any}
-                        # remove it
-                        filter!(!isequal(s), notebook_sessions)
-                    elseif s !== new
-                        replace!(notebook_sessions, s => new)
+                    new = process(s; server_session, settings, output_dir, start_dir, progress)
+                    if new !== s
+                        if new isa NotebookSession{Nothing,Nothing,<:Any}
+                            # remove it
+                            filter!(!isequal(s), notebook_sessions)
+                        elseif s !== new
+                            replace!(notebook_sessions, s => new)
+                        end
                     end
                 end
 
