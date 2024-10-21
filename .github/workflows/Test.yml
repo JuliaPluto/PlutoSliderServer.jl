@@ -25,16 +25,16 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                julia-version: ['1.6', '1']
+                julia-version: ["1.10", "1"]
                 os: [ubuntu-latest]
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
             - uses: actions/checkout@v4
 
-            - uses: julia-actions/setup-julia@v1
+            - uses: julia-actions/setup-julia@v2
               with:
                   version: ${{ matrix.julia-version }}
-            - uses: julia-actions/cache@v1
+            - uses: julia-actions/cache@v2
 
             - uses: julia-actions/julia-runtest@v1
