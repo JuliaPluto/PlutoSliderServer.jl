@@ -346,7 +346,7 @@ sudo mv $TEMPFILE /usr/local/bin/pluto-slider-server.sh
 > [!TIP]
 > If you want to use **GLMakie**, it might be necessary to set a display. In the script above, replace `julia` with
 > ```
-> DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia
+> DISPLAY=:0 xvfb-run -a -n 100 -s '-screen 0 1024x768x24' julia
 > ```
 
 ### 5. Permissions stuff
