@@ -2,6 +2,19 @@ import Pluto: Pluto, ServerSession
 using HTTP
 import Pkg
 
+export write_statefile
+
+function write_statefile(path, state; verify::Bool=true)
+    data = Pluto.pack(state)
+    write(path, data)
+    if verify
+        input_data = read(path)
+        @assert input_data == data
+        input_state = Pluto.unpack(input_data)
+        @assert sort(collect(keys(state))) == sort(collect(keys(input_state)))
+    end
+end
+
 
 ## CACHE
 
@@ -32,9 +45,7 @@ try_fromcache(cache_dir::Nothing, current_hash) = nothing
 function try_tocache(cache_dir::String, current_hash::String, state)
     mkpath(cache_dir)
     try
-        open(cache_filename(cache_dir, current_hash), "w") do io
-            Pluto.pack(io, state)
-        end
+        write_statefile(cache_filename(cache_dir, current_hash), state)
     catch e
         @warn "Failed to write to cache file" current_hash exception =
             (e, catch_backtrace())
