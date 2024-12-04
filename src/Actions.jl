@@ -3,7 +3,8 @@ using Base64
 using FromFile
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
-@from "./Export.jl" import try_get_exact_pluto_version, try_fromcache, try_tocache
+@from "./Export.jl" import try_get_exact_pluto_version,
+    try_fromcache, try_tocache, write_statefile
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook, RunResult
 @from "./Configuration.jl" import PlutoDeploySettings, is_glob_match
 @from "./FileHelpers.jl" import find_notebook_files_recursive
@@ -269,12 +270,6 @@ function generate_static_export(
     end
 
     @debug "Written to $(export_html_path)"
-end
-
-function write_statefile(path, state)
-    data = Pluto.pack(state)
-    write(path, data)
-    @assert read(path) == data
 end
 
 tryrm(x) = isfile(x) && rm(x)
