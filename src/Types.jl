@@ -1,5 +1,4 @@
 using Configurations
-import TOML
 import Pluto: Pluto, Token, Notebook
 export NotebookSession,
     SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration

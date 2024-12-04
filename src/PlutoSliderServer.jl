@@ -44,6 +44,8 @@ export export_notebook, run_notebook
 
 export show_sample_config_toml_file
 
+export find_notebook_files_recursive
+
 const logger_loaded = Ref{Bool}(false)
 function load_cool_logger()
     if !logger_loaded[]

@@ -1,5 +1,4 @@
 using Configurations
-import TOML
 import Pluto
 export SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration
 using FromFile
