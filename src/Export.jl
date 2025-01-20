@@ -34,11 +34,11 @@ function write_statefile(path, state; verify::Bool=true)
             if @isdefined(input_state)
                 println(stderr)
                 println(stderr, "Here is the state as I read it:")
-                println(stderr, input_state)
+                println(stderr, repr(input_state))
                 println(stderr)
                 println(stderr)
                 println(stderr, "Here is the state that I wanted to write:")
-                println(stderr, state)
+                println(stderr, repr(state))
                 println(stderr)
             end
 
