@@ -20,22 +20,25 @@ function write_statefile(path, state; verify::Bool=true)
         catch e
             @error "The statefile was corrupted!" path
 
-            if @isdefined(input_data)
+            if @isdefined(input_data) && input_data != data
                 println(stderr)
                 println(stderr, "Here is the statefile as I read it:")
                 println(stderr, Base64.base64encode(input_data))
                 println(stderr)
-            end
-            let
                 println(stderr)
                 println(stderr, "Here is the state as I wrote it:")
                 println(stderr, Base64.base64encode(data))
                 println(stderr)
             end
+
             if @isdefined(input_state)
                 println(stderr)
                 println(stderr, "Here is the state as I read it:")
                 println(stderr, input_state)
+                println(stderr)
+                println(stderr)
+                println(stderr, "Here is the state that I wanted to write:")
+                println(stderr, state)
                 println(stderr)
             end
 
