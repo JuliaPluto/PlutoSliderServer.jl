@@ -1,6 +1,7 @@
 import Pluto: Pluto, ServerSession
 using HTTP
 import Pkg
+import Base64
 
 export write_statefile
 
@@ -8,10 +9,38 @@ function write_statefile(path, state; verify::Bool=true)
     data = Pluto.pack(state)
     write(path, data)
     if verify
-        input_data = read(path)
-        @assert input_data == data
-        input_state = Pluto.unpack(input_data)
-        @assert sort(collect(keys(state))) == sort(collect(keys(input_state)))
+        local input_data, input_state
+        try
+            input_data = read(path)
+            @assert input_data == data
+            input_state = Pluto.unpack(input_data)
+            # small sanity check
+            s(x) = sort(collect(keys(x)); by=hash)
+            @assert s(state) == s(input_state)
+        catch e
+            @error "The statefile was corrupted!" path
+
+            if @isdefined(input_data)
+                println(stderr)
+                println(stderr, "Here is the statefile as I read it:")
+                println(stderr, Base64.base64encode(input_data))
+                println(stderr)
+            end
+            let
+                println(stderr)
+                println(stderr, "Here is the state as I wrote it:")
+                println(stderr, Base64.base64encode(data))
+                println(stderr)
+            end
+            if @isdefined(input_state)
+                println(stderr)
+                println(stderr, "Here is the state as I read it:")
+                println(stderr, input_state)
+                println(stderr)
+            end
+
+            rethrow(e)
+        end
     end
 end
 
