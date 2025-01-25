@@ -9,6 +9,7 @@ using FromFile
 @from "./Configuration.jl" import PlutoDeploySettings, is_glob_match
 @from "./FileHelpers.jl" import find_notebook_files_recursive
 @from "./PlutoHash.jl" import plutohash
+@from "./OGImage.jl" import generate_og_image, can_generate_og_image
 
 
 showall(xs) = Text(join(string.(xs), "\n"))
@@ -245,11 +246,19 @@ function generate_static_export(
     frontmatter = convert(
         Pluto.FrontMatter,
         get(
-            () -> Pluto.FrontMatter(),
-            get(() -> Dict{String,Any}(), original_state, "metadata"),
+            Pluto.FrontMatter,
+            get(Dict{String,Any}, original_state, "metadata"),
             "frontmatter",
         ),
     )
+
+    if settings.Export.generate_og_image && !settings.Export.baked_state && can_generate_og_image(frontmatter)
+        @debug "Generating OG image" export_statefile_path
+        local og_image_path = generate_og_image(export_statefile_path)
+        @debug "Generated OG image" og_image_path
+        frontmatter["image"] = relpath(og_image_path, dirname(export_html_path))
+    end
+
     header_html = Pluto.frontmatter_html(frontmatter)
 
     html_contents = Pluto.generate_html(;

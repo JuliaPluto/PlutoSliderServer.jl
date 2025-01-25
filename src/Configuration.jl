@@ -51,6 +51,8 @@ end
     "Use the Pluto Featured GUI to display the notebooks on the auto-generated index page, using frontmatter for title, description, image, and more. The default is currently `false`, but it might change in the future. Set to `true` or `false` explicitly to fix a value."
     create_pluto_featured_index::Union{Nothing,Bool} = nothing
     pluto_cdn_root::Union{Nothing,String} = nothing
+    "Toggle OG image generation"
+    generate_og_image::Bool = false
 end
 
 @option struct PlutoDeploySettings
