@@ -2,6 +2,7 @@ import Pluto: Pluto, ServerSession
 using HTTP
 import Pkg
 import Base64
+import Serialization
 
 export write_statefile
 
@@ -34,11 +35,11 @@ function write_statefile(path, state; verify::Bool=true)
             if @isdefined(input_state)
                 println(stderr)
                 println(stderr, "Here is the state as I read it:")
-                println(stderr, repr(input_state))
+                println(stderr, Base64.base64encode(sprint(Serialization.serialize, input_state)))
                 println(stderr)
                 println(stderr)
                 println(stderr, "Here is the state that I wanted to write:")
-                println(stderr, repr(state))
+                println(stderr, Base64.base64encode(sprint(Serialization.serialize, state)))
                 println(stderr)
             end
 
