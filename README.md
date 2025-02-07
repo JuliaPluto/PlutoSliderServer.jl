@@ -216,7 +216,7 @@ pkg> add Pluto PlutoSliderServer
 ```
 
 ### 2. Configuration file
-Create a configuration file in the same folder as `Project.toml`, see the section about `PlutoDeployment.toml` above.
+Create a configuration file in the `pluto-slider-server-environment` directory, which also contains a `Project.toml` file, see the section about `PlutoDeployment.toml` above.
 ```shell
 TEMPFILE=$(mktemp)
 cat > $TEMPFILE << __EOF__
