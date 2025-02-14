@@ -275,21 +275,7 @@ sudo apt-get upgrade
 You should run `systemd --version` to verify that we have version 230 or higher.
 
 ### 1. Install Julia (run as root)
-This script assumes that you have a 64-bit x86 computer. If not, edit the script where necessary, or install Julia in another way.
-
-```shell
-# You can edit me: The Julia version (1.10.5) split into three parts:
-JULIA_MAJOR_VERSION=1
-JULIA_MINOR_VERSION=10
-JULIA_PATCH_VERSION=5
-
-JULIA_VERSION="$(echo $JULIA_MAJOR_VERSION).$(echo $JULIA_MINOR_VERSION).$(echo $JULIA_PATCH_VERSION)"
-
-wget https://julialang-s3.julialang.org/bin/linux/x64/$(echo $JULIA_MAJOR_VERSION).$(echo $JULIA_MINOR_VERSION)/julia-$(echo $JULIA_VERSION)-linux-x86_64.tar.gz
-tar -xvzf julia-$JULIA_VERSION-linux-x86_64.tar.gz
-rm julia-$JULIA_VERSION-linux-x86_64.tar.gz
-sudo ln -s `pwd`/julia-$JULIA_VERSION/bin/julia /usr/local/bin/julia
-```
+Follow the official instructions to install Julia at the right version. Juliaup works very well in this setup.
 
 Now, the `julia` command should be available. Log out and log in, and type `julia --version` in the terminal, and you should see something!
 
@@ -336,7 +322,7 @@ cat > $TEMPFILE << __EOF__
 # this env var allows us to side step various issues with the Julia-bundled git
 export JULIA_PKG_USE_CLI_GIT=true
 
-cd /home/<your-username>/<your-repo>  # Make sure to change to the absolute path to your repository. Don't use ~.
+cd /home/<your-username>/<your-repo>  # ⛔️⚠️ Make sure to change to the absolute path to your repository. Don't use ~.
 julia --project="pluto-slider-server-environment" -e "import Pkg; Pkg.instantiate(); import PlutoSliderServer; PlutoSliderServer.run_git_directory(\".\")"
 __EOF__
 
