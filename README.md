@@ -275,9 +275,19 @@ sudo apt-get upgrade
 You should run `systemd --version` to verify that we have version 230 or higher.
 
 ### 1. Install Julia (run as root)
-Follow the official instructions to install Julia at the right version. Juliaup works very well in this setup.
+Follow the official instructions to install Julia at using **juliaup**. Probably:
+
+```shell
+curl -fsSL https://install.julialang.org | sh
+```
 
 Now, the `julia` command should be available. Log out and log in, and type `julia --version` in the terminal, and you should see something!
+
+Afterwards, you need to make the `julia` command available **to all users**. Run this command to do so:
+
+```shell
+sudo ln -s /home/`whoami`/.juliaup/bin/julia /usr/local/bin/julia
+```
 
 ### 2. get your repository
 ```shell
@@ -370,7 +380,20 @@ sudo journalctl --follow -u pluto-server
 
 ### 8. Server available
 
-TODO
+Once you see this message in your logs, you know that the server is running:
+
+```
+Feb 14 13:13:15 surfje pluto-slider-server.sh[14810]: ┌ Info:
+Feb 14 13:13:15 surfje pluto-slider-server.sh[14810]: │ Starting server...
+Feb 14 13:13:15 surfje pluto-slider-server.sh[14810]: │ ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
+Feb 14 13:13:15 surfje pluto-slider-server.sh[14810]: └   address = "http://0.0.0.0:8080/"
+Feb 14 13:13:15 surfje pluto-slider-server.sh[14810]: [ Info: Listening on: 0.0.0.0:8080, thread id: 1
+Feb 14 13:13:15 surfje pluto-slider-server.sh[14810]: ┌ Info:
+Feb 14 13:13:15 surfje pluto-slider-server.sh[14810]: │ Server started
+Feb 14 13:13:15 surfje pluto-slider-server.sh[14810]: └ ≡≡≡≡≡≡≡≡≡≡≡≡≡≡
+```
+
+You can open a web browser to test it out! Check out "🌟 Conclusion" below.
 
 ### 9. Live updates
 When you change the notebooks in the git repository, your server will automatically update (PlutoSliderServer keeps calling `git pull` every couple of seconds)! 
@@ -386,7 +409,10 @@ Yay! If everything went well, we now set up a web server with PlutoSliderServer.
 http://12.34.56.78:8080/
 ```
 
-where `12.34.56.78` is the IP address of your server. You should see an index of your notebooks, and clicking on a notebook should give an interactive page!
+where `12.34.56.78` is the IP address of your server. You should see an index of your notebooks, and clicking on a notebook should give an interactive page! The first visit can take a long time to load (because of JIT).
+
+> [!NOTE]
+> **Not seeing anything?** If you cannot visit the index web page, if you get "Connection refused", "Connection timeout", etc., then check the server logs. If the logs seem fine, then you have a networking issue, like a firewall. Is the IP address correct? The port 8080 might be blocked. It's possible that port 80 is available, see `nginx` instructions below. Ask your network administrator.
 
 ## Part 3: port, domain name, https *(optional)*
 The default settings will serve Pluto on `http://12.34.56.78:8080/`: with `http` (not `https`), at the IP address (not a domain like `example.com`), on port 8080 (not 80 or 443). 
@@ -404,11 +430,11 @@ The easiest way to get `https` is with cloudflare, and you can only get cloudfla
 
 ### 1. Domain name
 
-You need to buy a domain name (like `mycoolwebsite.org`). The easiest place to buy a domain name is njal.la, but most registrars will work (namecheap.com works). 
+You need to buy a domain name (like `mycoolwebsite.org`). The easiest place to buy a domain name is [njal.la](njal.la), but most registrars will work (namecheap.com works). 
 
-On the website of your registrar (where you bought the domain), go to the DNS settings. Set an "A record" that points to your IP address. 
+On the website of your registrar (where you bought the domain), go to the DNS settings. Set an "A record" that points from `my-pluto-subdomain` to your IP address. 
 
-You can now access your PlutoSliderServer at `http://mydomain.org:8080/`. Nice!
+You can now access your PlutoSliderServer at `http://my-pluto-subdomain.mydomain.org:8080/`. Nice!
 
 > [!TIP]
 > In step 3 we set up https with cloudflare. If this is what you want, then you could set this up directly. That means that you don't set the A record on your registrar site, but you tell your registrar to use Cloudflare DNS, and you set the A record in cloudflare.
@@ -457,7 +483,7 @@ The easiest way to get https is to use cloudflare. Register an account, set up y
 
 Alternatively, you can set up HTTPS yourself with `nginx` and Let's Encrypt, but this is beyond the scope of this tutorial. 💛
 
-Now, your service should be available at `https://yourdomain.org/`. Nice!
+Now, your service should be available at `https://my-pluto-subdomain.yourdomain.org/`. Nice!
 
 # Similar/alternative packages
 
