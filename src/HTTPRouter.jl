@@ -86,6 +86,8 @@ function make_router(
 
     "Happens whenever you move a slider"
     function serve_staterequest(request::HTTP.Request)
+        t1 = time()
+
         sesh = get_sesh(request)
 
         response = if ready_for_bonds(sesh)
@@ -101,11 +103,13 @@ function make_router(
                        with_not_cacheable!
             end
 
+            t2 = time()
             @debug "Deserialized bond values" bonds
 
             let lag = settings.SliderServer.simulated_lag
                 lag > 0 && sleep(lag)
             end
+            t3 = time()
 
             topological_order, new_state = withtoken(sesh.run.token) do
                 try
@@ -137,6 +141,7 @@ function make_router(
 
             ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
 
+            t4 = time()
             @debug "Finished running!" length(ids_of_cells_that_ran)
 
             # We only want to send state updates about...
@@ -159,14 +164,21 @@ function make_router(
             )
             patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
 
-            HTTP.Response(
-                200,
-                Pluto.pack(
-                    Dict{String,Any}(
-                        "patches" => patches_as_dicts,
-                        "ids_of_cells_that_ran" => ids_of_cells_that_ran,
-                    ),
+            t5 = time()
+
+            response_data = Pluto.pack(
+                Dict{String,Any}(
+                    "patches" => patches_as_dicts,
+                    "ids_of_cells_that_ran" => ids_of_cells_that_ran,
                 ),
+            )
+
+            t6 = time()
+
+            HTTP.Response(200, response_data) |>
+            (
+                settings.SliderServer.server_timing_header ?
+                with_server_timing!(t1, t2, t3, t4, t5, t6) : identity
             ) |>
             with_cacheable_configured! |>
             with_cors! |>
@@ -308,5 +320,20 @@ function ReferrerMiddleware(handler)
         response = handler(req)
         HTTP.setheader(response, "Referrer-Policy" => "origin-when-cross-origin")
         return response
+    end
+end
+
+function with_server_timing!(t1, t2, t3, t4, t5, t6)
+    s(name, start, stop) = "$name;dur=$(round((stop - start) * 1000; digits=2))"
+
+    function (response::HTTP.Response)
+        HTTP.setheader(response, "Server-Timing" => "$(
+            s("total", t1, t6)),$(
+            s("p1deserialize", t1, t2)),$(
+            s("p2lag", t2, t3)),$(
+            s("p3setBonds", t3, t4)),$(
+            s("p4diff", t4, t5)),$(
+            s("p5msgpack", t5, t6))")
+        response
     end
 end
