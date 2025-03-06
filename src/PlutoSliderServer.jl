@@ -226,7 +226,8 @@ function run_directory(
         end
     end
 
-    @info "Versions" julia=VERSION pluto=Pluto.PLUTO_VERSION plutosliderserver=(VERSION >= v"1.9" ? pkgversion(@__MODULE__) : nothing)
+    @info "Versions" julia = VERSION pluto = Pluto.PLUTO_VERSION plutosliderserver =
+        (VERSION >= v"1.9" ? pkgversion(@__MODULE__) : nothing)
     @info "Settings" Text(settings)
 
     settings.SliderServer.enabled &&
@@ -457,11 +458,16 @@ function run_git_directory(
     end
     old_deps = Pkg.dependencies()
     pull_loop_task = Pluto.@asynclog while true
-        new_settings = get_settings()
+        new_settings = try
+            get_settings()
+        catch e
+            ("Error while reading settings", e)
+            # (this will trigger a restart)
+        end
         new_deps = Pkg.dependencies()
 
         if old_settings != new_settings
-            @error "Configuration changed. Shutting down!"
+            @error "Configuration changed. Shutting down!" old_settings new_settings
 
             println(stderr, "Old settings:")
             println(stderr, repr(old_settings))
