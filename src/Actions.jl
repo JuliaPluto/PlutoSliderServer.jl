@@ -7,7 +7,6 @@ using FromFile
     try_fromcache, try_tocache, write_statefile
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook, RunResult
 @from "./Configuration.jl" import PlutoDeploySettings, is_glob_match
-@from "./FileHelpers.jl" import find_notebook_files_recursive
 @from "./PlutoHash.jl" import plutohash
 
 
@@ -33,11 +32,11 @@ function process(
     try
         remove_static_export(s.path; settings, output_dir)
     catch e
-        @warn "Failed to remove static export files" s.path exception =
+        @warn "Failed to remove static export files" path = s.path exception =
             (e, catch_backtrace())
     end
 
-    @info "### ✓ $(progress) Shutdown complete" s.path
+    @info "### ✓ $(progress) Shutdown complete" path = s.path
 
     NotebookSession(; path=s.path, current_hash=nothing, desired_hash=nothing, run=nothing)
 end
@@ -56,12 +55,13 @@ function process(
     path = s.path
     abs_path = joinpath(start_dir, path)
 
-    @info "###### ◐ $(progress) Launching..." s.path
+    @info "###### ◐ $(progress) Launching..." path = s.path
 
     jl_contents = read(abs_path, String)
     new_hash = plutohash(jl_contents)
     if new_hash != s.desired_hash
-        @warn "Notebook file does not have desired hash. This probably means that the file changed too quickly. Continuing and hoping for the best!" s.path new_hash s.desired_hash
+        @warn "Notebook file does not have desired hash. This probably means that the file changed too quickly. Continuing and hoping for the best!" path =
+            s.path new_hash s.desired_hash
     end
 
     keep_running =
@@ -73,7 +73,7 @@ function process(
     cached_state = skip_cache ? nothing : try_fromcache(settings.Export.cache_dir, new_hash)
 
     t_elapsed = @elapsed run = if cached_state !== nothing
-        @info "Loaded from cache, skipping notebook run" s.path new_hash
+        @info "Loaded from cache, skipping notebook run" path = s.path new_hash
         original_state = cached_state
         FinishedNotebook(; path, original_state)
     else
@@ -85,14 +85,14 @@ function process(
             delete!(original_state, "status_tree")
             # shut down the notebook
             if !keep_running
-                @info "Shutting down notebook process" s.path
+                @info "Shutting down notebook process" path = s.path
                 Pluto.SessionActions.shutdown(server_session, notebook)
             end
             try_tocache(settings.Export.cache_dir, new_hash, original_state)
             if keep_running
                 bond_connections =
                     bound_variable_connections_graph(server_session, notebook)
-                @info "Bond connections" s.path showall(collect(bond_connections))
+                @info "Bond connections" path = s.path showall(collect(bond_connections))
 
                 RunningNotebook(; path, notebook, original_state, bond_connections)
             else
@@ -118,7 +118,7 @@ function process(
         )
     end
 
-    @info "### ✓ $(progress) Ready" s.path new_hash t_elapsed
+    @info "### ✓ $(progress) Ready" path = s.path new_hash t_elapsed
 
     NotebookSession(; path, current_hash=new_hash, desired_hash=s.desired_hash, run)
 end
@@ -135,14 +135,14 @@ function process(
 )::NotebookSession
 
     if s.current_hash != s.desired_hash
-        @info "Updating notebook... will shut down and relaunch" s.path
+        @info "Updating notebook... will shut down and relaunch" path = s.path
 
         # Simple way to update: shut down notebook and start new one
         if s.run isa RunningNotebook
             Pluto.SessionActions.shutdown(server_session, s.run.notebook)
         end
 
-        @info "Shutdown complete" s.path
+        @info "Shutdown complete" path = s.path
 
         result = process(
             NotebookSession(;
