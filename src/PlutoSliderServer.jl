@@ -4,7 +4,8 @@ using FromFile
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./FileHelpers.jl" import find_notebook_files_recursive, list_files_recursive
-@from "./Export.jl" import try_get_exact_pluto_version
+@from "./Export.jl" import try_get_exact_pluto_version, cache_filename
+export cache_filename
 @from "./IndexHTML.jl" import generate_index_html
 @from "./IndexJSON.jl" import generate_index_json, index_json_data
 @from "./Actions.jl" import process,
