@@ -47,24 +47,6 @@ export show_sample_config_toml_file
 
 export find_notebook_files_recursive
 
-const logger_loaded = Ref{Bool}(false)
-function load_cool_logger()
-    if !logger_loaded[]
-        logger_loaded[] = true
-        if ((global_logger() isa ConsoleLogger) && !is_inside_pluto())
-            if get(ENV, "GITHUB_ACTIONS", "false") == "true"
-                global_logger(GitHubActionsLogger())
-            else
-                global_logger(try
-                    TerminalLogger(; margin=1)
-                catch
-                    TerminalLogger()
-                end)
-            end
-        end
-    end
-end
-
 const sample_config_toml_file = """
 # WARNING: this sample configuration file contains settings for **all options**, to demonstrate what is possible. For most users, we recommend keeping the configuration file small, and letting PlutoSliderServer choose the default settings automatically. 
 
@@ -181,11 +163,7 @@ function run_directory(
     config_toml_path::Union{String,Nothing}=default_config_path(),
     kwargs...,
 )
-
-
-    @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet!"
-
-    load_cool_logger()
+    @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet! Feel free to open a PR to add support."
 
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
@@ -196,11 +174,6 @@ function run_directory(
         settings.SliderServer.enabled ? mktempdir() : start_dir,
     )
     mkpath(output_dir)
-
-    if joinpath("a", "b") != "a/b"
-        @error "PlutoSliderServer.jl is only designed to work on unix systems."
-        exit()
-    end
 
     function getpaths()
         all_nbs =
