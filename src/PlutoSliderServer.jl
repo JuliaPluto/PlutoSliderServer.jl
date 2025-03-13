@@ -38,7 +38,6 @@ import BetterFileWatching: watch_folder
 import AbstractPlutoDingetjes: is_inside_pluto
 import TerminalLoggers: TerminalLogger
 import Logging: global_logger, ConsoleLogger
-import GitHubActions: GitHubActionsLogger
 
 export export_directory, run_directory, run_git_directory, github_action
 export export_notebook, run_notebook
