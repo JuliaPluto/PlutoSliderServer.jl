@@ -27,3 +27,37 @@ function bound_variable_connections_graph(
         end for var in bound_variables
     )
 end
+
+
+function get_bond_setting_stages(remaining_keys::Set{Symbol}, notebook)
+    isempty(remaining_keys) && return Set{Symbol}[]
+
+    in_this_stage = Set{Symbol}()
+
+    for k in remaining_keys
+        where_as = PlutoDependencyExplorer.where_assigned(notebook.topology, Set([k]))
+
+        # TODO: this line is the perf bottleneck. Can be optimized by:
+        # - Making it return an iterator
+        # - Memoizing this entire function
+        downstreams =
+            Pluto.MoreAnalysis.downstream_recursive(notebook, notebook.topology, where_as)
+
+        is_not_at_the_front = any(downstreams) do down_cell
+            def = notebook.topology.nodes[down_cell].definitions
+
+            !disjoint(setdiff(remaining_keys, (k,)), def)
+        end
+
+        if !is_not_at_the_front
+            push!(in_this_stage, k)
+        end
+    end
+
+    return [
+        get_bond_setting_stages(setdiff(remaining_keys, in_this_stage), notebook)...,
+        in_this_stage,
+    ]
+end
+
+disjoint(a, b) = !any(x in a for x in b)

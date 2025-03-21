@@ -16,6 +16,7 @@ import JSON
 @from "./IndexHTML.jl" import temp_index, generate_basic_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
+@from "./MoreAnalysis.jl" import get_bond_setting_stages
 @from "./PlutoHash.jl" import base64urldecode
 
 ready_for_bonds(::Any) = false
@@ -113,21 +114,28 @@ function make_router(
 
             topological_order, new_state = withtoken(sesh.run.token) do
                 try
+                    # Set the bond values. We don't need to merge dicts here because the old bond values will never be used.
                     notebook.bonds = bonds
 
                     names::Vector{Symbol} = Symbol.(keys(bonds))
 
-                    topological_order = Pluto.set_bond_values_reactive(
-                        session=server_session,
-                        notebook=notebook,
-                        bound_sym_names=names,
-                        is_first_values=[false for _n in names], # because requests should be stateless. We might want to do something special for the (actual) initial request (containing every initial bond value) in the future.
-                        run_async=false,
-                    )::Pluto.TopologicalOrder
+                    stages = get_bond_setting_stages(names, notebook)
+
+                    local last_order = nothing
+                    for stage in stages
+                        # Run the bonds, and get the returned cell order
+                        last_order = Pluto.set_bond_values_reactive(
+                            session=server_session,
+                            notebook=notebook,
+                            bound_sym_names=stage,
+                            is_first_values=[false for _n in stage], # because requests should be stateless. We might want to do something special for the (actual) initial request (containing every initial bond value) in the future.
+                            run_async=false,
+                        )::Pluto.TopologicalOrder
+                    end
 
                     new_state = Pluto.notebook_to_js(notebook)
 
-                    topological_order, new_state
+                    last_order, new_state
                 catch e
                     @error "Failed to set bond values" exception = (e, catch_backtrace())
                     nothing, nothing
