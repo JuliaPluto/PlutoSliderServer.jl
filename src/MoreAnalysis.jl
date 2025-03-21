@@ -29,7 +29,10 @@ function bound_variable_connections_graph(
 end
 
 
-function get_bond_setting_stages(remaining_keys::Set{Symbol}, notebook)
+function get_bond_setting_stages(
+    remaining_keys::Union{Vector{Symbol},Set{Symbol}},
+    notebook,
+)
     isempty(remaining_keys) && return Set{Symbol}[]
 
     in_this_stage = Set{Symbol}()

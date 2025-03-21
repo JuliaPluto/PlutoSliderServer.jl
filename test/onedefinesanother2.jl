@@ -60,20 +60,38 @@ y
 # ╔═╡ f4dbd930-c8aa-43ed-a702-37ada0f8536b
 @bind a1 Slider(1:100)
 
+# ╔═╡ 0788026a-996d-4106-8995-d3cf15f33167
+a1
+
 # ╔═╡ e08bdffd-9487-4032-aee8-10f54e9b0606
 @bind b1 Slider(a1:100)
+
+# ╔═╡ c82e7b6e-d677-4beb-bec5-c33c139eed95
+b1
 
 # ╔═╡ 65b25bfe-0521-46d4-bad6-6532cd231fde
 @bind c1 Slider(b1:100)
 
+# ╔═╡ 2ed05065-653e-47b5-97a7-9c3c08bb4482
+c1
+
 # ╔═╡ 1f72f833-fc7c-4fc4-88fd-027fa6258b9d
 @bind c2 Slider(a1:100)
+
+# ╔═╡ e8e8baf9-282d-4f8f-a5b6-66a937c42fad
+c2
 
 # ╔═╡ 87507de2-1f9c-441c-99ec-96095146bd0e
 lim = c1 + c2
 
 # ╔═╡ e18cdeb3-1a42-4d3c-876b-d9a5c0872617
-@bind d1 Slider(lim:100)
+@bind d1 Slider(lim:1000)
+
+# ╔═╡ 4bcad3ab-ef02-4a39-a25d-1c165d95701c
+d1
+
+# ╔═╡ 2df52930-721d-49ad-8996-83692488d64f
+(; a1, b1, c1, c2, d1)
 
 # ╔═╡ Cell order:
 # ╠═bcc82d12-6566-11eb-325f-8b6c4ac362a0
@@ -89,8 +107,14 @@ lim = c1 + c2
 # ╟─36e1d6cc-73e5-483f-88eb-007ae52e6d00
 # ╟─0f72d9c1-2aa3-4c13-ba8a-1290468124f5
 # ╠═f4dbd930-c8aa-43ed-a702-37ada0f8536b
+# ╠═0788026a-996d-4106-8995-d3cf15f33167
 # ╠═e08bdffd-9487-4032-aee8-10f54e9b0606
+# ╠═c82e7b6e-d677-4beb-bec5-c33c139eed95
 # ╠═65b25bfe-0521-46d4-bad6-6532cd231fde
+# ╠═2ed05065-653e-47b5-97a7-9c3c08bb4482
 # ╠═1f72f833-fc7c-4fc4-88fd-027fa6258b9d
+# ╠═e8e8baf9-282d-4f8f-a5b6-66a937c42fad
 # ╠═87507de2-1f9c-441c-99ec-96095146bd0e
 # ╠═e18cdeb3-1a42-4d3c-876b-d9a5c0872617
+# ╠═4bcad3ab-ef02-4a39-a25d-1c165d95701c
+# ╠═2df52930-721d-49ad-8996-83692488d64f

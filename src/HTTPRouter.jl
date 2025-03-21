@@ -112,22 +112,23 @@ function make_router(
             end
             t3 = time()
 
+            names::Vector{Symbol} = Symbol.(keys(bonds))
+            stages = get_bond_setting_stages(names, notebook)
+
             topological_order, new_state = withtoken(sesh.run.token) do
                 try
-                    # Set the bond values. We don't need to merge dicts here because the old bond values will never be used.
-                    notebook.bonds = bonds
-
-                    names::Vector{Symbol} = Symbol.(keys(bonds))
-
-                    stages = get_bond_setting_stages(names, notebook)
+                    @info "hmm" stages names
 
                     local last_order = nothing
                     for stage in stages
+                        # Set the bond values. We don't need to merge dicts here because the old bond values will never be used.
+                        notebook.bonds = bonds
+                        @info "running stage" collect(stage) bonds
                         # Run the bonds, and get the returned cell order
                         last_order = Pluto.set_bond_values_reactive(
                             session=server_session,
                             notebook=notebook,
-                            bound_sym_names=stage,
+                            bound_sym_names=collect(stage),
                             is_first_values=[false for _n in stage], # because requests should be stateless. We might want to do something special for the (actual) initial request (containing every initial bond value) in the future.
                             run_async=false,
                         )::Pluto.TopologicalOrder
