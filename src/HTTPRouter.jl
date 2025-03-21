@@ -11,11 +11,15 @@ import Pluto:
 using HTTP
 using Sockets
 import JSON
+import PlutoDependencyExplorer
+
+
 
 @from "./IndexJSON.jl" import generate_index_json
 @from "./IndexHTML.jl" import temp_index, generate_basic_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
+@from "./MoreAnalysis.jl" import get_bond_setting_stages
 @from "./PlutoHash.jl" import base64urldecode
 
 ready_for_bonds(::Any) = false
@@ -66,8 +70,10 @@ function make_router(
     end
 
     function get_bonds(request::HTTP.Request)
-        request_body = if request.method == "POST"
-            IOBuffer(HTTP.payload(request))
+        bonds_raw, explicits_raw = if request.method == "POST"
+            # TODO: implement POST version
+            data = Pluto.unpack(IOBuffer(HTTP.payload(request)))
+            data isa Dict ? (data, nothing) : data
         elseif request.method == "GET"
             uri = HTTP.URI(request.target)
 
@@ -76,12 +82,21 @@ function make_router(
             # notebook_hash = parts[2]
 
             @assert length(parts) == 3
+            data = Pluto.unpack(base64urldecode(parts[3]))
 
-            base64urldecode(parts[3])
+            explicit = let
+                q = HTTP.queryparams(uri)
+                e = get(q, "explicit", nothing)
+                e === nothing ? nothing : Pluto.unpack(base64urldecode(e))
+            end
+
+            (data, explicit)
         end
-        bonds_raw = Pluto.unpack(request_body)
 
-        Dict{Symbol,Any}(Symbol(k) => v for (k, v) in bonds_raw)
+        (
+            Dict{Symbol,Any}(Symbol(k) => v for (k, v) in bonds_raw),
+            explicits_raw === nothing ? nothing : Set(Symbol.(explicits_raw)),
+        )
     end
 
     "Happens whenever you move a slider"
@@ -93,7 +108,7 @@ function make_router(
         response = if ready_for_bonds(sesh)
             notebook = sesh.run.notebook
 
-            bonds = try
+            bonds, explicits = try
                 get_bonds(request)
             catch e
                 @error "Failed to deserialize bond values" exception =
@@ -104,42 +119,77 @@ function make_router(
             end
 
             t2 = time()
-            @debug "Deserialized bond values" bonds
+            @debug "Deserialized bond values" bonds explicits
 
             let lag = settings.SliderServer.simulated_lag
                 lag > 0 && sleep(lag)
             end
             t3 = time()
 
-            topological_order, new_state = withtoken(sesh.run.token) do
+            names::Vector{Symbol} = Symbol.(keys(bonds))
+            names_original = names
+            names =
+                explicits === nothing ? names :
+                let
+                    where_as = PlutoDependencyExplorer.where_assigned(
+                        notebook.topology,
+                        explicits,
+                    )
+
+
+                    dsr = Pluto.MoreAnalysis.downstream_recursive(
+                        notebook,
+                        notebook.topology,
+                        where_as,
+                    )
+                    setdiff!(dsr, where_as)
+
+                    filter(names) do n
+                        !any(dsr) do c
+                            n in notebook.topology.nodes[c].definitions
+                        end
+                    end
+                end
+
+
+            stages = get_bond_setting_stages(names, notebook)
+
+            topological_orders, new_state = withtoken(sesh.run.token) do
                 try
-                    notebook.bonds = bonds
+                    @debug "hmm" stages names names_original
 
-                    names::Vector{Symbol} = Symbol.(keys(bonds))
-
-                    topological_order = Pluto.set_bond_values_reactive(
-                        session=server_session,
-                        notebook=notebook,
-                        bound_sym_names=names,
-                        is_first_values=[false for _n in names], # because requests should be stateless. We might want to do something special for the (actual) initial request (containing every initial bond value) in the future.
-                        run_async=false,
-                    )::Pluto.TopologicalOrder
+                    stage_orders = map(stages) do stage
+                        # Set the bond values. We don't need to merge dicts here because the old bond values will never be used.
+                        notebook.bonds = bonds
+                        @debug "running stage" collect(stage) bonds
+                        # Run the bonds, and get the returned cell order
+                        Pluto.set_bond_values_reactive(
+                            session=server_session,
+                            notebook=notebook,
+                            bound_sym_names=collect(stage),
+                            is_first_values=[false for _n in stage], # because requests should be stateless. We might want to do something special for the (actual) initial request (containing every initial bond value) in the future.
+                            run_async=false,
+                        )::Pluto.TopologicalOrder
+                    end
 
                     new_state = Pluto.notebook_to_js(notebook)
 
-                    topological_order, new_state
+                    stage_orders, new_state
                 catch e
                     @error "Failed to set bond values" exception = (e, catch_backtrace())
                     nothing, nothing
                 end
             end
-            topological_order === nothing && return (
+            topological_orders === nothing && return (
                 HTTP.Response(500, "Failed to set bond values") |>
                 with_cors! |>
                 with_not_cacheable!
             )
 
-            ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
+            ids_of_cells_that_ran = [c.cell_id for c in
+                           # union!(Pluto.Cell[], (to.runnable for to in topological_orders)...)
+                           # TODO fix last
+                           last(topological_orders).runnable]
 
             t4 = time()
             @debug "Finished running!" length(ids_of_cells_that_ran)
@@ -158,10 +208,24 @@ function make_router(
                 new
             end
 
-            patches = Firebasey.diff(
-                only_relevant(sesh.run.original_state),
-                only_relevant(new_state),
-            )
+            @debug "hmm" bonds notebook.bonds new_state["bonds"] sesh.run.original_state["bonds"]
+
+            patches = let
+                notebook_patches = Firebasey.diff(
+                    only_relevant(sesh.run.original_state),
+                    only_relevant(new_state),
+                )
+
+                bond_patches = [
+                    Firebasey.RemovePatch(["bonds", string(k)]) for
+                    k in keys(bonds) if string(k) ∉ keys(new_state["bonds"])
+                ]
+
+                @debug "patches" notebook_patches bond_patches
+
+                union!(notebook_patches, bond_patches)
+            end
+
             patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
 
             t5 = time()
@@ -170,8 +234,11 @@ function make_router(
                 Dict{String,Any}(
                     "patches" => patches_as_dicts,
                     "ids_of_cells_that_ran" => ids_of_cells_that_ran,
+                    "stages" => stages,
                 ),
             )
+
+            @debug "asdf" Pluto.unpack(response_data)
 
             t6 = time()
 
