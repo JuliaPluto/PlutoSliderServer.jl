@@ -69,32 +69,27 @@ function make_router(
     end
 
     function get_bonds(request::HTTP.Request)
-        bonds_raw, explicits_raw = if request.method == "POST"
-            # TODO: implement POST version
-            data = Pluto.unpack(IOBuffer(HTTP.payload(request)))
-            data isa Dict ? (data, nothing) : data
+        uri = HTTP.URI(request.target)
+        parts = HTTP.URIs.splitpath(uri.path)
+        # parts[1] == "staterequest"
+        # parts[2] == notebook_hash
+        
+        explicits = let
+            q = HTTP.queryparams(uri)
+            e = get(q, "explicit", nothing)
+            e === nothing ? nothing : Set(Iterators.map(Symbol, Pluto.unpack(base64urldecode(e))))
+        end
+
+        bonds_raw = if request.method == "POST"
+            Pluto.unpack(IOBuffer(HTTP.payload(request)))
         elseif request.method == "GET"
-            uri = HTTP.URI(request.target)
-
-            parts = HTTP.URIs.splitpath(uri.path)
-            # parts[1] == "staterequest"
-            # notebook_hash = parts[2]
-
             @assert length(parts) == 3
-            data = Pluto.unpack(base64urldecode(parts[3]))
-
-            explicit = let
-                q = HTTP.queryparams(uri)
-                e = get(q, "explicit", nothing)
-                e === nothing ? nothing : Pluto.unpack(base64urldecode(e))
-            end
-
-            (data, explicit)
+            Pluto.unpack(base64urldecode(parts[3]))
         end
 
         (
             Dict{Symbol,Any}(Symbol(k) => v for (k, v) in bonds_raw),
-            explicits_raw === nothing ? nothing : Set(Symbol.(explicits_raw)),
+            explicits,
         )
     end
 
@@ -128,8 +123,8 @@ function make_router(
 
             names::Vector{Symbol} = Symbol.(keys(bonds))
             
-            explicits = something(explicits, names)
-            
+            # "explicits" defaults to "all bonds"
+            explicits = @something(explicits, Set(names))
             
             names_original = names
             names =
@@ -148,6 +143,8 @@ function make_router(
                     # The sliders will be set on (1,1) initially.
                     # The user moves the first slider, giving (10,1).
                     # The value for `y` will be sent, but this should be ignored. Because it was generated from an outdated bond.
+                    
+                    # TODO: the two below can be cached
                     
                     
                     # the cells where you set a bond explicitly
@@ -172,8 +169,13 @@ function make_router(
                         )
                     end
                 end
+                
+            t35 = time()
+                
+                
+            id(c) = c.cell_id
 
-            @debug "Analysis" names names_original starts cells_depending_on_explicits
+            @debug "Analysis" names names_original id.(starts) id.(cells_depending_on_explicits)
             
             new_state = withtoken(sesh.run.token) do
                 try
@@ -252,7 +254,7 @@ function make_router(
             HTTP.Response(200, response_data) |>
             (
                 settings.SliderServer.server_timing_header ?
-                with_server_timing!(t1, t2, t3, t4, t5, t6) : identity
+                with_server_timing!(t1, t2, t3, t35, t4, t5, t6) : identity
             ) |>
             with_cacheable_configured! |>
             with_cors! |>
@@ -397,7 +399,7 @@ function ReferrerMiddleware(handler)
     end
 end
 
-function with_server_timing!(t1, t2, t3, t4, t5, t6)
+function with_server_timing!(t1, t2, t3, t35, t4, t5, t6)
     s(name, start, stop) = "$name;dur=$(round((stop - start) * 1000; digits=2))"
 
     function (response::HTTP.Response)
@@ -405,9 +407,10 @@ function with_server_timing!(t1, t2, t3, t4, t5, t6)
             s("total", t1, t6)),$(
             s("p1deserialize", t1, t2)),$(
             s("p2lag", t2, t3)),$(
-            s("p3setBonds", t3, t4)),$(
-            s("p4diff", t4, t5)),$(
-            s("p5msgpack", t5, t6))")
+            s("p3preanalysis", t3, t35)),$(
+            s("p4setBonds", t35, t4)),$(
+            s("p5diff", t4, t5)),$(
+            s("p6msgpack", t5, t6))")
         response
     end
 end
