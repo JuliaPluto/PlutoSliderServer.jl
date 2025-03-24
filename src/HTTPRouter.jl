@@ -19,7 +19,6 @@ import PlutoDependencyExplorer
 @from "./IndexHTML.jl" import temp_index, generate_basic_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
-@from "./MoreAnalysis.jl" import get_bond_setting_stages
 @from "./PlutoHash.jl" import base64urldecode
 
 ready_for_bonds(::Any) = false
@@ -117,6 +116,7 @@ function make_router(
                        with_cors! |>
                        with_not_cacheable!
             end
+            
 
             t2 = time()
             @debug "Deserialized bond values" bonds explicits
@@ -127,79 +127,90 @@ function make_router(
             t3 = time()
 
             names::Vector{Symbol} = Symbol.(keys(bonds))
+            
+            explicits = something(explicits, names)
+            
+            
             names_original = names
             names =
-                explicits === nothing ? names :
-                let
-                    where_as = PlutoDependencyExplorer.where_assigned(
+                begin
+                    # REMOVE ALL NAMES that depend on 
+                    # an explicit bond
+                    # 
+                    # Because its new value might no longer be valid.
+                    # 
+                    # For exaxmple:
+                    # @bind xx Slider(1:100)
+                    # @bind yy Slider(xx:100)
+                    # 
+                    # (ignore bond transformatinos for now)
+                    # 
+                    # The sliders will be set on (1,1) initially.
+                    # The user moves the first slider, giving (10,1).
+                    # The value for `y` will be sent, but this should be ignored. Because it was generated from an outdated bond.
+                    
+                    
+                    # the cells where you set a bond explicitly
+                    starts = PlutoDependencyExplorer.where_assigned(
                         notebook.topology,
                         explicits,
                     )
 
-
-                    dsr = Pluto.MoreAnalysis.downstream_recursive(
-                        notebook,
+                    # all cells that depend on an explicit bond
+                    cells_depending_on_explicits = Pluto.MoreAnalysis.downstream_recursive(
                         notebook.topology,
-                        where_as,
+                        starts,
                     )
-                    setdiff!(dsr, where_as)
 
+                    # remove any variable `n` from `names` if...
                     filter(names) do n
-                        !any(dsr) do c
-                            n in notebook.topology.nodes[c].definitions
-                        end
+                        !(
+                            # ...`n` depends on an explicit bond.
+                            any(cells_depending_on_explicits) do c
+                                n in notebook.topology.nodes[c].definitions
+                            end
+                        )
                     end
                 end
 
-
-            stages = get_bond_setting_stages(names, notebook)
-
-            topological_orders, new_state = withtoken(sesh.run.token) do
+            @debug "Analysis" names names_original starts cells_depending_on_explicits
+            
+            new_state = withtoken(sesh.run.token) do
                 try
-                    @debug "hmm" stages names names_original
+                    # Set the bond values. We don't need to merge dicts here because the old bond values will never be used.
+                    notebook.bonds = bonds
+                    
+                    # Run the bonds!
+                    topological_order = Pluto.set_bond_values_reactive(
+                        session=server_session,
+                        notebook=notebook,
+                        bound_sym_names=names,
+                        is_first_values=[false for _n in names], # because requests should be stateless. We might want to do something special for the (actual) initial request (containing every initial bond value) in the future.
+                        run_async=false,
+                    )::Pluto.TopologicalOrder
 
-                    stage_orders = map(stages) do stage
-                        # Set the bond values. We don't need to merge dicts here because the old bond values will never be used.
-                        notebook.bonds = bonds
-                        @debug "running stage" collect(stage) bonds
-                        # Run the bonds, and get the returned cell order
-                        Pluto.set_bond_values_reactive(
-                            session=server_session,
-                            notebook=notebook,
-                            bound_sym_names=collect(stage),
-                            is_first_values=[false for _n in stage], # because requests should be stateless. We might want to do something special for the (actual) initial request (containing every initial bond value) in the future.
-                            run_async=false,
-                        )::Pluto.TopologicalOrder
-                    end
-
-                    new_state = Pluto.notebook_to_js(notebook)
-
-                    stage_orders, new_state
+                    @debug "Finished running!" length(topological_order.runnable)
+                    
+                    Pluto.notebook_to_js(notebook)
                 catch e
                     @error "Failed to set bond values" exception = (e, catch_backtrace())
-                    nothing, nothing
+                    nothing
                 end
             end
-            topological_orders === nothing && return (
+            new_state === nothing && return (
                 HTTP.Response(500, "Failed to set bond values") |>
                 with_cors! |>
                 with_not_cacheable!
             )
-
-            ids_of_cells_that_ran = [c.cell_id for c in
-                           # union!(Pluto.Cell[], (to.runnable for to in topological_orders)...)
-                           # TODO fix last
-                           last(topological_orders).runnable]
-
+            
             t4 = time()
-            @debug "Finished running!" length(ids_of_cells_that_ran)
 
             # We only want to send state updates about...
             function only_relevant(state)
                 new = copy(state)
                 # ... the cells that just ran and ...
                 new["cell_results"] = filter(state["cell_results"]) do (id, cell_state)
-                    id ∈ ids_of_cells_that_ran
+                    id ∈ (c.cell_id for c in cells_depending_on_explicits)
                 end
                 # ... nothing about bond values, because we don't want to synchronize among clients. and...
                 delete!(new, "bonds")
@@ -208,14 +219,13 @@ function make_router(
                 new
             end
 
-            @debug "hmm" bonds notebook.bonds new_state["bonds"] sesh.run.original_state["bonds"]
-
             patches = let
                 notebook_patches = Firebasey.diff(
                     only_relevant(sesh.run.original_state),
                     only_relevant(new_state),
                 )
 
+                # if bond values were removed by Pluto, then that should also happen on the PSS client
                 bond_patches = [
                     Firebasey.RemovePatch(["bonds", string(k)]) for
                     k in keys(bonds) if string(k) ∉ keys(new_state["bonds"])
@@ -233,12 +243,9 @@ function make_router(
             response_data = Pluto.pack(
                 Dict{String,Any}(
                     "patches" => patches_as_dicts,
-                    "ids_of_cells_that_ran" => ids_of_cells_that_ran,
-                    "stages" => stages,
                 ),
             )
-
-            @debug "asdf" Pluto.unpack(response_data)
+            @debug "Sending patches" Pluto.unpack(response_data)
 
             t6 = time()
 
