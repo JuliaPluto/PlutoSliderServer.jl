@@ -375,6 +375,25 @@ sudo journalctl --pager-end -u pluto-server
 sudo journalctl --follow -u pluto-server
 ```
 
+#### More monitoring
+Some random tips that Fons found useful:
+
+When you use `htop` for monitoring, press F5 for tree view. This will bundle all notebook (child) processes under the server process.
+
+###
+The following command gives the total RAM usage of all PSS-related processes (thx gpt):
+
+```shell
+pstree -p $(pgrep -f pluto-slider-server.jl) | grep -oP '\(\d+\)' | grep -oP '\d+' | xargs ps -o rss= -p | awk '{sum+=$1} END {print sum/1024 " MB"}'
+```
+
+
+##### Betterstack
+Fons uses Betterstack.com (Live Tail) for monitoring one project and it works really well. By default, betterstack will not consume any logs from Julia though. 
+
+See https://github.com/biaslab/BMLIP-colorized where I documented how I set this up.
+
+
 > [!IMPORTANT]
 > These three commands are important! Write them down somewhere.
 
