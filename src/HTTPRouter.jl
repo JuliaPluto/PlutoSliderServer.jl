@@ -144,20 +144,18 @@ function make_router(
                     # The user moves the first slider, giving (10,1).
                     # The value for `y` will be sent, but this should be ignored. Because it was generated from an outdated bond.
                     
-                    # TODO: the two below can be cached
-                    
-                    
-                    # the cells where you set a bond explicitly
-                    starts = PlutoDependencyExplorer.where_assigned(
+                    first_layer = PlutoDependencyExplorer.where_referenced(
                         notebook.topology,
                         explicits,
                     )
+                    
+                    next_layers = Pluto.MoreAnalysis.downstream_recursive(
+                        notebook.topology,
+                        first_layer,
+                    )
 
                     # all cells that depend on an explicit bond
-                    cells_depending_on_explicits = Pluto.MoreAnalysis.downstream_recursive(
-                        notebook.topology,
-                        starts,
-                    )
+                    cells_depending_on_explicits = union!(first_layer, next_layers)
 
                     # remove any variable `n` from `names` if...
                     filter(names) do n
@@ -227,10 +225,10 @@ function make_router(
                     only_relevant(new_state),
                 )
 
-                # if bond values were removed by Pluto, then that should also happen on the PSS client
+                # Remove bonds that depend on explicit bonds. Because this means that the bond was re-created during this run, and its value must be reset,
                 bond_patches = [
                     Firebasey.RemovePatch(["bonds", string(k)]) for
-                    k in keys(bonds) if string(k) ∉ keys(new_state["bonds"])
+                    k in keys(bonds) if k ∉ names
                 ]
 
                 @debug "patches" notebook_patches bond_patches
