@@ -473,7 +473,7 @@ function waitall(tasks)
             wait(t)
         catch e
             if !(e isa InterruptException)
-                showerror(stderr, e, catch_backtrace())
+                @error "Captured error in task" exception=(e, catch_backtrace())
             end
             if !killing[]
                 killing[] = true
