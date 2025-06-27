@@ -10,3 +10,10 @@ result = PlutoSliderServer.get_configuration(toml_path; Export_binder_url="yayy"
 
 @test result.Export.binder_url == "yayy"
 @test result.Pluto.compiler.threads == 1
+
+@test PlutoSliderServer.default_config_path() isa String
+
+
+
+
+

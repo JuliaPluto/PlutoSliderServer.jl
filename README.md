@@ -12,7 +12,7 @@ See it in action at [computationalthinking.mit.edu](https://computationalthinkin
 
 ```julia
 using PlutoSliderServer
-path_to_notebook = download("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.17.2/sample/Interactivity.jl") # fill in your own notebook path here!
+path_to_notebook = download("https://raw.githubusercontent.com/JuliaPluto/featured/50205f3/src/basic/turtles-art.jl") # fill in your own notebook path here!
 
 PlutoSliderServer.run_notebook(path_to_notebook)
 ```
