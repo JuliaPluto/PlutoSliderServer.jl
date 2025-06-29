@@ -187,17 +187,16 @@ function generate_static_export(
     start_dir,
 )
     pluto_version = try_get_exact_pluto_version()
+    relative_to_notebooks_dir = without_pluto_file_extension(path)
     export_jl_path = let
-        relative_to_notebooks_dir = path
-        joinpath(output_dir, relative_to_notebooks_dir)
+        joinpath(output_dir, relative_to_notebooks_dir, basename(path))
     end
     export_html_path = let
-        relative_to_notebooks_dir = without_pluto_file_extension(path) * ".html"
-        joinpath(output_dir, relative_to_notebooks_dir)
+        joinpath(output_dir, relative_to_notebooks_dir, "index.html")
     end
     export_statefile_path = let
-        relative_to_notebooks_dir = without_pluto_file_extension(path) * ".plutostate"
-        joinpath(output_dir, relative_to_notebooks_dir)
+        joinpath(output_dir, relative_to_notebooks_dir,
+		 without_pluto_file_extension(basename(path)) * ".plutostate")
     end
 
 
@@ -221,7 +220,7 @@ function generate_static_export(
     end
     slider_server_url_js = if slider_server_running_somewhere
         abs_path = joinpath(start_dir, path)
-        url_of_root = relpath(start_dir, dirname(abs_path)) # e.g. "." or "../../.." 
+        url_of_root = relpath(start_dir, dirname(abs_path)) # e.g. "." or "../../.."
         repr(something(settings.Export.slider_server_url, url_of_root))
     else
         "undefined"
