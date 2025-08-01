@@ -163,7 +163,9 @@ function run_directory(
     config_toml_path::Union{String,Nothing}=default_config_path(),
     kwargs...,
 )
-
+    if Sys.iswindows()
+        @warn "PlutoSliderServer support for Windows is experimental. Let us know how it goes, and feel free to open an issue if you run into problems. You can use Linux or MacOS for a more stable experience."
+    end
 
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
