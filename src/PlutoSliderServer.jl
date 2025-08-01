@@ -174,30 +174,9 @@ function run_directory(
     )
     mkpath(output_dir)
 
-    function getpaths()
-        all_nbs =
-            notebook_paths !== nothing ? notebook_paths :
-            find_notebook_files_recursive(start_dir)
-
-        s_remaining = filter(!is_glob_match(settings.SliderServer.exclude), all_nbs)
-        e_remaining = filter(!is_glob_match(settings.Export.exclude), all_nbs)
-
-        if settings.Export.enabled
-            if settings.SliderServer.enabled
-                s_remaining ∪ e_remaining
-            else
-                e_remaining
-            end
-        else
-            filter(s_remaining) do f
-                try
-                    occursin("@bind", read(joinpath(start_dir, f), String))
-                catch
-                    true
-                end
-            end
-        end
-    end
+    getpaths() = 
+        notebook_paths !== nothing ? notebook_paths :
+            find_notebook_files_recursive(start_dir, settings)
 
     @info "Versions" julia = VERSION pluto = Pluto.PLUTO_VERSION plutosliderserver =
         (VERSION >= v"1.9" ? pkgversion(@__MODULE__) : nothing)
@@ -466,6 +445,30 @@ function run_git_directory(
     waitall([run_dir_task, pull_loop_task])
 end
 
+function find_notebook_files_recursive(start_dir::String, settings::PlutoDeploySettings)
+    all_nbs = find_notebook_files_recursive(start_dir)
+    
+    s_remaining = filter(!is_glob_match(settings.SliderServer.exclude), all_nbs)
+    e_remaining = filter(!is_glob_match(settings.Export.exclude), all_nbs)
+
+    if settings.Export.enabled
+        if settings.SliderServer.enabled
+            s_remaining ∪ e_remaining
+        else
+            e_remaining
+        end
+    else
+        filter(s_remaining) do f
+            try
+                occursin("@bind", read(joinpath(start_dir, f), String))
+            catch
+                true
+            end
+        end
+    end
+end
+    
+
 function waitall(tasks)
     killing = Ref(false)
     @sync for t in tasks
@@ -473,7 +476,7 @@ function waitall(tasks)
             wait(t)
         catch e
             if !(e isa InterruptException)
-                showerror(stderr, e, catch_backtrace())
+                @error "Captured error in task" exception=(e, catch_backtrace())
             end
             if !killing[]
                 killing[] = true
