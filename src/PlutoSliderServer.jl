@@ -461,7 +461,7 @@ function find_notebook_files_recursive(start_dir::String, settings::PlutoDeployS
     else
         filter(s_remaining) do f
             try
-                occursin("@bind", read(joinpath(start_dir, f), String))
+                occursin("@bind", read(joinpath(start_dir, to_local_path(f)), String))
             catch
                 true
             end

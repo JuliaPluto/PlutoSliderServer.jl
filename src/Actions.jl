@@ -8,7 +8,7 @@ using FromFile
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook, RunResult
 @from "./Configuration.jl" import PlutoDeploySettings, is_glob_match
 @from "./PlutoHash.jl" import plutohash
-@from "./PathUtils.jl" import to_url_path
+@from "./PathUtils.jl" import to_local_path, to_url_path
 
 
 showall(xs) = Text(join(string.(xs), "\n"))
@@ -54,7 +54,7 @@ function process(
 )::NotebookSession
 
     path = s.path
-    abs_path = joinpath(start_dir, path)
+    abs_path = joinpath(start_dir, to_local_path(path))
 
     @info "###### ◐ $(progress) Launching..." path = s.path
 
@@ -190,15 +190,15 @@ function generate_static_export(
     pluto_version = try_get_exact_pluto_version()
     export_jl_path = let
         relative_to_notebooks_dir = path
-        joinpath(output_dir, relative_to_notebooks_dir)
+        joinpath(output_dir, to_local_path(relative_to_notebooks_dir))
     end
     export_html_path = let
         relative_to_notebooks_dir = without_pluto_file_extension(path) * ".html"
-        joinpath(output_dir, relative_to_notebooks_dir)
+        joinpath(output_dir, to_local_path(relative_to_notebooks_dir))
     end
     export_statefile_path = let
         relative_to_notebooks_dir = without_pluto_file_extension(path) * ".plutostate"
-        joinpath(output_dir, relative_to_notebooks_dir)
+        joinpath(output_dir, to_local_path(relative_to_notebooks_dir))
     end
 
 
@@ -221,7 +221,7 @@ function generate_static_export(
         "undefined"
     end
     slider_server_url_js = if slider_server_running_somewhere
-        abs_path = joinpath(start_dir, path)
+        abs_path = joinpath(start_dir, to_local_path(path))
         url_of_root = to_url_path(relpath(start_dir, dirname(abs_path))) # e.g. "." or "../../.."
         repr(something(settings.Export.slider_server_url, url_of_root))
     else
@@ -278,15 +278,15 @@ tryrm(x) = isfile(x) && rm(x)
 function remove_static_export(path; settings, output_dir)
     export_jl_path = let
         relative_to_notebooks_dir = path
-        joinpath(output_dir, relative_to_notebooks_dir)
+        joinpath(output_dir, to_local_path(relative_to_notebooks_dir))
     end
     export_html_path = let
         relative_to_notebooks_dir = without_pluto_file_extension(path) * ".html"
-        joinpath(output_dir, relative_to_notebooks_dir)
+        joinpath(output_dir, to_local_path(relative_to_notebooks_dir))
     end
     export_statefile_path = let
         relative_to_notebooks_dir = without_pluto_file_extension(path) * ".plutostate"
-        joinpath(output_dir, relative_to_notebooks_dir)
+        joinpath(output_dir, to_local_path(relative_to_notebooks_dir))
     end
 
 

@@ -6,7 +6,7 @@ import Pluto: Pluto, without_pluto_file_extension
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings
 
-@from "./PathUtils.jl" import to_url_path
+@from "./PathUtils.jl" import to_local_path, to_url_path
 
 id(s::NotebookSession) = to_url_path(s.path)
 
@@ -34,7 +34,7 @@ function index_json_data(
                 if s.run isa RunningNotebook
                     s.run.notebook
                 else
-                    joinpath(start_dir, s.path)
+                    joinpath(start_dir, to_local_path(s.path))
                 end;
                 raise=false,
             ),
