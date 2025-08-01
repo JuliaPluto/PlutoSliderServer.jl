@@ -8,6 +8,7 @@ using FromFile
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook, RunResult
 @from "./Configuration.jl" import PlutoDeploySettings, is_glob_match
 @from "./PlutoHash.jl" import plutohash
+@from "./PathUtils.jl" import to_url_path
 
 
 showall(xs) = Text(join(string.(xs), "\n"))
@@ -221,7 +222,7 @@ function generate_static_export(
     end
     slider_server_url_js = if slider_server_running_somewhere
         abs_path = joinpath(start_dir, path)
-        url_of_root = relpath(start_dir, dirname(abs_path)) # e.g. "." or "../../.." 
+        url_of_root = to_url_path(relpath(start_dir, dirname(abs_path))) # e.g. "." or "../../.."
         repr(something(settings.Export.slider_server_url, url_of_root))
     else
         "undefined"

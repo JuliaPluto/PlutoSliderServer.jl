@@ -6,7 +6,9 @@ import Pluto: Pluto, without_pluto_file_extension
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings
 
-id(s::NotebookSession) = s.path
+@from "./PathUtils.jl" import to_url_path
+
+id(s::NotebookSession) = to_url_path(s.path)
 
 function index_json_data(
     s::NotebookSession;
@@ -16,10 +18,10 @@ function index_json_data(
     (
         id=id(s),
         hash=s.current_hash,
-        html_path=without_pluto_file_extension(s.path) * ".html",
+        html_path=to_url_path(without_pluto_file_extension(s.path) * ".html"),
         statefile_path=settings.Export.baked_state ? nothing :
-                       without_pluto_file_extension(s.path) * ".plutostate",
-        notebookfile_path=settings.Export.baked_notebookfile ? nothing : s.path,
+                       to_url_path(without_pluto_file_extension(s.path) * ".plutostate"),
+        notebookfile_path=settings.Export.baked_notebookfile ? nothing : to_url_path(s.path),
         current_hash=s.current_hash,
         desired_hash=s.desired_hash,
         frontmatter=merge(
