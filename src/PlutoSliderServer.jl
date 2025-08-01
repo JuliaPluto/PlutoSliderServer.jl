@@ -4,6 +4,7 @@ using FromFile
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./FileHelpers.jl" import find_notebook_files_recursive, list_files_recursive
+@from "./PathUtils.jl" import to_local_path, to_url_path
 @from "./Export.jl" import try_get_exact_pluto_version, cache_filename
 export cache_filename
 @from "./IndexHTML.jl" import generate_index_html
@@ -162,7 +163,9 @@ function run_directory(
     config_toml_path::Union{String,Nothing}=default_config_path(),
     kwargs...,
 )
-    @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet! Feel free to open a PR to add support."
+    if Sys.iswindows()
+        @warn "PlutoSliderServer support for Windows is experimental. Let us know how it goes, and feel free to open an issue if you run into problems. You can use Linux or MacOS for a more stable experience."
+    end
 
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
@@ -460,7 +463,7 @@ function find_notebook_files_recursive(start_dir::String, settings::PlutoDeployS
     else
         filter(s_remaining) do f
             try
-                occursin("@bind", read(joinpath(start_dir, f), String))
+                occursin("@bind", read(joinpath(start_dir, to_local_path(f)), String))
             catch
                 true
             end
