@@ -187,7 +187,8 @@ make_test_dir() =
     )
     @test response.status == 422 # notebook is no longer running since it has no bonds
 
-    @test s_export_only.run isa PlutoSliderServer.var"../Types.jl".FinishedNotebook
+    types_sym = Symbol(replace("../Types.jl", '/' => Base.Filesystem.path_separator))
+    @test s_export_only.run isa getfield(PlutoSliderServer, types_sym).FinishedNotebook
 
     response_export_only = HTTP.request(
         "GET",
