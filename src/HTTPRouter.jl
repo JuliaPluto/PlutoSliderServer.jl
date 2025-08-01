@@ -173,7 +173,7 @@ function make_router(
                 
             id(c) = c.cell_id
 
-            @debug "Analysis" names names_original id.(starts) id.(cells_depending_on_explicits)
+            @debug "Analysis" names names_original id.(cells_depending_on_explicits)
             
             new_state = withtoken(sesh.run.token) do
                 try
