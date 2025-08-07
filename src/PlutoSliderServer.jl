@@ -39,6 +39,7 @@ import BetterFileWatching: watch_folder
 import AbstractPlutoDingetjes: is_inside_pluto
 import TerminalLoggers: TerminalLogger
 import Logging: global_logger, ConsoleLogger
+import GracefulPkg
 
 export export_directory, run_directory, run_git_directory, github_action
 export export_notebook, run_notebook
@@ -396,6 +397,8 @@ function run_git_directory(
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
 
+    env_dir = dirname(Base.active_project())
+
 
     get_settings() =
         get_configuration(config_toml_path; SliderServer_watch_dir=true, kwargs...)
@@ -411,7 +414,8 @@ function run_git_directory(
             kwargs...,
         )
     end
-    old_deps = Pkg.dependencies()
+    
+    old_deps = get_pkg_snapshot(env_dir)
     pull_loop_task = Pluto.@asynclog while true
         new_settings = try
             get_settings()
@@ -419,7 +423,7 @@ function run_git_directory(
             ("Error while reading settings", e)
             # (this will trigger a restart)
         end
-        new_deps = Pkg.dependencies()
+        new_deps = get_pkg_snapshot(env_dir)
 
         if old_settings != new_settings
             @error "Configuration changed. Shutting down!" old_settings new_settings
@@ -446,6 +450,16 @@ function run_git_directory(
     end
 
     waitall([run_dir_task, pull_loop_task])
+end
+
+function get_pkg_snapshot(env_dir::String)
+    snapshot = GracefulPkg.take_project_manifest_snapshot(env_dir)
+    # ignore some volatile fields
+    clean(s) = replace(s, r"^(julia_version|project_hash) = .*"m => "", r"\s+" => "")
+    GracefulPkg.ProjectManifestSnapshot(
+        clean(snapshot.project),
+        clean(snapshot.manifest),
+    )
 end
 
 function find_notebook_files_recursive(start_dir::String, settings::PlutoDeploySettings)
