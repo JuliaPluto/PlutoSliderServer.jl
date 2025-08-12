@@ -20,6 +20,7 @@ import PlutoDependencyExplorer
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 @from "./PlutoHash.jl" import base64urldecode
+@from "./PathUtils.jl" import to_local_path
 
 ready_for_bonds(::Any) = false
 ready_for_bonds(sesh::NotebookSession{String,String,RunningNotebook}) =
@@ -341,7 +342,7 @@ function make_router(
 
             filepath = Pluto.project_relative_path(
                 "frontend",
-                relpath(HTTP.unescapeuri(uri.path), "/pluto_asset/"),
+                to_local_path(relpath(HTTP.unescapeuri(uri.path), "/pluto_asset/")),
             )
             Pluto.asset_response(filepath)
         end
@@ -349,7 +350,7 @@ function make_router(
         function serve_asset(request::HTTP.Request)
             uri = HTTP.URI(request.target)
 
-            filepath = joinpath(static_dir, relpath(HTTP.unescapeuri(uri.path), "/"))
+            filepath = joinpath(static_dir, to_local_path(relpath(HTTP.unescapeuri(uri.path), "/")))
             Pluto.asset_response(filepath)
         end
         HTTP.register!(router, "GET", "/**", serve_asset)

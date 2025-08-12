@@ -4,6 +4,7 @@ using FromFile
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./FileHelpers.jl" import find_notebook_files_recursive, list_files_recursive
+@from "./PathUtils.jl" import to_local_path, to_url_path
 @from "./Export.jl" import try_get_exact_pluto_version, cache_filename
 export cache_filename
 @from "./IndexHTML.jl" import generate_index_html
@@ -38,6 +39,7 @@ import BetterFileWatching: watch_folder
 import AbstractPlutoDingetjes: is_inside_pluto
 import TerminalLoggers: TerminalLogger
 import Logging: global_logger, ConsoleLogger
+import GracefulPkg
 
 export export_directory, run_directory, run_git_directory, github_action
 export export_notebook, run_notebook
@@ -162,7 +164,9 @@ function run_directory(
     config_toml_path::Union{String,Nothing}=default_config_path(),
     kwargs...,
 )
-    @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet! Feel free to open a PR to add support."
+    if Sys.iswindows()
+        @warn "PlutoSliderServer support for Windows is experimental. Let us know how it goes, and feel free to open an issue if you run into problems. You can use Linux or MacOS for a more stable experience."
+    end
 
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
@@ -393,6 +397,8 @@ function run_git_directory(
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
 
+    env_dir = dirname(Base.active_project())
+
 
     get_settings() =
         get_configuration(config_toml_path; SliderServer_watch_dir=true, kwargs...)
@@ -408,7 +414,8 @@ function run_git_directory(
             kwargs...,
         )
     end
-    old_deps = Pkg.dependencies()
+    
+    old_deps = get_pkg_snapshot(env_dir)
     pull_loop_task = Pluto.@asynclog while true
         new_settings = try
             get_settings()
@@ -416,7 +423,7 @@ function run_git_directory(
             ("Error while reading settings", e)
             # (this will trigger a restart)
         end
-        new_deps = Pkg.dependencies()
+        new_deps = get_pkg_snapshot(env_dir)
 
         if old_settings != new_settings
             @error "Configuration changed. Shutting down!" old_settings new_settings
@@ -445,6 +452,16 @@ function run_git_directory(
     waitall([run_dir_task, pull_loop_task])
 end
 
+function get_pkg_snapshot(env_dir::String)
+    snapshot = GracefulPkg.take_project_manifest_snapshot(env_dir)
+    # ignore some volatile fields
+    clean(s) = replace(s, r"^(julia_version|project_hash) = .*"m => "", r"\s+" => "")
+    GracefulPkg.ProjectManifestSnapshot(
+        clean(snapshot.project),
+        clean(snapshot.manifest),
+    )
+end
+
 function find_notebook_files_recursive(start_dir::String, settings::PlutoDeploySettings)
     all_nbs = find_notebook_files_recursive(start_dir)
     
@@ -460,7 +477,7 @@ function find_notebook_files_recursive(start_dir::String, settings::PlutoDeployS
     else
         filter(s_remaining) do f
             try
-                occursin("@bind", read(joinpath(start_dir, f), String))
+                occursin("@bind", read(joinpath(start_dir, to_local_path(f)), String))
             catch
                 true
             end
