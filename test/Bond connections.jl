@@ -5,7 +5,7 @@ import PlutoSliderServer.Pluto
 using Test
 
 @testset "Bond connections" begin
-    file = joinpath(@__DIR__, "parallelpaths4.jl")
+    file = joinpath(@__DIR__, "notebooks", "parallelpaths4.jl")
 
     newpath = tempname()
     Pluto.readwrite(file, newpath)

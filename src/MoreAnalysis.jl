@@ -4,8 +4,6 @@ import PlutoDependencyExplorer
 
 # TODO: this should use the function from Pluto.jl
 # the difference is that this one uses Pluto.get_bond_names(session, notebook) which is more accurate than getting it from the topology only.
-
-
 "Return a `Dict{Symbol,Vector{Symbol}}` where the _keys_ are the bound variables of the notebook.
 
 For each key (a bound symbol), the value is the list of (other) bound variables whose values need to be known to compute the result of setting the bond."
@@ -27,3 +25,4 @@ function bound_variable_connections_graph(
         end for var in bound_variables
     )
 end
+

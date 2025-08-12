@@ -1,6 +1,7 @@
 import PlutoSliderServer
 import PlutoSliderServer.Pluto
 import PlutoSliderServer.HTTP
+import PlutoSliderServer: plutohash, base64urlencode, base64urldecode
 
 using Test
 using UUIDs, Random
@@ -8,9 +9,9 @@ using UUIDs, Random
 @testset "HTTP requests: dynamic" begin
     Random.seed!(time_ns())
     test_dir = tempname(cleanup=false)
-    cp(@__DIR__, test_dir)
+    cp(joinpath(@__DIR__, "notebooks"), test_dir)
 
-    notebook_paths = ["basic2.jl", "parallelpaths4.jl"]
+    notebook_paths = ["basic2.jl", "parallelpaths4.jl", "onedefinesanother2.jl"]
 
     port = rand(12345:65000)
 
@@ -26,7 +27,6 @@ using UUIDs, Random
         PlutoSliderServer.run_directory(
             test_dir;
             Export_enabled=false,
-            Export_cache_dir=cache_dir,
             SliderServer_port=port,
             notebook_paths,
             on_ready,
@@ -47,6 +47,7 @@ using UUIDs, Random
 
     @testset "Bond connections - $(name)" for (i, name) in enumerate(notebook_paths)
         s = notebook_sessions[i]
+        @test basename(s.path) == name
 
         response = HTTP.get("http://localhost:$(port)/bondconnections/$(s.current_hash)/")
 
@@ -91,8 +92,6 @@ using UUIDs, Random
 
             result = Pluto.unpack(response.body)
 
-            @test sum_cell_id ∈ result["ids_of_cells_that_ran"]
-
             for patch in result["patches"]
                 Pluto.Firebasey.applypatch!(
                     state,
@@ -103,6 +102,135 @@ using UUIDs, Random
             @test state["cell_results"][sum_cell_id]["output"]["body"] ==
                   string(bonds["x"]["value"] + bonds["y"]["value"])
 
+        end
+    end
+    
+    
+    @testset "State request - onedefinesanother2.jl" begin
+        i = 3
+        s = notebook_sessions[i]
+
+        @testset "Method $(method)" for method in ["GET", "POST"]
+
+            v(x) = Dict("value" => x)
+
+            bonds(x,y) = Dict("x" => v(x), "y" => v(y))
+
+            state = Pluto.unpack(Pluto.pack(s.run.original_state))
+
+            x_bond_id = "7f2c6b8a-6be9-4c64-b0b5-7fc4435153ee"
+            y_bond_id = "2995d591-0f74-44e8-9c06-c42c2f9c68f8"
+            x_id = "6bc11e12-3bdb-4ca4-a36d-f8067af95ca5"
+            y_id = "80789650-d01f-4d75-8091-6117a66402cb"
+            
+            pack64(data) = PlutoSliderServer.base64urlencode(Pluto.pack(data))
+
+            function makerequest(x::Int64, y::Int64, explicits::Vector{Symbol})
+                explicit_arg = pack64(explicits)
+                response = if method == "GET"
+                    arg = pack64(bonds(x,y))
+
+                    # escaping should have no effect
+                    @test HTTP.URIs.escapeuri(arg) == arg
+
+                    HTTP.request(
+                        method,
+                        "http://localhost:$(port)/staterequest/$(s.current_hash)/$(arg)?explicit=$(explicit_arg)",
+                    )
+                else
+                    HTTP.request(
+                        method,
+                        "http://localhost:$(port)/staterequest/$(s.current_hash)/?explicit=$(explicit_arg)",
+                        [],
+                        Pluto.pack(bonds(x,y)),
+                    )
+                end
+
+                patches = Pluto.unpack(response.body)["patches"]
+                
+                for patch in patches
+                    Pluto.Firebasey.applypatch!(
+                        state,
+                        convert(Pluto.Firebasey.JSONPatch, patch),
+                    )
+                end
+                
+                patches
+            end
+            
+            find_patches(patches, path; op::String="replace") = any(p -> p["op"] == op && p["path"] == path, patches)
+            y_bond_path = ["cell_results", y_bond_id, "output", "body"]
+            max_regex(z) = Regex("max=['\"]$z['\"]")
+            
+            @testset "Move x" begin
+                patches = makerequest(10, 1, [:x])
+                @test state["cell_results"][x_id]["output"]["body"] == "59"
+                @test state["cell_results"][y_id]["output"]["body"] == "59"
+                
+                # The slider should now have fewer possible values
+                y_max = length(59:200)
+                @test occursin(max_regex(y_max), state["cell_results"][y_bond_id]["output"]["body"])
+                
+                # There should have been a patch for that bond
+                @test find_patches(patches, y_bond_path)
+                @test find_patches(patches, ["bonds", "y"]; op="remove")
+            end
+            
+            
+            
+            
+            @testset "Move y" begin
+                # Now we move y:
+                patches2 = makerequest(10, 10, [:y])
+                @test state["cell_results"][x_id]["output"]["body"] == "59"
+                @test state["cell_results"][y_id]["output"]["body"] == "68"
+                
+                
+                # The slider should have the same possible values
+                y_max = length(59:200)
+                @test occursin(max_regex(y_max), state["cell_results"][y_bond_id]["output"]["body"])
+                
+                # There should be no patch for the y bond
+                @test !find_patches(patches2, y_bond_path)
+            end
+            
+            
+            @testset "Move x and y together" begin
+                # Now we move x and y together:
+                patches3 = makerequest(20, 20, [:x, :y])
+                @test state["cell_results"][x_id]["output"]["body"] == "69"
+                
+                # Because x changed, the value of y is considered invalid and ignored.
+                @test state["cell_results"][y_id]["output"]["body"] == "69"
+                
+                # There should be a patch for the y bond because x changed
+                @test find_patches(patches3, y_bond_path)
+                @test find_patches(patches3, ["bonds", "y"]; op="remove")
+            end
+            
+            # The browser would rerender the y bond and send this immediately after:
+            makerequest(20, 1, [:y])
+            
+            @testset "Move y again" begin
+                patches4 = makerequest(20, 20, [:y])
+                @test state["cell_results"][x_id]["output"]["body"] == "69"
+                @test state["cell_results"][y_id]["output"]["body"] == "88"
+                
+                # There should be no patch for the y bond
+                @test !find_patches(patches4, y_bond_path)
+            end
+            
+            
+            @testset "Move x again" begin
+                # Now we just move x:
+                patches5 = makerequest(30, 20, [:x])
+                @test state["cell_results"][x_id]["output"]["body"] == "79"
+                @test state["cell_results"][y_id]["output"]["body"] == "79"
+                
+                # There should have been a patch for that bond
+                @test find_patches(patches5, y_bond_path)
+                @test find_patches(patches5, ["bonds", "y"]; op="remove")
+            end
         end
     end
 
@@ -123,7 +251,7 @@ end
 find(f, xs) = xs[findfirst(f, xs)]
 
 
-original_dir1 = joinpath(@__DIR__, "dir1")
+original_dir1 = joinpath(@__DIR__, "notebooks", "dir1")
 make_test_dir() =
     let
         Random.seed!(time_ns())
@@ -160,7 +288,6 @@ make_test_dir() =
             Export_enabled=true,
             Export_baked_notebookfile=false,
             Export_baked_state=false,
-            Export_cache_dir=cache_dir,
             SliderServer_port=port,
             SliderServer_exclude=["*/export_only*"],
             on_ready,

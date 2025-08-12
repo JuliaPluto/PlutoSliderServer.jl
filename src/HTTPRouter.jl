@@ -11,6 +11,9 @@ import Pluto:
 using HTTP
 using Sockets
 import JSON
+import PlutoDependencyExplorer
+
+
 
 @from "./IndexJSON.jl" import generate_index_json
 @from "./IndexHTML.jl" import temp_index, generate_basic_index_html
@@ -67,22 +70,28 @@ function make_router(
     end
 
     function get_bonds(request::HTTP.Request)
-        request_body = if request.method == "POST"
-            IOBuffer(HTTP.payload(request))
-        elseif request.method == "GET"
-            uri = HTTP.URI(request.target)
-
-            parts = HTTP.URIs.splitpath(uri.path)
-            # parts[1] == "staterequest"
-            # notebook_hash = parts[2]
-
-            @assert length(parts) == 3
-
-            base64urldecode(parts[3])
+        uri = HTTP.URI(request.target)
+        parts = HTTP.URIs.splitpath(uri.path)
+        # parts[1] == "staterequest"
+        # parts[2] == notebook_hash
+        
+        explicits = let
+            q = HTTP.queryparams(uri)
+            e = get(q, "explicit", nothing)
+            e === nothing ? nothing : Set(Iterators.map(Symbol, Pluto.unpack(base64urldecode(e))))
         end
-        bonds_raw = Pluto.unpack(request_body)
 
-        Dict{Symbol,Any}(Symbol(k) => v for (k, v) in bonds_raw)
+        bonds_raw = if request.method == "POST"
+            Pluto.unpack(IOBuffer(HTTP.payload(request)))
+        elseif request.method == "GET"
+            @assert length(parts) == 3
+            Pluto.unpack(base64urldecode(parts[3]))
+        end
+
+        (
+            Dict{Symbol,Any}(Symbol(k) => v for (k, v) in bonds_raw),
+            explicits,
+        )
     end
 
     "Happens whenever you move a slider"
@@ -94,7 +103,7 @@ function make_router(
         response = if ready_for_bonds(sesh)
             notebook = sesh.run.notebook
 
-            bonds = try
+            bonds, explicits = try
                 get_bonds(request)
             catch e
                 @error "Failed to deserialize bond values" exception =
@@ -103,21 +112,76 @@ function make_router(
                        with_cors! |>
                        with_not_cacheable!
             end
+            
 
             t2 = time()
-            @debug "Deserialized bond values" bonds
+            @debug "Deserialized bond values" bonds explicits
 
             let lag = settings.SliderServer.simulated_lag
                 lag > 0 && sleep(lag)
             end
             t3 = time()
 
-            topological_order, new_state = withtoken(sesh.run.token) do
+            names::Vector{Symbol} = Symbol.(keys(bonds))
+            
+            # "explicits" defaults to "all bonds"
+            explicits = @something(explicits, Set(names))
+            
+            names_original = names
+            names =
+                begin
+                    # REMOVE ALL NAMES that depend on 
+                    # an explicit bond
+                    # 
+                    # Because its new value might no longer be valid.
+                    # 
+                    # For exaxmple:
+                    # @bind xx Slider(1:100)
+                    # @bind yy Slider(xx:100)
+                    # 
+                    # (ignore bond transformatinos for now)
+                    # 
+                    # The sliders will be set on (1,1) initially.
+                    # The user moves the first slider, giving (10,1).
+                    # The value for `y` will be sent, but this should be ignored. Because it was generated from an outdated bond.
+                    
+                    first_layer = PlutoDependencyExplorer.where_referenced(
+                        notebook.topology,
+                        explicits,
+                    )
+                    
+                    next_layers = Pluto.MoreAnalysis.downstream_recursive(
+                        notebook.topology,
+                        first_layer,
+                    )
+
+                    # all cells that depend on an explicit bond
+                    cells_depending_on_explicits = union!(first_layer, next_layers)
+
+                    # remove any variable `n` from `names` if...
+                    filter(names) do n
+                        !(
+                            # ...`n` depends on an explicit bond.
+                            any(cells_depending_on_explicits) do c
+                                n in notebook.topology.nodes[c].definitions
+                            end
+                        )
+                    end
+                end
+                
+            t35 = time()
+                
+                
+            id(c) = c.cell_id
+
+            @debug "Analysis" names names_original id.(cells_depending_on_explicits)
+            
+            new_state = withtoken(sesh.run.token) do
                 try
+                    # Set the bond values. We don't need to merge dicts here because the old bond values will never be used.
                     notebook.bonds = bonds
-
-                    names::Vector{Symbol} = Symbol.(keys(bonds))
-
+                    
+                    # Run the bonds!
                     topological_order = Pluto.set_bond_values_reactive(
                         session=server_session,
                         notebook=notebook,
@@ -126,31 +190,28 @@ function make_router(
                         run_async=false,
                     )::Pluto.TopologicalOrder
 
-                    new_state = Pluto.notebook_to_js(notebook)
-
-                    topological_order, new_state
+                    @debug "Finished running!" length(topological_order.runnable)
+                    
+                    Pluto.notebook_to_js(notebook)
                 catch e
                     @error "Failed to set bond values" exception = (e, catch_backtrace())
-                    nothing, nothing
+                    nothing
                 end
             end
-            topological_order === nothing && return (
+            new_state === nothing && return (
                 HTTP.Response(500, "Failed to set bond values") |>
                 with_cors! |>
                 with_not_cacheable!
             )
-
-            ids_of_cells_that_ran = [c.cell_id for c in topological_order.runnable]
-
+            
             t4 = time()
-            @debug "Finished running!" length(ids_of_cells_that_ran)
 
             # We only want to send state updates about...
             function only_relevant(state)
                 new = copy(state)
                 # ... the cells that just ran and ...
                 new["cell_results"] = filter(state["cell_results"]) do (id, cell_state)
-                    id ∈ ids_of_cells_that_ran
+                    id ∈ (c.cell_id for c in cells_depending_on_explicits)
                 end
                 # ... nothing about bond values, because we don't want to synchronize among clients. and...
                 delete!(new, "bonds")
@@ -159,10 +220,23 @@ function make_router(
                 new
             end
 
-            patches = Firebasey.diff(
-                only_relevant(sesh.run.original_state),
-                only_relevant(new_state),
-            )
+            patches = let
+                notebook_patches = Firebasey.diff(
+                    only_relevant(sesh.run.original_state),
+                    only_relevant(new_state),
+                )
+
+                # Remove bonds that depend on explicit bonds. Because this means that the bond was re-created during this run, and its value must be reset,
+                bond_patches = [
+                    Firebasey.RemovePatch(["bonds", string(k)]) for
+                    k in keys(bonds) if k ∉ names
+                ]
+
+                @debug "patches" notebook_patches bond_patches
+
+                union!(notebook_patches, bond_patches)
+            end
+
             patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
 
             t5 = time()
@@ -170,16 +244,16 @@ function make_router(
             response_data = Pluto.pack(
                 Dict{String,Any}(
                     "patches" => patches_as_dicts,
-                    "ids_of_cells_that_ran" => ids_of_cells_that_ran,
                 ),
             )
+            @debug "Sending patches" Pluto.unpack(response_data)
 
             t6 = time()
 
             HTTP.Response(200, response_data) |>
             (
                 settings.SliderServer.server_timing_header ?
-                with_server_timing!(t1, t2, t3, t4, t5, t6) : identity
+                with_server_timing!(t1, t2, t3, t35, t4, t5, t6) : identity
             ) |>
             with_cacheable_configured! |>
             with_cors! |>
@@ -324,7 +398,7 @@ function ReferrerMiddleware(handler)
     end
 end
 
-function with_server_timing!(t1, t2, t3, t4, t5, t6)
+function with_server_timing!(t1, t2, t3, t35, t4, t5, t6)
     s(name, start, stop) = "$name;dur=$(round((stop - start) * 1000; digits=2))"
 
     function (response::HTTP.Response)
@@ -332,9 +406,10 @@ function with_server_timing!(t1, t2, t3, t4, t5, t6)
             s("total", t1, t6)),$(
             s("p1deserialize", t1, t2)),$(
             s("p2lag", t2, t3)),$(
-            s("p3setBonds", t3, t4)),$(
-            s("p4diff", t4, t5)),$(
-            s("p5msgpack", t5, t6))")
+            s("p3preanalysis", t3, t35)),$(
+            s("p4setBonds", t35, t4)),$(
+            s("p5diff", t4, t5)),$(
+            s("p6msgpack", t5, t6))")
         response
     end
 end
