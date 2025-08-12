@@ -7,7 +7,7 @@ import Pluto: without_pluto_file_extension
 import Random
 import Pluto
 
-original_dir1 = joinpath(@__DIR__, "dir1")
+original_dir1 = joinpath(@__DIR__, "notebooks", "dir1")
 make_test_dir() =
     let
         Random.seed!(time_ns())

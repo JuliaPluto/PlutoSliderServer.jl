@@ -8,7 +8,7 @@ using UUIDs, Random
 @testset "HTTP requests: dynamic" begin
     Random.seed!(time_ns())
     test_dir = tempname(cleanup=false)
-    cp(@__DIR__, test_dir)
+    cp(joinpath(@__DIR__, "notebooks"), test_dir)
 
     notebook_paths = ["basic2.jl", "parallelpaths4.jl"]
 
@@ -121,7 +121,7 @@ end
 find(f, xs) = xs[findfirst(f, xs)]
 
 
-original_dir1 = joinpath(@__DIR__, "dir1")
+original_dir1 = joinpath(@__DIR__, "notebooks", "dir1")
 make_test_dir() =
     let
         Random.seed!(time_ns())
