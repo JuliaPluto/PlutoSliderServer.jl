@@ -51,6 +51,8 @@ end
     create_index::Bool = true
     "Use the Pluto Featured GUI to display the notebooks on the auto-generated index page, using frontmatter for title, description, image, and more. The default is currently `false`, but it might change in the future. Set to `true` or `false` explicitly to fix a value."
     create_pluto_featured_index::Union{Nothing,Bool} = nothing
+    "Maximum number of notebooks to launch in parallel. Set to 1 to run all notebooks sequentially. Default is currently 1 (for testing), but in a future patch release it will be changed to the number of physical CPU cores. (This setting is also used for `SliderServer.watch_dir`.)"
+    number_of_parallel_tasks::Union{Nothing,Integer} = 1
     pluto_cdn_root::Union{Nothing,String} = nothing
 end
 
@@ -90,3 +92,23 @@ is_glob_match(path::AbstractString, pattern::AbstractString) =
 is_glob_match(path::AbstractString, patterns::AbstractVector{<:AbstractString}) =
     any(p -> is_glob_match(path, p), patterns)
 is_glob_match(pattern) = path -> is_glob_match(path, pattern)
+
+
+function roughly_the_number_of_physical_cpu_cores()
+    # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
+    threads = Sys.CPU_THREADS
+    num_threads_is_maybe_doubled_for_marketing = Sys.ARCH === :x86_64
+    
+    if threads == 1
+        1
+    elseif threads == 2 || threads == 3
+        2
+    elseif num_threads_is_maybe_doubled_for_marketing
+        # This includes:
+        # - intel hyperthreading
+        # - Apple ARM efficiency cores included in the count (when running the x86 executable)
+        threads ÷ 2
+    else
+        threads
+    end
+end

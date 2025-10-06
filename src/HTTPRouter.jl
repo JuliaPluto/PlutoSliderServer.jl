@@ -16,7 +16,7 @@ import PlutoDependencyExplorer
 
 
 @from "./IndexJSON.jl" import generate_index_json
-@from "./IndexHTML.jl" import temp_index, generate_basic_index_html
+@from "./IndexHTML.jl" import temp_index
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 @from "./PlutoHash.jl" import base64urldecode
