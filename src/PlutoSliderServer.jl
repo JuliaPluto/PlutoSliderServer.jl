@@ -14,7 +14,7 @@ export cache_filename
 @from "./Types.jl" import NotebookSession
 @from "./Lock.jl" import withlock
 @from "./Configuration.jl" import PlutoDeploySettings,
-    ExportSettings, SliderServerSettings, get_configuration, is_glob_match
+    ExportSettings, SliderServerSettings, get_configuration, is_glob_match, roughly_the_number_of_physical_cpu_cores
 @from "./ConfigurationDocs.jl" import @extract_docs,
     get_kwdocs, list_options_md, list_options_toml
 @from "./ReloadFolder.jl" import update_sessions!, select
@@ -286,56 +286,79 @@ function run_directory(
             )
         end
     end
+    
+    currently_busy_paths = Set{String}()
+    is_session_busy(session::NotebookSession) = session.path in currently_busy_paths
 
     function refresh_until_synced(check_dir_on_every_step::Bool, did_something::Bool=false)
-        should_continue = withlock(notebook_sessions) do
+        
+        session_to_process = withlock(notebook_sessions) do
 
             if check_dir_on_every_step
                 update_sessions!(notebook_sessions, getpaths(); start_dir)
                 write_index(notebook_sessions)
             end
+            
+            not_busy = filter(!is_session_busy, notebook_sessions)
 
             # todo: try catch to release lock?
-            to_shutdown = select(should_shutdown, notebook_sessions)
-            to_update = select(should_update, notebook_sessions)
-            to_launch = select(should_launch, notebook_sessions)
+            to_shutdown = select(should_shutdown, not_busy)
+            to_update = select(should_update, not_busy)
+            to_launch = select(should_launch, not_busy)
 
             s = something(to_shutdown, to_update, to_launch, "not found")
+            s == "not found" || push!(currently_busy_paths, s.path)
+            return s
+        end
 
-            if s != "not found"
+        should_continue = true
 
-                progress = "[$(
-                    count(!will_process, notebook_sessions) + 1
-                )/$(length(notebook_sessions))]"
+        if session_to_process != "not found"
+            progress = "[$(
+                count(!will_process, notebook_sessions) + length(currently_busy_paths)
+            )/$(length(notebook_sessions))]"
 
-                new = process(s; server_session, settings, output_dir, start_dir, progress)
-                if new !== s
-                    if new isa NotebookSession{Nothing,Nothing,<:Any}
+            new_session = process(session_to_process; server_session, settings, output_dir, start_dir, progress)
+            
+            withlock(notebook_sessions) do
+                if new_session !== session_to_process
+                    if new_session isa NotebookSession{Nothing,Nothing,<:Any}
                         # remove it
-                        filter!(!isequal(s), notebook_sessions)
-                    elseif s !== new
-                        replace!(notebook_sessions, s => new)
+                        filter!(!isequal(session_to_process), notebook_sessions)
+                    elseif session_to_process !== new_session
+                        replace!(notebook_sessions, session_to_process => new_session)
                     end
                 end
 
-                true
-            else
-                did_something && @info "# ALL NOTEBOOKS READY"
-                false
+                delete!(currently_busy_paths, session_to_process.path)
             end
+        else
+            if did_something && isempty(currently_busy_paths)
+                @info "# ALL NOTEBOOKS READY"
+            end
+            should_continue = false
         end
 
         if did_something || should_continue
-            write_index(notebook_sessions)
+            withlock(notebook_sessions) do
+                write_index(notebook_sessions)
+            end
         end
 
         should_continue && refresh_until_synced(check_dir_on_every_step, true)
+    end
+    
+    function refresh_until_synced_asyncmany(args...)
+        n_tasks = @something(settings.Export.number_of_parallel_tasks, roughly_the_number_of_physical_cpu_cores())
+        @sync for _ in 1:n_tasks
+            @async refresh_until_synced(args...)
+        end
     end
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
     update_sessions!(notebook_sessions, getpaths(); start_dir)
     write_index(notebook_sessions)
-    refresh_until_synced(false)
+    refresh_until_synced_asyncmany(false)
 
     should_watch = settings.SliderServer.enabled && settings.SliderServer.watch_dir
 
@@ -344,7 +367,7 @@ function run_directory(
         debounced = kind_of_debounced() do _
             @debug "File change detected!"
             sleep(0.5)
-            refresh_until_synced(true)
+            refresh_until_synced_asyncmany(true)
         end
         watch_folder(debounced, start_dir)
     end
