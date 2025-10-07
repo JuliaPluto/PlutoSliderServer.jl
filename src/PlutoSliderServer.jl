@@ -275,7 +275,7 @@ function run_directory(
             if !exists
                 write(
                     joinpath(output_dir, "index.html"),
-                    generate_index_html(sessions; settings),
+                    generate_index_html(sessions; settings, start_dir),
                 )
             end
 

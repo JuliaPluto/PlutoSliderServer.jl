@@ -16,7 +16,7 @@ import PlutoDependencyExplorer
 
 
 @from "./IndexJSON.jl" import generate_index_json
-@from "./IndexHTML.jl" import temp_index
+@from "./IndexHTML.jl" import generate_temp_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 @from "./PlutoHash.jl" import base64urldecode
@@ -298,7 +298,7 @@ function make_router(
                 path = joinpath(static_dir, "index.html")
                 if !isfile(path)
                     path = tempname() * ".html"
-                    write(path, temp_index(notebook_sessions))
+                    write(path, generate_temp_index_html(notebook_sessions; settings, start_dir))
                 end
                 Pluto.asset_response(path)
             else
