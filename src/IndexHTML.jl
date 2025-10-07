@@ -7,9 +7,18 @@ import Pluto: Pluto, without_pluto_file_extension
 @from "./Configuration.jl" import PlutoDeploySettings
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Export.jl" import try_get_exact_pluto_version
+@from "./gitpull.jl" import get_git_hash_cached
 
 
-function generate_basic_index_html(paths)
+commit_html(hash::String) = hash == "" ? "" : """
+<p style="
+    opacity: .3;
+    margin-top: 5rem;
+">Git commit: <code>$hash</code></p>
+"""
+
+
+function generate_basic_index_html(paths; hash::String="")
     """
     <!DOCTYPE html>
     <html lang="en">
@@ -39,6 +48,7 @@ function generate_basic_index_html(paths)
             for (name,link) in paths
         ))
         </ul>
+        $(commit_html(hash))
     </body>
     </html>
     """
@@ -47,6 +57,7 @@ end
 function generate_index_html(
     sessions::Vector{NotebookSession};
     settings::PlutoDeploySettings,
+    start_dir::AbstractString,
 )
     if something(settings.Export.create_pluto_featured_index, false)
         Pluto.generate_index_html(;
@@ -59,15 +70,20 @@ function generate_index_html(
         generate_basic_index_html((
             without_pluto_file_extension(s.path) =>
                 without_pluto_file_extension(s.path) * ".html" for s in sessions
-        ))
+        ); hash=get_git_hash_cached(start_dir))
     end
 end
 
 
 
-function temp_index(notebook_sessions::Vector{NotebookSession})
-    generate_basic_index_html(Iterators.map(temp_index_item, notebook_sessions))
+function generate_temp_index_html(
+    notebook_sessions::Vector{NotebookSession};
+    settings::PlutoDeploySettings,
+    start_dir::AbstractString,
+)
+    generate_basic_index_html(Iterators.map(temp_index_item, notebook_sessions); hash=get_git_hash_cached(start_dir))
 end
+
 function temp_index_item(s::NotebookSession)
     without_pluto_file_extension(s.path) => nothing
 end
