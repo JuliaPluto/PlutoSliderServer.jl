@@ -5,8 +5,8 @@ import Pluto: Pluto, without_pluto_file_extension
 
 @from "./Types.jl" import NotebookSession, RunningNotebook
 @from "./Configuration.jl" import PlutoDeploySettings
-
 @from "./PathUtils.jl" import to_local_path, to_url_path
+@from "./gitpull.jl" import get_git_hash_cached
 
 id(s::NotebookSession) = to_url_path(s.path)
 
