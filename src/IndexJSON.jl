@@ -54,6 +54,7 @@ function index_json_data(
         pluto_version=lstrip(Pluto.PLUTO_VERSION_STR, 'v'),
         julia_version=lstrip(string(VERSION), 'v'),
         format_version="1",
+        content_git_hash=get_git_hash_cached(start_dir),
         # 
         title=get(config_data, "title", nothing),
         description=get(config_data, "description", nothing),
