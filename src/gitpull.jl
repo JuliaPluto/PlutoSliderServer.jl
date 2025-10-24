@@ -2,9 +2,10 @@ import LibGit2
 import Git: git
 
 function current_branch_name(dir=".")
-    cd(dir) do
-        read(`$(git()) rev-parse --abbrev-ref HEAD`, String) |> strip
-    end
+    repo = LibGit2.GitRepo(dir)
+    LibGit2.isattached(repo) ? 
+        LibGit2.shortname(LibGit2.head(repo)) : 
+        "HEAD"
 end
 
 
@@ -50,14 +51,6 @@ function poll_pull_loop(dir="."; interval=5)
         sleep(interval)
     end
 end
-
-
-function get_git_hash(dir=".")
-    cd(dir) do
-        read(`$(git()) rev-parse HEAD`, String) |> strip
-    end |> strip
-end
-
 
 function get_git_hash(path::String)
 	repo = LibGit2.GitRepo(path)
