@@ -369,6 +369,7 @@ function run_directory(
             sleep(0.5)
             refresh_until_synced_asyncmany(true)
         end
+        debounced(nothing) # Trigger once directly, in case there were changes during the initial `refresh_until_synced_asyncmany` call.
         watch_folder(debounced, start_dir)
     end
 
