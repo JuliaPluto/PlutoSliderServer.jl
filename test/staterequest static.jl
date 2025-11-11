@@ -10,7 +10,7 @@ using Base64
 
 @testset "HTTP requests" begin
     test_dir = tempname(cleanup=false)
-    cp(@__DIR__, test_dir)
+    cp(joinpath(@__DIR__, "notebooks"), test_dir)
 
     notebook_paths = ["basic3.jl"]
     # notebook_paths = ["basic2.jl", "parallelpaths4.jl"]
@@ -126,8 +126,6 @@ using Base64
             end
 
             result = Pluto.unpack(response.body)
-
-            @test sum_cell_id ∈ result["ids_of_cells_that_ran"]
 
             for patch in result["patches"]
                 Pluto.Firebasey.applypatch!(

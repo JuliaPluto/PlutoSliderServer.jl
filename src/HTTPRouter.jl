@@ -3,19 +3,13 @@ using FromFile
 import Pluto
 import Pluto:
     ServerSession,
-    Firebasey,
-    Token,
-    withtoken,
-    pluto_file_extensions,
-    without_pluto_file_extension
+    Firebasey
 using HTTP
 using Sockets
-import JSON
-import PlutoDependencyExplorer
 
 
 
-@from "./run_bonds.jl" import run_bonds_get_patches
+@from "./run_bonds.jl" import run_bonds_get_patches, patches_to_response_data
 @from "./IndexJSON.jl" import generate_index_json
 @from "./IndexHTML.jl" import generate_temp_index_html
 @from "./Types.jl" import NotebookSession, RunningNotebook, FinishedNotebook
@@ -123,22 +117,23 @@ function make_router(
             end
             t3 = time()
 
-            (; patches, t35, t4 ) = run_bonds_get_patches(
+            result = run_bonds_get_patches(
                 server_session,
                 sesh.run,
                 bonds,
                 explicits,
             )
-
-            patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
+            result === nothing && return (
+                HTTP.Response(500, "Failed to set bond values") |>
+                with_cors! |>
+                with_not_cacheable!
+            )
+            
+            (; patches, t35, t4 ) = result
 
             t5 = time()
-
-            response_data = Pluto.pack(
-                Dict{String,Any}(
-                    "patches" => patches_as_dicts,
-                ),
-            )
+            response_data = patches_to_response_data(patches)
+            
             @debug "Sending patches" Pluto.unpack(response_data)
 
             t6 = time()

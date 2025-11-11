@@ -11,7 +11,7 @@ import Markdown
 # @from "../MoreAnalysis.jl" import bound_variable_connections_graph
 @from "../Types.jl" import NotebookSession, RunningNotebook
 @from "../Configuration.jl" import PlutoDeploySettings
-@from "../run_bonds.jl" import run_bonds_get_patches
+@from "../run_bonds.jl" import run_bonds_get_patches, patches_to_response_data
 @from "../PlutoHash.jl" import base64urlencode
 
 @from "./types.jl" import VariableGroupPossibilities, PrecomputedSampleReport, Reason
@@ -94,10 +94,11 @@ function generate_precomputed_staterequests_report(
                         rand(iterator, length(group.names) * 3),
                     ) do (combination, bonds_dict)
 
-                        result = run_bonds_get_patches(pluto_session, run, bonds_dict)
+                        result = run_bonds_get_patches(
+                            pluto_session, run, bonds_dict, nothing)
 
                         if result !== nothing
-                            length(Pluto.pack(result))
+                            length(patches_to_response_data(result.patches))
                         else
                             0
                         end |> BigInt
@@ -167,7 +168,8 @@ function generate_precomputed_staterequests(
                     @warn "Filename is too long, stopping this group" group.names
                     break
                 end
-                result = run_bonds_get_patches(pluto_session, run, bonds_dict)
+                result = run_bonds_get_patches(
+                    pluto_session, run, bonds_dict, nothing)
 
                 if result !== nothing
                     write_path = joinpath(
@@ -177,7 +179,7 @@ function generate_precomputed_staterequests(
                         filename,
                     )
 
-                    write(write_path, Pluto.pack(result))
+                    write(write_path, patches_to_response_data(result.patches))
 
                     @debug "Written state request to " write_path values =
                         (; (zip(group.names, combination))...)

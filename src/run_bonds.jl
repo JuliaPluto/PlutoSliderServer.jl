@@ -1,8 +1,10 @@
-import Pluto:
-    Pluto, without_pluto_file_extension, generate_html, @asynclog, withtoken, Firebasey
-using Base64
-using SHA
 using FromFile
+
+import Pluto:
+    Pluto, 
+    withtoken, 
+    Firebasey
+import PlutoDependencyExplorer
 
 @from "./Types.jl" import RunningNotebook
 
@@ -67,7 +69,7 @@ function run_bonds_get_patches(
 
     @debug "Analysis" names names_original id.(cells_depending_on_explicits)
     
-    new_state = withtoken(sesh.run.token) do
+    new_state = withtoken(run.token) do
         try
             # Set the bond values. We don't need to merge dicts here because the old bond values will never be used.
             notebook.bonds = bonds
@@ -89,11 +91,7 @@ function run_bonds_get_patches(
             nothing
         end
     end
-    new_state === nothing && return (
-        HTTP.Response(500, "Failed to set bond values") |>
-        with_cors! |>
-        with_not_cacheable!
-    )
+    new_state === nothing && return nothing
     
     t4 = time()
 
@@ -113,7 +111,7 @@ function run_bonds_get_patches(
 
     patches = let
         notebook_patches = Firebasey.diff(
-            only_relevant(sesh.run.original_state),
+            only_relevant(run.original_state),
             only_relevant(new_state),
         )
 
@@ -134,3 +132,14 @@ function run_bonds_get_patches(
         t4,
     )
 end
+
+function patches_to_response_data(patches)
+    patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
+    
+    return Pluto.pack(
+        Dict{String,Any}(
+            "patches" => patches_as_dicts,
+        ),
+    )
+end
+
