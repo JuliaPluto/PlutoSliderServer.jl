@@ -1,6 +1,7 @@
 using Configurations
 import Pluto
-export SliderServerSettings, ExportSettings, PlutoDeploySettings, get_configuration
+export SliderServerSettings,
+    ExportSettings, PrecomputeSettings, PlutoDeploySettings, get_configuration
 using FromFile
 import Glob
 @from "./ConfigurationDocs.jl" import @extract_docs, get_kwdocs, list_options_md
@@ -22,6 +23,17 @@ import Glob
     server_timing_header::Bool = false
     "Cache-Control header sent on requests in which caching is enabled. Set to `no-store, no-cache` to completely disable caching"
     cache_control::String = "public, max-age=315600000, immutable"
+end
+
+
+@extract_docs @option struct PrecomputeSettings
+    "Precompute slider server requests?"
+    enabled::Bool = false
+    "List of notebook files to skip precomputation. Provide paths relative to `start_dir`."
+    exclude::Vector{String} = String[]
+    "Whether or not to partially precompute notebooks. If `true`, notebooks will only be precomputed if **all** their sliders can be precomputed"
+    only_fully::Bool = false
+    max_filesize_per_group::Integer = 1_000_000
 end
 
 @extract_docs @option struct ExportSettings
@@ -59,6 +71,7 @@ end
 @option struct PlutoDeploySettings
     SliderServer::SliderServerSettings = SliderServerSettings()
     Export::ExportSettings = ExportSettings()
+    Precompute::PrecomputeSettings = PrecomputeSettings()
     Pluto::Pluto.Configuration.Options = Pluto.Configuration.Options()
 end
 
