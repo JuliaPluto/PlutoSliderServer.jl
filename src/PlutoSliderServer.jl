@@ -4,14 +4,17 @@ using FromFile
 
 @from "./MoreAnalysis.jl" import bound_variable_connections_graph
 @from "./FileHelpers.jl" import find_notebook_files_recursive, list_files_recursive
+@from "./PathUtils.jl" import to_local_path, to_url_path
+@from "./Export.jl" import try_get_exact_pluto_version, cache_filename
+export cache_filename
 @from "./IndexHTML.jl" import generate_index_html
-@from "./IndexJSON.jl" import generate_index_json
+@from "./IndexJSON.jl" import generate_index_json, index_json_data
 @from "./Actions.jl" import process,
     should_shutdown, should_update, should_launch, will_process
 @from "./Types.jl" import NotebookSession
 @from "./Lock.jl" import withlock
 @from "./Configuration.jl" import PlutoDeploySettings,
-    ExportSettings, SliderServerSettings, get_configuration, is_glob_match
+    ExportSettings, SliderServerSettings, get_configuration, is_glob_match, roughly_the_number_of_physical_cpu_cores
 @from "./ConfigurationDocs.jl" import @extract_docs,
     get_kwdocs, list_options_md, list_options_toml
 @from "./ReloadFolder.jl" import update_sessions!, select
@@ -37,32 +40,14 @@ import BetterFileWatching: watch_folder
 import AbstractPlutoDingetjes: is_inside_pluto
 import TerminalLoggers: TerminalLogger
 import Logging: global_logger, ConsoleLogger
-import GitHubActions: GitHubActionsLogger
+import GracefulPkg
 
 export export_directory, run_directory, run_git_directory, github_action
 export export_notebook, run_notebook
 
 export show_sample_config_toml_file
 
-const logger_loaded = Ref{Bool}(false)
-function load_cool_logger()
-    if !logger_loaded[]
-        logger_loaded[] = true
-        if ((global_logger() isa ConsoleLogger) && !is_inside_pluto())
-            if get(ENV, "GITHUB_ACTIONS", "false") == "true"
-                # TODO: disabled because of https://github.com/JuliaWeb/HTTP.jl/issues/921
-
-                # global_logger(GitHubActionsLogger())
-            else
-                global_logger(try
-                    TerminalLogger(; margin=1)
-                catch
-                    TerminalLogger()
-                end)
-            end
-        end
-    end
-end
+export find_notebook_files_recursive
 
 const sample_config_toml_file = """
 # WARNING: this sample configuration file contains settings for **all options**, to demonstrate what is possible. For most users, we recommend keeping the configuration file small, and letting PlutoSliderServer choose the default settings automatically. 
@@ -180,11 +165,9 @@ function run_directory(
     config_toml_path::Union{String,Nothing}=default_config_path(),
     kwargs...,
 )
-
-
-    @assert joinpath("a", "b") == "a/b" "PlutoSliderServer does not work on Windows yet!"
-
-    load_cool_logger()
+    if Sys.iswindows()
+        @warn "PlutoSliderServer support for Windows is experimental. Let us know how it goes, and feel free to open an issue if you run into problems. You can use Linux or MacOS for a more stable experience."
+    end
 
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
@@ -196,36 +179,12 @@ function run_directory(
     )
     mkpath(output_dir)
 
-    if joinpath("a", "b") != "a/b"
-        @error "PlutoSliderServer.jl is only designed to work on unix systems."
-        exit()
-    end
+    getpaths() = 
+        notebook_paths !== nothing ? notebook_paths :
+            find_notebook_files_recursive(start_dir, settings)
 
-    function getpaths()
-        all_nbs =
-            notebook_paths !== nothing ? notebook_paths :
-            find_notebook_files_recursive(start_dir)
-
-        s_remaining = filter(!is_glob_match(settings.SliderServer.exclude), all_nbs)
-        e_remaining = filter(!is_glob_match(settings.Export.exclude), all_nbs)
-
-        if settings.Export.enabled
-            if settings.SliderServer.enabled
-                s_remaining ∪ e_remaining
-            else
-                e_remaining
-            end
-        else
-            filter(s_remaining) do f
-                try
-                    occursin("@bind", read(joinpath(start_dir, f), String))
-                catch
-                    true
-                end
-            end
-        end
-    end
-
+    @info "Versions" julia = VERSION pluto = Pluto.PLUTO_VERSION plutosliderserver =
+        (VERSION >= v"1.9" ? pkgversion(@__MODULE__) : nothing)
     @info "Settings" Text(settings)
 
     settings.SliderServer.enabled &&
@@ -317,7 +276,7 @@ function run_directory(
             if !exists
                 write(
                     joinpath(output_dir, "index.html"),
-                    generate_index_html(sessions; settings),
+                    generate_index_html(sessions; settings, start_dir),
                 )
             end
 
@@ -328,56 +287,79 @@ function run_directory(
             )
         end
     end
+    
+    currently_busy_paths = Set{String}()
+    is_session_busy(session::NotebookSession) = session.path in currently_busy_paths
 
     function refresh_until_synced(check_dir_on_every_step::Bool, did_something::Bool=false)
-        should_continue = withlock(notebook_sessions) do
+        
+        session_to_process = withlock(notebook_sessions) do
 
             if check_dir_on_every_step
                 update_sessions!(notebook_sessions, getpaths(); start_dir)
                 write_index(notebook_sessions)
             end
+            
+            not_busy = filter(!is_session_busy, notebook_sessions)
 
             # todo: try catch to release lock?
-            to_shutdown = select(should_shutdown, notebook_sessions)
-            to_update = select(should_update, notebook_sessions)
-            to_launch = select(should_launch, notebook_sessions)
+            to_shutdown = select(should_shutdown, not_busy)
+            to_update = select(should_update, not_busy)
+            to_launch = select(should_launch, not_busy)
 
             s = something(to_shutdown, to_update, to_launch, "not found")
+            s == "not found" || push!(currently_busy_paths, s.path)
+            return s
+        end
 
-            if s != "not found"
+        should_continue = true
 
-                progress = "[$(
-                    count(!will_process, notebook_sessions) + 1
-                )/$(length(notebook_sessions))]"
+        if session_to_process != "not found"
+            progress = "[$(
+                count(!will_process, notebook_sessions) + length(currently_busy_paths)
+            )/$(length(notebook_sessions))]"
 
-                new = process(s; server_session, settings, output_dir, start_dir, progress)
-                if new !== s
-                    if new isa NotebookSession{Nothing,Nothing,<:Any}
+            new_session = process(session_to_process; server_session, settings, output_dir, start_dir, progress)
+            
+            withlock(notebook_sessions) do
+                if new_session !== session_to_process
+                    if new_session isa NotebookSession{Nothing,Nothing,<:Any}
                         # remove it
-                        filter!(!isequal(s), notebook_sessions)
-                    elseif s !== new
-                        replace!(notebook_sessions, s => new)
+                        filter!(!isequal(session_to_process), notebook_sessions)
+                    elseif session_to_process !== new_session
+                        replace!(notebook_sessions, session_to_process => new_session)
                     end
                 end
 
-                true
-            else
-                did_something && @info "# ALL NOTEBOOKS READY"
-                false
+                delete!(currently_busy_paths, session_to_process.path)
             end
+        else
+            if did_something && isempty(currently_busy_paths)
+                @info "# ALL NOTEBOOKS READY"
+            end
+            should_continue = false
         end
 
         if did_something || should_continue
-            write_index(notebook_sessions)
+            withlock(notebook_sessions) do
+                write_index(notebook_sessions)
+            end
         end
 
         should_continue && refresh_until_synced(check_dir_on_every_step, true)
+    end
+    
+    function refresh_until_synced_asyncmany(args...)
+        n_tasks = @something(settings.Export.number_of_parallel_tasks, roughly_the_number_of_physical_cpu_cores())
+        @sync for _ in 1:n_tasks
+            @async refresh_until_synced(args...)
+        end
     end
 
     # RUN ALL NOTEBOOKS AND KEEP THEM RUNNING
     update_sessions!(notebook_sessions, getpaths(); start_dir)
     write_index(notebook_sessions)
-    refresh_until_synced(false)
+    refresh_until_synced_asyncmany(false)
 
     should_watch = settings.SliderServer.enabled && settings.SliderServer.watch_dir
 
@@ -386,8 +368,9 @@ function run_directory(
         debounced = kind_of_debounced() do _
             @debug "File change detected!"
             sleep(0.5)
-            refresh_until_synced(true)
+            refresh_until_synced_asyncmany(true)
         end
+        debounced(nothing) # Trigger once directly, in case there were changes during the initial `refresh_until_synced_asyncmany` call.
         watch_folder(debounced, start_dir)
     end
 
@@ -439,6 +422,8 @@ function run_git_directory(
     start_dir = Pluto.tamepath(start_dir)
     @assert isdir(start_dir)
 
+    env_dir = dirname(Base.active_project())
+
 
     get_settings() =
         get_configuration(config_toml_path; SliderServer_watch_dir=true, kwargs...)
@@ -454,13 +439,19 @@ function run_git_directory(
             kwargs...,
         )
     end
-    old_deps = Pkg.dependencies()
+    
+    old_deps = get_pkg_snapshot(env_dir)
     pull_loop_task = Pluto.@asynclog while true
-        new_settings = get_settings()
-        new_deps = Pkg.dependencies()
+        new_settings = try
+            get_settings()
+        catch e
+            ("Error while reading settings", e)
+            # (this will trigger a restart)
+        end
+        new_deps = get_pkg_snapshot(env_dir)
 
         if old_settings != new_settings
-            @error "Configuration changed. Shutting down!"
+            @error "Configuration changed. Shutting down!" old_settings new_settings
 
             println(stderr, "Old settings:")
             println(stderr, repr(old_settings))
@@ -486,6 +477,40 @@ function run_git_directory(
     waitall([run_dir_task, pull_loop_task])
 end
 
+function get_pkg_snapshot(env_dir::String)
+    snapshot = GracefulPkg.take_project_manifest_snapshot(env_dir)
+    # ignore some volatile fields
+    clean(s) = replace(s, r"^(julia_version|project_hash) = .*"m => "", r"\s+" => "")
+    GracefulPkg.ProjectManifestSnapshot(
+        clean(snapshot.project),
+        clean(snapshot.manifest),
+    )
+end
+
+function find_notebook_files_recursive(start_dir::String, settings::PlutoDeploySettings)
+    all_nbs = find_notebook_files_recursive(start_dir)
+    
+    s_remaining = filter(!is_glob_match(settings.SliderServer.exclude), all_nbs)
+    e_remaining = filter(!is_glob_match(settings.Export.exclude), all_nbs)
+
+    if settings.Export.enabled
+        if settings.SliderServer.enabled
+            s_remaining ∪ e_remaining
+        else
+            e_remaining
+        end
+    else
+        filter(s_remaining) do f
+            try
+                occursin("@bind", read(joinpath(start_dir, to_local_path(f)), String))
+            catch
+                true
+            end
+        end
+    end
+end
+    
+
 function waitall(tasks)
     killing = Ref(false)
     @sync for t in tasks
@@ -493,7 +518,7 @@ function waitall(tasks)
             wait(t)
         catch e
             if !(e isa InterruptException)
-                showerror(stderr, e, catch_backtrace())
+                @error "Captured error in task" exception=(e, catch_backtrace())
             end
             if !killing[]
                 killing[] = true

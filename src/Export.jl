@@ -1,6 +1,52 @@
 import Pluto: Pluto, ServerSession
 using HTTP
 import Pkg
+import Base64
+import Serialization
+
+export write_statefile
+
+function write_statefile(path, state; verify::Bool=true)
+    data = Pluto.pack(state)
+    write(path, data)
+    if verify
+        local input_data, input_state
+        try
+            input_data = read(path)
+            @assert input_data == data
+            input_state = Pluto.unpack(input_data)
+            # small sanity check
+            s(x) = sort(collect(keys(x)); by=hash)
+            @assert s(state) == s(input_state)
+        catch e
+            @error "The statefile was corrupted!" path
+
+            if @isdefined(input_data) && input_data != data
+                println(stderr)
+                println(stderr, "Here is the statefile as I read it:")
+                println(stderr, Base64.base64encode(input_data))
+                println(stderr)
+                println(stderr)
+                println(stderr, "Here is the state as I wrote it:")
+                println(stderr, Base64.base64encode(data))
+                println(stderr)
+            end
+
+            if @isdefined(input_state)
+                println(stderr)
+                println(stderr, "Here is the state as I read it:")
+                println(stderr, Base64.base64encode(sprint(Serialization.serialize, input_state)))
+                println(stderr)
+                println(stderr)
+                println(stderr, "Here is the state that I wanted to write:")
+                println(stderr, Base64.base64encode(sprint(Serialization.serialize, state)))
+                println(stderr)
+            end
+
+            rethrow(e)
+        end
+    end
+end
 
 
 ## CACHE
@@ -32,9 +78,7 @@ try_fromcache(cache_dir::Nothing, current_hash) = nothing
 function try_tocache(cache_dir::String, current_hash::String, state)
     mkpath(cache_dir)
     try
-        open(cache_filename(cache_dir, current_hash), "w") do io
-            Pluto.pack(io, state)
-        end
+        write_statefile(cache_filename(cache_dir, current_hash), state)
     catch e
         @warn "Failed to write to cache file" current_hash exception =
             (e, catch_backtrace())

@@ -5,8 +5,9 @@ using Logging
 import JSON
 import Pluto: without_pluto_file_extension
 import Random
+import Pluto
 
-original_dir1 = joinpath(@__DIR__, "dir1")
+original_dir1 = joinpath(@__DIR__, "notebooks", "dir1")
 make_test_dir() =
     let
         Random.seed!(time_ns())
@@ -57,6 +58,23 @@ make_test_dir() =
     @test second_runtime < 1.0
 
     @test occursin("slider_server_url = undefined", read("a.html", String))
+
+    jsonstr = read("pluto_export.json", String)
+    json = JSON.parse(jsonstr)
+    @test json["slider_server_url"] === nothing
+    
+    @test PlutoSliderServer.try_get_exact_pluto_version() !== nothing
+    ijd = PlutoSliderServer.index_json_data(
+        PlutoSliderServer.NotebookSession[];
+        settings=Pluto.Configuration.Configurations.from_kwargs(
+            PlutoSliderServer.PlutoDeploySettings, 
+            Export_slider_server_url="yoyoyo"
+        ),
+        start_dir="doesnotmatter", 
+        config_data=Dict{String,Any}("title" => "fofofo"),
+    )
+    @test occursin("yoyoyo", JSON.json(ijd))
+    @test occursin("fofofo", JSON.json(ijd))
 end
 
 
@@ -167,6 +185,7 @@ end
         Export_cache_dir=cache_dir,
         Export_baked_state=false,
         Export_create_pluto_featured_index=fancy,
+        Export_slider_server_url="krat",
     )
 
     @test sort(list_files_recursive()) == sort([
@@ -193,6 +212,7 @@ end
         @test occursin("</html>", htmlstr)
         @test occursin("pluto_export.json", htmlstr)
     end
+    @test json["slider_server_url"] == "krat"
 
     nbs = ["subdir/c.plutojl", "b.pluto.jl", "a.jl"]
     for (i, p) in enumerate(nbs)

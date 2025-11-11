@@ -3,6 +3,7 @@ using FromFile
 @from "./Types.jl" import NotebookSession
 @from "./Configuration.jl" import PlutoDeploySettings, get_configuration
 @from "./FileHelpers.jl" import find_notebook_files_recursive
+@from "./PathUtils.jl" import to_local_path
 import Pluto: without_pluto_file_extension
 
 function d3join(notebook_sessions, new_paths; start_dir::AbstractString)
@@ -12,8 +13,8 @@ function d3join(notebook_sessions, new_paths; start_dir::AbstractString)
     old_paths = map(s -> s.path, desired_notebook_sessions)
     old_hashes = map(s -> s.current_hash, desired_notebook_sessions)
 
-    new_hashes = map(old_paths) do path
-        abs_path = joinpath(start_dir, path)
+    new_hashes = map(old_paths) do url_path
+        abs_path = joinpath(start_dir, to_local_path(url_path))
         isfile(abs_path) ? plutohash_contents(abs_path) : nothing
     end
 
@@ -40,27 +41,27 @@ function update_sessions!(notebook_sessions, new_paths; start_dir::AbstractStrin
     if any(!isempty, [added, updated, removed])
         @info "Notebook list updated" added updated removed
 
-        for path in added
+        for url_path in added
             push!(
                 notebook_sessions,
                 NotebookSession(;
-                    path=path,
+                    path=url_path,
                     current_hash=nothing,
-                    desired_hash=plutohash_contents(joinpath(start_dir, path)),
+                    desired_hash=plutohash_contents(joinpath(start_dir, to_local_path(url_path))),
                     run=nothing,
                 ),
             )
         end
 
-        for path in updated ∪ removed
-            old = select(s -> s.path == path, notebook_sessions)
+        for url_path in updated ∪ removed
+            old = select(s -> s.path == url_path, notebook_sessions)
             @assert old !== nothing
             new = NotebookSession(;
-                path=path,
+                path=url_path,
                 current_hash=old.current_hash,
                 desired_hash=(
-                    path ∈ removed ? nothing :
-                    plutohash_contents(joinpath(start_dir, path))
+                    url_path ∈ removed ? nothing :
+                    plutohash_contents(joinpath(start_dir, to_local_path(url_path)))
                 ),
                 run=old.run,
             )

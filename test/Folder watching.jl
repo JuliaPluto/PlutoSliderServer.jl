@@ -48,7 +48,7 @@ end
     notebook_paths_to_copy = ["basic2.jl"]
 
     for p in notebook_paths_to_copy
-        cp_nb_with_tweaks(joinpath(@__DIR__, p), joinpath(test_dir, p))
+        cp_nb_with_tweaks(joinpath(@__DIR__, "notebooks", p), joinpath(test_dir, p))
     end
 
     Random.seed!(time_ns())
@@ -183,7 +183,7 @@ end
         old_hash = coolsesh().current_hash
 
         Pluto.readwrite(
-            joinpath(@__DIR__, "parallelpaths4.jl"),
+            joinpath(@__DIR__, "notebooks", "parallelpaths4.jl"),
             joinpath(test_dir, "subdir", "cool.jl"),
         )
 
