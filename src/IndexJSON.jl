@@ -80,7 +80,7 @@ function generate_index_json(
 )
     p = joinpath(start_dir, "pluto_export_configuration.json")
     config_data = if isfile(p)
-        JSON.parse(read(p, String))::Dict{String,Any}
+        JSON.parse(read(p, String), Dict{String,Any})
     else
         Dict{String,Any}()
     end
