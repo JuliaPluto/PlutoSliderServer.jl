@@ -51,8 +51,8 @@ end
     create_index::Bool = true
     "Use the Pluto Featured GUI to display the notebooks on the auto-generated index page, using frontmatter for title, description, image, and more. The default is currently `false`, but it might change in the future. Set to `true` or `false` explicitly to fix a value."
     create_pluto_featured_index::Union{Nothing,Bool} = nothing
-    "Maximum number of notebooks to launch in parallel. Set to 1 to run all notebooks sequentially. Default is currently 1 (for testing), but in a future patch release it will be changed to the number of physical CPU cores. (This setting is also used for `SliderServer.watch_dir`.)"
-    number_of_parallel_tasks::Union{Nothing,Integer} = 1
+    "Maximum number of notebooks to launch in parallel. Set to 1 to run all notebooks sequentially. Default (`nothing`) means the number of physical CPU cores. (This setting is also used for `SliderServer.watch_dir`.)"
+    number_of_parallel_tasks::Union{Nothing,Integer} = nothing
     pluto_cdn_root::Union{Nothing,String} = nothing
 end
 
