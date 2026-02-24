@@ -228,3 +228,32 @@ end
     # TODO: use frontmatter.title here instead of the filename? or make the switch to PlutoPages?
 end
 
+
+@testset "static - Offline HTML export" begin
+    test_dir = make_test_dir()
+
+    cd(test_dir)
+
+    export_notebook("a.jl"; Export_cache_dir=cache_dir, Export_offline_html=true)
+
+    @test sort(list_files_recursive()) == sort([
+        "a.jl",
+        "a.html",
+        "b.pluto.jl",
+        "notanotebook.jl",
+        "subdir/c.plutojl",
+    ])
+
+    # Check that the offline HTML file was generated (it should be larger than normal due to inlined assets)
+    @test isfile("a.html")
+    htmlstr = read("a.html", String)
+    @test occursin("</html>", htmlstr)
+
+    # Verify configuration is accepted
+    c = PlutoSliderServer.get_configuration(; Export_offline_html=true)
+    @test c.Export.offline_html == true
+
+    c2 = PlutoSliderServer.get_configuration(; Export_offline_html=false)
+    @test c2.Export.offline_html == false
+end
+

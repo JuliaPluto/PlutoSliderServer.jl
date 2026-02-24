@@ -266,6 +266,7 @@ function generate_static_export(
         binder_url_js,
         disable_ui=settings.Export.disable_ui,
         header_html,
+        offline_bundle=settings.Export.offline_html,
     )
     write(export_html_path, html_contents)
 

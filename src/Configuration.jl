@@ -54,6 +54,8 @@ end
     "Maximum number of notebooks to launch in parallel. Set to 1 to run all notebooks sequentially. Default (`nothing`) means the number of physical CPU cores. (This setting is also used for `SliderServer.watch_dir`.)"
     number_of_parallel_tasks::Union{Nothing,Integer} = nothing
     pluto_cdn_root::Union{Nothing,String} = nothing
+    "Export HTML files that work without an internet connection. All required web assets (JS, CSS, fonts) are inlined in the HTML file using data URIs. This results in larger HTML files that may take longer to load, but the files can be opened without any internet connection or CDN dependency."
+    offline_html::Bool = false
 end
 
 @option struct PlutoDeploySettings
