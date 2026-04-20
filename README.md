@@ -24,7 +24,7 @@ Later when you are using PlutoSliderServer on a public website, `PlutoSliderServ
 # What can it do?
 
 ## 1. HTML export
-PlutoSliderServer can **run a notebook** and generate the **export HTML** file. This will give you the same file as the export button inside Pluto (top right), but automatically, without opening a browser.
+PlutoSliderServer can **run a notebook** and generate the **export HTML** file. This will give you the same file as the export button inside Pluto (top right), but automatically, without opening a browser. PlutoSliderServer will run multiple notebooks in parallel by default, and it can cache notebook runs for the next run.
 
 One use case is to automatically create a **GitHub Pages site from a repository with notebooks**. For this, take a look at [our template repository](https://github.com/JuliaPluto/static-export-template) that used GitHub Actions and PlutoSliderServer to generate a website on every commit.
 
@@ -178,7 +178,7 @@ If you are using a package environment for your slider server (if you are deploy
 In the same folder where you have your `Project.toml` and `Manifest.toml` files, create a third file, called `PlutoDeployment.toml`. Its contents should look something like:
 ```toml
 [Export]
-baked_notebookfile = true
+number_of_parallel_tasks = 1 # disable parallel runs
 
 [SliderServer]
 port = 8080
