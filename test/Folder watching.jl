@@ -82,7 +82,7 @@ end
     index_json() =
         JSON.parse(String(HTTP.get("http://localhost:$(port)/pluto_export.json").body))
 
-    json_nbs() = index_json()["notebooks"] |> keys |> collect
+    json_nbs() = index_json()["notebooks"] |> keys |> collect |> sort
 
     @test length(notebook_sessions) == 1
     @test json_nbs() == ["basic2.jl"]
@@ -122,7 +122,7 @@ end
             read(joinpath(test_dir, "basic2 copy.html"), String),
         )
 
-        @test json_nbs() == ["basic2.jl", "basic2 copy.jl"]
+        @test json_nbs() == ["basic2 copy.jl", "basic2.jl"]
 
     end
 
