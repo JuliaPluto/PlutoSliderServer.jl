@@ -1,5 +1,5 @@
 import Pluto
-import Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer, ServerSession
+import Pluto: Cell, Notebook, ServerSession
 import PlutoDependencyExplorer
 
 # TODO: this should use the function from Pluto.jl

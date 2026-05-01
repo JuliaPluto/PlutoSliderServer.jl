@@ -89,7 +89,7 @@ function process(
             # shut down the notebook
             if !keep_running
                 @info "Shutting down notebook process" path = url_path
-                Pluto.SessionActions.shutdown(server_session, notebook)
+                Pluto.SessionActions.shutdown(server_session, notebook; async=false)
             end
             try_tocache(settings.Export.cache_dir, new_hash, original_state)
             if keep_running
