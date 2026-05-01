@@ -351,7 +351,7 @@ function run_directory(
     function refresh_until_synced_asyncmany(args...)
         n_tasks = @something(settings.Export.number_of_parallel_tasks, roughly_the_number_of_physical_cpu_cores())
         @sync for _ in 1:n_tasks
-            @async refresh_until_synced(args...)
+            Threads.@spawn refresh_until_synced(args...)
         end
     end
 
