@@ -15,7 +15,7 @@ function bound_variable_connections_graph(
     bound_variables = Pluto.get_bond_names(session, notebook)
     Dict{Symbol,Vector{Symbol}}(
         var => let
-            cells = Pluto.MoreAnalysis.codependents(notebook, topology, var)
+            cells = Pluto.MoreAnalysis.codependents(topology, var)
             defined_there = union!(
                 Set{Symbol}(),
                 (topology.nodes[c].definitions for c in cells)...,
