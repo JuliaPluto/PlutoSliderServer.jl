@@ -376,7 +376,6 @@ function run_directory(
             debounced,
             start_dir,
             get_token(watch_token_source);
-            # `.git` was ignored by default in BetterFileWatching 0.1, and `run_git_directory` depends on this: `git pull` should not trigger a refresh unless tracked files changed.
             ignore=rel -> ".git" in split(rel, "/"),
         )
     end
@@ -400,8 +399,9 @@ function run_directory(
             @ignorefailure close(http_server)
             if should_watch
                 @info "Stopping directory watching..."
-                # This makes `watch_folder` clean up and return, which finishes `watch_dir_task`. We don't wait for the task: it might be running a (long) refresh, which we don't want to block the shutdown.
-                @ignorefailure cancel(watch_token_source)
+                cancel(watch_token_source)
+                @info "Waiting for watch task to finish..."
+                wait(watch_dir_task)
             end
             e isa InterruptException || rethrow(e)
             @info "Server exited ✅"
