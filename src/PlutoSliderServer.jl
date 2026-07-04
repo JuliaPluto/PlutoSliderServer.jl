@@ -469,7 +469,7 @@ function run_git_directory(
         try
             fetch_pull(start_dir)
         catch e
-            @warn "git: Error in poll_pull_loop" exception = (e, catch_backtrace())
+            @warn "git: Error in pull loop" exception = (e, catch_backtrace())
         end
     end
 
