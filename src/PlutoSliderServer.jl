@@ -36,6 +36,7 @@ using HTTP
 using Sockets
 import Pkg
 import BetterFileWatching: watch_folder
+import CancellationTokens: CancellationTokenSource, get_token, cancel
 import AbstractPlutoDingetjes: is_inside_pluto
 import TerminalLoggers: TerminalLogger
 import Logging: global_logger, ConsoleLogger
@@ -362,6 +363,7 @@ function run_directory(
 
     should_watch = settings.SliderServer.enabled && settings.SliderServer.watch_dir
 
+    watch_token_source = CancellationTokenSource()
     watch_dir_task = Pluto.@asynclog if should_watch
         @info "Watching directory for changes..."
         debounced = kind_of_debounced() do _
@@ -370,7 +372,12 @@ function run_directory(
             refresh_until_synced_asyncmany(true)
         end
         debounced(nothing) # Trigger once directly, in case there were changes during the initial `refresh_until_synced_asyncmany` call.
-        watch_folder(debounced, start_dir)
+        watch_folder(
+            debounced,
+            start_dir,
+            get_token(watch_token_source);
+            ignore=rel -> ".git" in split(rel, "/"),
+        )
     end
 
 
@@ -392,8 +399,9 @@ function run_directory(
             @ignorefailure close(http_server)
             if should_watch
                 @info "Stopping directory watching..."
-                istaskdone(watch_dir_task) ||
-                    @ignorefailure schedule(watch_dir_task, e; error=true)
+                cancel(watch_token_source)
+                @info "Waiting for watch task to finish..."
+                wait(watch_dir_task)
             end
             e isa InterruptException || rethrow(e)
             @info "Server exited ✅"
