@@ -12,26 +12,22 @@ end
 function fetch(dir=".")::Bool
     branch_name = current_branch_name(dir)
 
-    cd(dir) do
-        run(`$(git()) fetch origin $(branch_name) --quiet`)
+    run(`$(git()) -C $(dir) fetch origin $(branch_name) --quiet`)
 
-        local_hash = read(`$(git()) rev-parse HEAD`, String)
-        remote_hash = read(`$(git()) rev-parse \@\{u\}`, String)
+    local_hash = read(`$(git()) -C $(dir) rev-parse HEAD`, String)
+    remote_hash = read(`$(git()) -C $(dir) rev-parse FETCH_HEAD`, String)
 
-        return local_hash == remote_hash
-    end
+    local_hash == remote_hash
 end
 
 
 function pullhard(dir=".")
     branch_name = current_branch_name(dir)
 
-    cd(dir) do
-        run(`$(git()) reset --hard origin/$(branch_name)`)
-    end
+    run(`$(git()) -C $(dir) reset --hard origin/$(branch_name)`)
 end
 
-function fetch_pull(dir=","; pull_sleep=1)
+function fetch_pull(dir="."; pull_sleep=1)
     in_sync = fetch(dir)
 
     if !in_sync
@@ -40,17 +36,6 @@ function fetch_pull(dir=","; pull_sleep=1)
     end
 end
 
-
-function poll_pull_loop(dir="."; interval=5)
-    while true
-        try
-            fetch_pull(dir)
-        catch e
-            @error "Error in poll_pull_loop" exception=(e, catch_backtrace())
-        end
-        sleep(interval)
-    end
-end
 
 function get_git_hash(path::String)
 	repo = LibGit2.GitRepo(path)
