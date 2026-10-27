@@ -2,11 +2,13 @@ using FromFile
 
 import JSON
 import Pluto: Pluto, without_pluto_file_extension
+using Memoize
 
-@from "./Types.jl" import NotebookSession, RunningNotebook
+@from "./Types.jl" import NotebookSession, RunningNotebook, RunResult
 @from "./Configuration.jl" import PlutoDeploySettings
 @from "./PathUtils.jl" import to_local_path, to_url_path
 @from "./gitpull.jl" import get_git_hash_cached
+@from "./PlutoHash.jl" import plutohash
 
 id(s::NotebookSession) = to_url_path(s.path)
 
@@ -21,6 +23,7 @@ function index_json_data(
         html_path=to_url_path(without_pluto_file_extension(s.path) * ".html"),
         statefile_path=settings.Export.baked_state ? nothing :
                        to_url_path(without_pluto_file_extension(s.path) * ".plutostate"),
+        statefile_hash=s.run isa RunResult ? get_memoized_state_hash(s.run.original_state) : nothing,
         notebookfile_path=settings.Export.baked_notebookfile ? nothing : to_url_path(s.path),
         current_hash=s.current_hash,
         desired_hash=s.desired_hash,
@@ -91,3 +94,9 @@ end
 somethingornothing() = nothing
 somethingornothing(x::Nothing, y...) = somethingornothing(y...)
 somethingornothing(x::Any, y...) = x
+
+
+@memoize WeakKeyDict function get_memoized_state_hash(state)
+    packed = Pluto.pack(state)
+    plutohash(packed)
+end
